@@ -1,339 +1,163 @@
-// src/client/ClientFourPsForm.tsx
+// src/components/diary/ClientCaseDiaryForm.tsx
+// Renamed to better reflect purpose, but keep same file name for now
 
 import * as React from "react";
-import {
-  CaseTimelineEvent,
-  FourPsProfile,
-} from "../domain/caseTimeline";
-import { useMockDB } from "../lib/mockDB";
-import { useCaseEvents } from "../lib/caseEventsContext";
+import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
+import { Button } from "../ui/button";
+import { Separator } from "../ui/separator";
+import { Badge } from "../ui/badge";
 
-import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card";
-import { Button } from "../components/ui/button";
-import { Textarea } from "../components/ui/textarea";
-import { Separator } from "../components/ui/separator";
-import { Badge } from "../components/ui/badge";
+// Import our new 4Ps sections
+import { PhysicalSection } from "./PhysicalSection";
+import { PsychologicalSection } from "./PsychologicalSection";
+import { PsychosocialSection } from "./PsychosocialSection";
+import { ProfessionalSection } from "./ProfessionalSection";
+
+// Import scoring service
+import { calculate4Ps, type DiaryEntry, type ScoringResult } from "../../services/scoring/calculate4Ps";
 
 export const ClientFourPsForm: React.FC = () => {
-  const { activeCase } = useMockDB() as any;
-  const { addEvent } = useCaseEvents();
-
-  const caseId: string = activeCase?.id ?? "case-001";
-  const clientName: string =
-    activeCase?.clientName ??
-    activeCase?.name ??
-    activeCase?.displayName ??
-    "Client";
-
-  // 4Ps toggles
-  const [p1Physical, setP1Physical] = React.useState(false);
-  const [p2Psychological, setP2Psychological] = React.useState(false);
-  const [p3Psychosocial, setP3Psychosocial] = React.useState(false);
-  const [p4Professional, setP4Professional] = React.useState(false);
-
-  // Safety
-  const [abuseRisk, setAbuseRisk] = React.useState(false);
-  const [suicideRisk, setSuicideRisk] = React.useState(false);
-
-  // Narrative fields
-  const [physicalNotes, setPhysicalNotes] = React.useState("");
-  const [psychNotes, setPsychNotes] = React.useState("");
-  const [socialNotes, setSocialNotes] = React.useState("");
-  const [workNotes, setWorkNotes] = React.useState("");
-  const [goals, setGoals] = React.useState("");
-
   const [submitting, setSubmitting] = React.useState(false);
+  
+  // State for each section (1-5 scores + notes)
+  const [physical, setPhysical] = React.useState({
+    score: 3, // Default neutral (3 = moderate)
+    notes: ""
+  });
+  
+  const [psychological, setPsychological] = React.useState({
+    score: 3,
+    notes: ""
+  });
+  
+  const [psychosocial, setPsychosocial] = React.useState({
+    score: 3,
+    notes: ""
+  });
+  
+  const [professional, setProfessional] = React.useState({
+    score: 3,
+    notes: ""
+  });
 
-  const hasAnyP =
-    p1Physical || p2Psychological || p3Psychosocial || p4Professional;
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!hasAnyP && !abuseRisk && !suicideRisk) {
-      return;
-    }
-
     setSubmitting(true);
 
-    const now = new Date();
-
-    const profile: FourPsProfile = {
-      p1Physical,
-      p2Psychological,
-      p3Psychosocial,
-      p4Professional,
+    // Create diary entry object
+    const diaryEntry: DiaryEntry = {
+      id: `diary-${Date.now()}`,
+      date: new Date().toISOString(),
+      scores: {
+        physical: physical.score,
+        psychological: psychological.score,
+        psychosocial: psychosocial.score,
+        professional: professional.score
+      },
+      notes: {
+        physical: physical.notes,
+        psychological: psychological.notes,
+        psychosocial: psychosocial.notes,
+        professional: professional.notes
+      }
     };
 
-    const pieces: string[] = [];
-
-    if (physicalNotes.trim()) {
-      pieces.push(`Physical: ${physicalNotes.trim()}`);
-    }
-    if (psychNotes.trim()) {
-      pieces.push(`Psychological: ${psychNotes.trim()}`);
-    }
-    if (socialNotes.trim()) {
-      pieces.push(
-        `Psychosocial (home & environment): ${socialNotes.trim()}`
-      );
-    }
-    if (workNotes.trim()) {
-      pieces.push(`Professional / Work: ${workNotes.trim()}`);
-    }
-    if (goals.trim()) {
-      pieces.push(`Client goals: ${goals.trim()}`);
-    }
-
-    if (abuseRisk) {
-      pieces.push(
-        "Client indicated concerns about safety / possible abuse or coercion."
-      );
-    }
-    if (suicideRisk) {
-      pieces.push(
-        "Client indicated current or past thoughts of self-harm or suicide."
-      );
-    }
-
-    const details =
-      pieces.length > 0
-        ? pieces.join("\n\n")
-        : "Client submitted a 4Ps check-in without additional narrative.";
-
-    const activePsLabels: string[] = [];
-    if (p1Physical) activePsLabels.push("P1 Physical");
-    if (p2Psychological) activePsLabels.push("P2 Psychological");
-    if (p3Psychosocial) activePsLabels.push("P3 Psychosocial");
-    if (p4Professional) activePsLabels.push("P4 Professional");
-
-    const summary = activePsLabels.length
-      ? `Client 4Ps check-in: ${activePsLabels.join(", ")}`
-      : "Client safety / risk check-in";
-
-    const tags: string[] = [];
-    if (p3Psychosocial || p4Professional) tags.push("sdoh");
-    if (abuseRisk) tags.push("abuse-risk", "safety-critical");
-    if (suicideRisk) tags.push("suicide-risk", "safety-critical");
-
-    const isCritical = abuseRisk || suicideRisk;
-
-    const newEvent: CaseTimelineEvent = {
-      id: `client-evt-${now.getTime()}`,
-      caseId,
-      category: "CLINICAL",
-      summary,
-      details,
-      actorRole: "CLIENT",
-      actorName: clientName,
-      createdAt: now.toISOString(),
-      isCritical,
-      requiresAudit: isCritical,
-      auditStatus: isCritical ? "FLAGGED" : undefined,
-      fourPsProfile: profile,
-      abuseRisk,
-      suicideRisk,
-      tags,
-      fourPsSummary: activePsLabels.join(", "),
-    };
-
-    addEvent(newEvent);
-
-    // Reset form
-    setP1Physical(false);
-    setP2Psychological(false);
-    setP3Psychosocial(false);
-    setP4Professional(false);
-    setAbuseRisk(false);
-    setSuicideRisk(false);
-    setPhysicalNotes("");
-    setPsychNotes("");
-    setSocialNotes("");
-    setWorkNotes("");
-    setGoals("");
+    // Calculate scores
+    const scoringResult: ScoringResult = calculate4Ps(diaryEntry);
+    
+    console.log("Diary Entry:", diaryEntry);
+    console.log("Scoring Result:", scoringResult);
+    
+    // In production: Save to database
+    // await saveToDatabase(diaryEntry, scoringResult);
+    
+    // Show success with scores
+    alert(
+      `Diary entry submitted!\n\nYour 4Ps Scores:\n` +
+      `Physical: ${physical.score}/5\n` +
+      `Psychological: ${psychological.score}/5\n` +
+      `Psychosocial: ${psychosocial.score}/5\n` +
+      `Professional: ${professional.score}/5\n` +
+      `Overall Wellness: ${Math.round(scoringResult.overallScore)}%\n\n` +
+      `Your attorney will review this information.`
+    );
+    
+    // Reset form to neutral
+    setPhysical({ score: 3, notes: "" });
+    setPsychological({ score: 3, notes: "" });
+    setPsychosocial({ score: 3, notes: "" });
+    setProfessional({ score: 3, notes: "" });
+    
     setSubmitting(false);
   };
 
   return (
-    <Card>
+    <Card className="max-w-2xl mx-auto">
       <CardHeader>
-        <CardTitle className="text-base">
-          Client 4Ps &amp; Safety Check-In
+        <CardTitle className="text-lg">
+          C.A.S.E. Diary - Daily Entry
         </CardTitle>
-        <p className="text-xs text-muted-foreground">
-          This is a mock of what your client would see in their portal. Their
-          answers create timeline events, drive the 10-Vs engine, and update the
-          RN and attorney views.
+        <p className="text-sm text-muted-foreground">
+          Document your recovery for your legal case. Be honest about both good and bad days.
+          <br />
+          <span className="text-xs">1 = Worst (severe limitations), 5 = Best (normal function)</span>
         </p>
       </CardHeader>
       <Separator />
-      <CardContent className="pt-3">
-        <form onSubmit={handleSubmit} className="space-y-3 text-xs">
-          <div className="flex flex-wrap gap-2 mb-1">
-            <Badge variant="outline" className="text-[10px]">
-              Case: {caseId}
+      <CardContent className="pt-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="flex flex-wrap gap-2 mb-2">
+            <Badge variant="outline" className="text-xs">
+              Today: {new Date().toLocaleDateString()}
             </Badge>
-            <Badge variant="outline" className="text-[10px]">
-              Client: {clientName}
+            <Badge variant="outline" className="text-xs">
+              Client: John Doe {/* Will come from authentication */}
+            </Badge>
+            <Badge variant="outline" className="text-xs">
+              Case: PI-2024-001
             </Badge>
           </div>
 
-          <div className="grid gap-3">
-            {/* P1 Physical */}
-            <div className="space-y-1">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="h-3 w-3"
-                  checked={p1Physical}
-                  onChange={(e) => setP1Physical(e.target.checked)}
-                />
-                <span className="font-semibold">
-                  P1 – Physical (Pain, movement, body)
-                </span>
-              </label>
-              <Textarea
-                rows={2}
-                value={physicalNotes}
-                onChange={(e) => setPhysicalNotes(e.target.value)}
-                placeholder="In your own words, what is going on with your body or pain today?"
-                className="text-xs"
-              />
-            </div>
+          {/* 4Ps Sections */}
+          <PhysicalSection
+            score={physical.score}
+            notes={physical.notes}
+            onScoreChange={(score) => setPhysical({...physical, score})}
+            onNotesChange={(notes) => setPhysical({...physical, notes})}
+          />
+          
+          <PsychologicalSection
+            score={psychological.score}
+            notes={psychological.notes}
+            onScoreChange={(score) => setPsychological({...psychological, score})}
+            onNotesChange={(notes) => setPsychological({...psychological, notes})}
+          />
+          
+          <PsychosocialSection
+            score={psychosocial.score}
+            notes={psychosocial.notes}
+            onScoreChange={(score) => setPsychosocial({...psychosocial, score})}
+            onNotesChange={(notes) => setPsychosocial({...psychosocial, notes})}
+          />
+          
+          <ProfessionalSection
+            score={professional.score}
+            notes={professional.notes}
+            onScoreChange={(score) => setProfessional({...professional, score})}
+            onNotesChange={(notes) => setProfessional({...professional, notes})}
+          />
 
-            {/* P2 Psychological */}
-            <div className="space-y-1">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="h-3 w-3"
-                  checked={p2Psychological}
-                  onChange={(e) => setP2Psychological(e.target.checked)}
-                />
-                <span className="font-semibold">
-                  P2 – Psychological (Mood, stress, coping)
-                </span>
-              </label>
-              <Textarea
-                rows={2}
-                value={psychNotes}
-                onChange={(e) => setPsychNotes(e.target.value)}
-                placeholder="How has this injury or condition been affecting your mood, stress level, or sleep?"
-                className="text-xs"
-              />
-            </div>
-
-            {/* P3 Psychosocial / Environment */}
-            <div className="space-y-1">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="h-3 w-3"
-                  checked={p3Psychosocial}
-                  onChange={(e) => setP3Psychosocial(e.target.checked)}
-                />
-                <span className="font-semibold">
-                  P3 – Psychosocial (Home, support, environment)
-                </span>
-              </label>
-              <Textarea
-                rows={2}
-                value={socialNotes}
-                onChange={(e) => setSocialNotes(e.target.value)}
-                placeholder="Is anything at home, with family, transportation, housing, or your environment making it harder to get care or heal?"
-                className="text-xs"
-              />
-            </div>
-
-            {/* P4 Professional */}
-            <div className="space-y-1">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="h-3 w-3"
-                  checked={p4Professional}
-                  onChange={(e) => setP4Professional(e.target.checked)}
-                />
-                <span className="font-semibold">
-                  P4 – Professional (Work, income, role)
-                </span>
-              </label>
-              <Textarea
-                rows={2}
-                value={workNotes}
-                onChange={(e) => setWorkNotes(e.target.value)}
-                placeholder="How has this affected your job, income, or ability to return to your usual role?"
-                className="text-xs"
-              />
-            </div>
-
-            {/* Safety section */}
-            <div className="space-y-1 border rounded-md p-2 bg-amber-50/60">
-              <div className="text-[11px] font-semibold text-amber-900">
-                Safety &amp; Difficult Situations
-              </div>
-              <p className="text-[10px] text-amber-900">
-                These questions can feel uncomfortable. We ask them because they
-                affect your safety, healing, and legal protections. Answer only
-                what you feel safe sharing here.
-              </p>
-              <label className="flex items-center gap-2 mt-1">
-                <input
-                  type="checkbox"
-                  className="h-3 w-3"
-                  checked={abuseRisk}
-                  onChange={(e) => setAbuseRisk(e.target.checked)}
-                />
-                <span className="text-[11px]">
-                  I have concerns about feeling safe with someone in my life
-                  (including possible abuse, control, or coercion).
-                </span>
-              </label>
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="h-3 w-3"
-                  checked={suicideRisk}
-                  onChange={(e) => setSuicideRisk(e.target.checked)}
-                />
-                <span className="text-[11px]">
-                  I have had thoughts of harming myself or suicide in the past
-                  or recently.
-                </span>
-              </label>
-              <p className="text-[10px] text-amber-900 mt-1">
-                If you are in immediate danger, or thinking of hurting yourself
-                or someone else, please contact emergency services or your local
-                crisis line right away.
-              </p>
-            </div>
-
-            {/* Goals */}
-            <div className="space-y-1">
-              <label className="font-semibold">
-                What would you most like help with right now?
-              </label>
-              <Textarea
-                rows={2}
-                value={goals}
-                onChange={(e) => setGoals(e.target.value)}
-                placeholder="For example: pain control, getting to appointments, support at work, help with anxiety, housing, etc."
-                className="text-xs"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between pt-1">
-            <p className="text-[10px] text-muted-foreground max-w-xs">
-              When you submit, your nurse case manager and care team will see
-              this as part of your case timeline. Some answers may be reviewed
-              by a supervisor when safety is a concern.
+          <div className="flex items-center justify-between pt-2 border-t">
+            <p className="text-xs text-muted-foreground max-w-md">
+              This entry becomes part of your legal case evidence. Submit daily for the most complete record.
+              Your attorney will review your entries and use them to build your case.
             </p>
             <Button
               type="submit"
-              size="sm"
-              disabled={submitting || (!hasAnyP && !abuseRisk && !suicideRisk)}
+              disabled={submitting}
+              className="bg-blue-600 hover:bg-blue-700"
             >
-              {submitting ? "Submitting…" : "Submit Check-In"}
+              {submitting ? "Submitting…" : "Save Diary Entry"}
             </Button>
           </div>
         </form>
@@ -341,3 +165,9 @@ export const ClientFourPsForm: React.FC = () => {
     </Card>
   );
 };
+
+// Mock function for now
+async function saveToDatabase(entry: DiaryEntry, scoring: ScoringResult) {
+  // Will connect to Supabase/real database
+  return Promise.resolve();
+}
