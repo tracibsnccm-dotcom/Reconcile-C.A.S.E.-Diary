@@ -31,3 +31,8 @@
     ]
   }
 }
+{
+  "scripts": {
+    "postinstall": "npm install --legacy-peer-deps"
+  }
+}
