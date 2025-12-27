@@ -1,5 +1,4 @@
-// src/components/diary/ClientCaseDiaryForm.tsx
-// Renamed to better reflect purpose, but keep same file name for now
+// src/components/diary/ClientFourPsForm.tsx
 
 import * as React from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
@@ -14,7 +13,7 @@ import { PsychosocialSection } from "./PsychosocialSection";
 import { ProfessionalSection } from "./ProfessionalSection";
 
 // Import scoring service
-import { calculate4Ps, type DiaryEntry, type ScoringResult } from "../../services/scoring/calculate4Ps";
+import { calculate4Ps, type DiaryEntry, type ScoringResult } from "../../services/scoring/Calculate4Ps";
 
 export const ClientFourPsForm: React.FC = () => {
   const [submitting, setSubmitting] = React.useState(false);
