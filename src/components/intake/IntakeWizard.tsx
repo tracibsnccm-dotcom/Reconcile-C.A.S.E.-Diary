@@ -272,11 +272,13 @@ export function IntakeWizard() {
               client, you will receive your permanent Case ID and PIN to access
               your portal.
             </p>
-            <p className="text-slate-400 text-sm mb-8">
-              Your intake data will be held for 7 days. If your attorney does
-              not confirm within 7 days, your data will be automatically deleted
-              for your privacy.
-            </p>
+            <div className="rounded-lg border border-orange-500/60 bg-orange-500/10 px-4 py-3 mb-8">
+              <p className="text-orange-200 text-sm font-medium">
+                Your intake data will be held for 7 days. If your attorney does
+                not confirm within 7 days, your data will be automatically deleted
+                for your privacy.
+              </p>
+            </div>
             <button
               type="button"
               onClick={() => navigate("/client-login")}
