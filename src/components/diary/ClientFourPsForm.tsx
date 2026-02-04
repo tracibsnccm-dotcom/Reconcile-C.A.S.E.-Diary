@@ -1,44 +1,48 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+
+const SCALE_LOW = 'Crisis';
+const SCALE_HIGH = 'Optimal';
 
 interface PhysicalData {
-  physicalComfort: number;
-  abilityManageTasks: number;
-  tasksHarder: string[];
-  discomfortMovement: number;
-  physicalEnergy: number;
+  comfort: number;
+  adls: number;
+  adlsConcerns: string[];
+  movementDiscomfort: number;
+  energy: number;
   changeFromYesterday: number;
   notes: string;
+  photo: string | null;
 }
 
 interface PsychologicalData {
   emotionalComfort: number;
-  abilityCopeStress: number;
+  emotionalConcerns: string[];
+  coping: number;
   mentalClarity: number;
   changeFromYesterday: number;
-  emotionalExperiences: string[];
-  crisisRisk: number;
   notes: string;
+  photo: string | null;
 }
 
 interface PsychosocialData {
-  senseConnection: number;
-  abilityCommunicate: number;
-  supportAvailability: number;
+  connection: number;
+  communication: number;
+  support: number;
   basicNeedsSafety: number;
   basicNeedsConcerns: string[];
-  personalSafety: number;
-  ipvQuestion: number | null; // null means not answered (optional)
+  personalSafetyConcerns: boolean;
   changeFromYesterday: number;
   notes: string;
+  photo: string | null;
 }
 
 interface ProfessionalData {
-  workTaskCompletion: number;
-  workEfficiency: number;
-  workloadManageability: number;
-  workEnergyLevel: number;
+  purpose: number;
+  motivation: number;
+  abilityToAct: number;
   changeFromYesterday: number;
   notes: string;
+  photo: string | null;
 }
 
 interface FormData {
@@ -48,850 +52,515 @@ interface FormData {
   professional: ProfessionalData;
 }
 
-interface UpcomingAppointment {
-  id: string;
-  date: string;
-  time: string;
-  provider: string;
-  type: string;
-}
+const cardStyle: React.CSSProperties = {
+  backgroundColor: 'rgba(255, 255, 255, 0.95)',
+  borderRadius: '20px',
+  padding: '28px 32px',
+  boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
+  backdropFilter: 'blur(10px)',
+  border: '1px solid rgba(255, 255, 255, 0.4)',
+};
 
-interface ScoringResult {
-  wellnessGap: 'physical' | 'psychological' | 'psychosocial' | 'professional';
-  lowestScore: number;
-  scores: {
-    physical: number;
-    psychological: number;
-    psychosocial: number;
-    professional: number;
-  };
-  riskLevel: 'Low' | 'Moderate' | 'High' | 'Critical';
-  monitoringFrequency: string;
-  providerNotification: boolean;
-  safetyFlagged: boolean;
-  crisisFlagged: boolean;
-  ipvFlagged: boolean;
-  recommendations: string[];
-  upcomingAppointments: UpcomingAppointment[];
+const accentOrange = '#fb923c';
+const gradientOrange = 'linear-gradient(135deg, #fb923c 0%, #f97316 100%)';
+
+function getScoreColor(score: number): string {
+  if (score >= 5) return '#10b981';
+  if (score >= 4) return '#86efac';
+  if (score >= 3) return '#eab308';
+  if (score >= 2) return '#f97316';
+  return '#ef4444';
 }
 
 export const ClientFourPsForm: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [showResults, setShowResults] = useState(false);
+  const [showSafetyProtocol, setShowSafetyProtocol] = useState(false);
+  const [scores, setScores] = useState<{
+    physical: number;
+    psychological: number;
+    psychosocial: number;
+    professional: number;
+  } | null>(null);
+  const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
+
   const [formData, setFormData] = useState<FormData>({
     physical: {
-      physicalComfort: 3,
-      abilityManageTasks: 3,
-      tasksHarder: [],
-      discomfortMovement: 3,
-      physicalEnergy: 3,
+      comfort: 3,
+      adls: 3,
+      adlsConcerns: [],
+      movementDiscomfort: 3,
+      energy: 3,
       changeFromYesterday: 3,
-      notes: ''
+      notes: '',
+      photo: null,
     },
     psychological: {
       emotionalComfort: 3,
-      abilityCopeStress: 3,
+      emotionalConcerns: [],
+      coping: 3,
       mentalClarity: 3,
       changeFromYesterday: 3,
-      emotionalExperiences: [],
-      crisisRisk: 3,
-      notes: ''
+      notes: '',
+      photo: null,
     },
     psychosocial: {
-      senseConnection: 3,
-      abilityCommunicate: 3,
-      supportAvailability: 3,
+      connection: 3,
+      communication: 3,
+      support: 3,
       basicNeedsSafety: 3,
       basicNeedsConcerns: [],
-      personalSafety: 5,
-      ipvQuestion: null, // Optional - starts as null
+      personalSafetyConcerns: false,
       changeFromYesterday: 3,
-      notes: ''
+      notes: '',
+      photo: null,
     },
     professional: {
-      workTaskCompletion: 3,
-      workEfficiency: 3,
-      workloadManageability: 3,
-      workEnergyLevel: 3,
+      purpose: 3,
+      motivation: 3,
+      abilityToAct: 3,
       changeFromYesterday: 3,
-      notes: ''
-    }
-  });
-  const [scoringResult, setScoringResult] = useState<ScoringResult | null>(null);
-
-  // Mock upcoming appointments - in production this would come from backend
-  const mockUpcomingAppointments: UpcomingAppointment[] = [
-    {
-      id: '1',
-      date: '2024-01-05',
-      time: '2:00 PM',
-      provider: 'Dr. Smith (Primary Care)',
-      type: 'Follow-up'
+      notes: '',
+      photo: null,
     },
-    {
-      id: '2',
-      date: '2024-01-12',
-      time: '10:30 AM',
-      provider: 'Physical Therapy',
-      type: 'Treatment Session'
-    }
-  ];
+  });
 
-  const getScoreColor = (score: number): string => {
-    if (score >= 5) return '#10b981'; // Green
-    if (score >= 4) return '#86efac'; // Light green
-    if (score >= 3) return '#eab308'; // Yellow
-    if (score >= 2) return '#f97316'; // Orange
-    return '#ef4444'; // Red
-  };
-
-  const getStabilityLevel = (score: number): string => {
-    if (score >= 5) return 'Excellent';
-    if (score >= 4) return 'Good';
-    if (score >= 3) return 'Moderate';
-    if (score >= 2) return 'Emergent';
-    return 'Critical';
-  };
-
-  const getRiskDefinition = (level: string): string => {
-    const definitions: Record<string, string> = {
-      'Critical': 'Immediate crisis requiring emergency intervention within 24 hours. Your safety and wellbeing are at immediate risk.',
-      'High': 'Urgent situation requiring professional attention within 48-72 hours. Rapid deterioration is possible without intervention.',
-      'Moderate': 'Concerning pattern requiring close monitoring and professional consultation within 1 week. Early intervention can prevent escalation.',
-      'Low': 'Stable situation with routine monitoring recommended. Continue current care plan and document any changes.'
+  const handlePhotoChange = (
+    section: keyof FormData,
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      setFormData((prev) => ({
+        ...prev,
+        [section]: { ...prev[section], photo: dataUrl },
+      }));
     };
-    return definitions[level] || '';
+    reader.readAsDataURL(file);
   };
 
-  const calculateScores = (): ScoringResult => {
-    // Calculate average for each domain - using Math.floor for whole numbers only
-    const physicalAvg = (
-      formData.physical.physicalComfort +
-      formData.physical.abilityManageTasks +
-      formData.physical.discomfortMovement +
-      formData.physical.physicalEnergy +
-      formData.physical.changeFromYesterday
-    ) / 5;
+  const removePhoto = (section: keyof FormData) => {
+    setFormData((prev) => ({
+      ...prev,
+      [section]: { ...prev[section], photo: null },
+    }));
+    const input = fileInputRefs.current[section];
+    if (input) input.value = '';
+  };
 
-    const psychologicalAvg = (
-      formData.psychological.emotionalComfort +
-      formData.psychological.abilityCopeStress +
-      formData.psychological.mentalClarity +
-      formData.psychological.crisisRisk +
-      formData.psychological.changeFromYesterday
-    ) / 5;
+  const toggleConcern = (
+    section: 'physical' | 'psychological' | 'psychosocial',
+    field: 'adlsConcerns' | 'emotionalConcerns' | 'basicNeedsConcerns',
+    option: string
+  ) => {
+    const key = section as keyof FormData;
+    const data = formData[key] as PhysicalData | PsychologicalData | PsychosocialData;
+    const current = (data as Record<string, string[] | boolean>)[field] as string[];
+    const next = current.includes(option)
+      ? current.filter((x) => x !== option)
+      : [...current, option];
+    setFormData((prev) => ({
+      ...prev,
+      [key]: { ...prev[key], [field]: next },
+    }));
+  };
 
-    // Psychosocial scoring with IPV override logic
-    let psychosocialScore: number;
-    const ipvFlagged = formData.psychosocial.ipvQuestion === 1;
-    
-    if (ipvFlagged) {
-      // If IPV question answered YES (1), entire section scores as 1
-      psychosocialScore = 1;
-    } else {
-      // Normal calculation - only include ipvQuestion if it was answered
-      const ipvValue = formData.psychosocial.ipvQuestion !== null ? formData.psychosocial.ipvQuestion : 5;
-      const psychosocialAvg = (
-        formData.psychosocial.senseConnection +
-        formData.psychosocial.abilityCommunicate +
-        formData.psychosocial.supportAvailability +
+  const setPersonalSafetyConcerns = (value: boolean) => {
+    setFormData((prev) => ({
+      ...prev,
+      psychosocial: {
+        ...prev.psychosocial,
+        personalSafetyConcerns: value,
+        basicNeedsConcerns: value
+          ? [...new Set([...prev.psychosocial.basicNeedsConcerns, 'Personal safety concerns'])]
+          : prev.psychosocial.basicNeedsConcerns.filter((x) => x !== 'Personal safety concerns'),
+      },
+    }));
+    if (value) setShowSafetyProtocol(true);
+  };
+
+  const calculateScores = () => {
+    const phys =
+      (formData.physical.comfort +
+        formData.physical.adls +
+        formData.physical.movementDiscomfort +
+        formData.physical.energy +
+        formData.physical.changeFromYesterday) /
+      5;
+    const psych =
+      (formData.psychological.emotionalComfort +
+        formData.psychological.coping +
+        formData.psychological.mentalClarity +
+        formData.psychological.changeFromYesterday) /
+      4;
+    const psycho =
+      (formData.psychosocial.connection +
+        formData.psychosocial.communication +
+        formData.psychosocial.support +
         formData.psychosocial.basicNeedsSafety +
-        formData.psychosocial.personalSafety +
-        ipvValue +
-        formData.psychosocial.changeFromYesterday
-      ) / 7;
-      psychosocialScore = Math.floor(psychosocialAvg);
-    }
-
-    const professionalAvg = (
-      formData.professional.workTaskCompletion +
-      formData.professional.workEfficiency +
-      formData.professional.workloadManageability +
-      formData.professional.workEnergyLevel +
-      formData.professional.changeFromYesterday
-    ) / 5;
-
-    // Use Math.floor to keep scores at whole number levels
-    const scores = {
-      physical: Math.floor(physicalAvg),
-      psychological: Math.floor(psychologicalAvg),
-      psychosocial: psychosocialScore,
-      professional: Math.floor(professionalAvg)
-    };
-
-    // Check for safety and crisis flags
-    const safetyFlagged = formData.psychosocial.personalSafety <= 2;
-    const crisisFlagged = formData.psychological.crisisRisk <= 2;
-
-    const pillars = [
-      { name: 'physical' as const, score: scores.physical },
-      { name: 'psychological' as const, score: scores.psychological },
-      { name: 'psychosocial' as const, score: scores.psychosocial },
-      { name: 'professional' as const, score: scores.professional }
-    ];
-
-    const wellnessGapObj = pillars.reduce((prev, current) => 
-      current.score < prev.score ? current : prev
-    );
-
-    const lowestScore = wellnessGapObj.score;
-    
-    // If safety, crisis, or IPV flagged, force to Critical
-    let riskLevel: 'Low' | 'Moderate' | 'High' | 'Critical' = 'Low';
-    let monitoringFrequency = 'Every 2-3 days as needed';
-    
-    if (safetyFlagged || crisisFlagged || ipvFlagged) {
-      riskLevel = 'Critical';
-      monitoringFrequency = 'Three times daily (morning, afternoon, evening) until safety plan is in place';
-    } else if (lowestScore <= 1) {
-      riskLevel = 'Critical';
-      monitoringFrequency = 'Three times daily (morning, afternoon, evening)';
-    } else if (lowestScore === 2) {
-      riskLevel = 'High';
-      monitoringFrequency = 'Twice daily (morning and evening)';
-    } else if (lowestScore === 3) {
-      riskLevel = 'Moderate';
-      monitoringFrequency = 'Daily';
-    } else if (lowestScore === 4) {
-      riskLevel = 'Low';
-      monitoringFrequency = 'Every 2-3 days';
-    }
-
-    // Provider notification ONLY for Physical or Psychological scores ≤ 3
-    // Psychosocial and Professional offer resources/callbacks but NO auto provider notification
-    const providerNotification = (scores.physical <= 3) || (scores.psychological <= 3);
-
-    const recommendations = generateRecommendations(wellnessGapObj.name, lowestScore, safetyFlagged, crisisFlagged, ipvFlagged);
-
+        formData.psychosocial.changeFromYesterday) /
+      5;
+    const prof =
+      (formData.professional.purpose +
+        formData.professional.motivation +
+        formData.professional.abilityToAct +
+        formData.professional.changeFromYesterday) /
+      4;
     return {
-      wellnessGap: wellnessGapObj.name,
-      lowestScore,
-      scores,
-      riskLevel,
-      monitoringFrequency,
-      providerNotification,
-      safetyFlagged,
-      crisisFlagged,
-      ipvFlagged,
-      recommendations,
-      upcomingAppointments: mockUpcomingAppointments
+      physical: Math.round(phys * 10) / 10,
+      psychological: Math.round(psych * 10) / 10,
+      psychosocial: Math.round(psycho * 10) / 10,
+      professional: Math.round(prof * 10) / 10,
     };
-  };
-
-  const generateRecommendations = (domain: string, score: number, safetyFlagged: boolean, crisisFlagged: boolean, ipvFlagged: boolean): string[] => {
-    const recs: string[] = [];
-    
-    if (crisisFlagged) {
-      recs.push('🚨 CRISIS ALERT: If you are in immediate danger or having thoughts of harming yourself, call 911 or 988 (Suicide & Crisis Lifeline) right now.');
-      recs.push('📞 988 Suicide & Crisis Lifeline (24/7, free, confidential)');
-      recs.push('💬 Crisis Text Line: Text HOME to 741741');
-      recs.push('🏥 Go to your nearest emergency room if you cannot keep yourself safe');
-    }
-    
-    if (safetyFlagged || ipvFlagged) {
-      recs.push('🚨 SAFETY CONCERN: If you are in immediate danger, call 911 now. You deserve to feel safe.');
-      recs.push('📞 National Domestic Violence Hotline: 1-800-799-7233 (24/7)');
-      recs.push('💬 Text "START" to 88788 for confidential text support');
-      recs.push('📄 Download Safety Resources guide for local and national support options');
-      recs.push('☎️ Private consultation available with RN Care Manager: (682) 556-8472 - All conversations are confidential');
-    }
-    
-    if (domain === 'physical') {
-      if (score <= 1) {
-        recs.push('🚨 URGENT: Seek emergency medical attention immediately or call 911');
-        recs.push('📞 Contact your primary care physician today');
-        recs.push('📋 Document all symptoms in detail - this is critical legal evidence');
-      } else if (score === 2) {
-        recs.push('📞 Schedule urgent appointment with your doctor within 48 hours');
-        recs.push('💊 Review pain management plan with your provider');
-        recs.push('📸 Take photos of visible symptoms or injuries');
-      } else if (score === 3) {
-        recs.push('👨‍⚕️ Your treating provider will be notified of your status');
-        recs.push('📅 Schedule follow-up appointment within 1 week');
-        recs.push('📝 Keep detailed daily symptom log');
-      }
-    } else if (domain === 'psychological') {
-      if (score <= 1) {
-        recs.push('🚨 CRISIS: Call 988 Suicide & Crisis Lifeline immediately');
-        recs.push('🏥 Go to nearest emergency room or call 911 if in immediate danger');
-        recs.push('👥 Do not be alone - contact someone you trust right now');
-      } else if (score === 2) {
-        recs.push('📞 Contact your therapist or psychiatrist within 24-48 hours');
-        recs.push('🆘 Crisis support available: 988 or text HOME to 741741');
-        recs.push('👨‍👩‍👧 Reach out to your support system today');
-      } else if (score === 3) {
-        recs.push('👨‍⚕️ Your mental health provider will be notified');
-        recs.push('📅 Schedule therapy session this week');
-        recs.push('🧘 Practice daily self-care and coping strategies');
-      }
-    } else if (domain === 'psychosocial') {
-      if (score <= 1) {
-        recs.push('🏠 URGENT: Contact local social services or 211 for emergency assistance');
-        recs.push('🍽️ Access emergency food resources immediately');
-        recs.push('🚨 Your care team will coordinate emergency support');
-      } else if (score === 2) {
-        recs.push('📞 Connect with social worker within 48 hours');
-        recs.push('🏘️ Explore community resources and support programs');
-        recs.push('🚗 Address transportation barriers urgently');
-      } else if (score === 3) {
-        recs.push('🤝 Strengthen your support network - reach out to 2-3 people this week');
-        recs.push('🏘️ Research local community resources');
-        recs.push('📋 Document social barriers for your legal case');
-      }
-    } else if (domain === 'professional') {
-      if (score <= 1) {
-        recs.push('💼 URGENT: File for emergency unemployment or disability benefits today');
-        recs.push('💰 Contact financial assistance programs immediately');
-        recs.push('📞 Speak with your attorney about lost income documentation');
-      } else if (score === 2) {
-        recs.push('💼 Explore disability benefits options this week');
-        recs.push('💵 Create emergency financial plan');
-        recs.push('📄 Document all lost wages and work limitations');
-      } else if (score === 3) {
-        recs.push('💰 Review budget and financial resources');
-        recs.push('💼 Track all work limitations and accommodations needed');
-        recs.push('📋 Keep detailed records of financial impact and lost income');
-      }
-    }
-
-    if (!safetyFlagged && !crisisFlagged && !ipvFlagged && recs.length === 0) {
-      recs.push('✅ You are doing well in this area. Continue your current care plan.');
-      recs.push('📝 Keep documenting your progress for your legal case');
-    }
-
-    return recs;
   };
 
   const handleSubmit = () => {
-    const result = calculateScores();
-    setScoringResult(result);
+    const s = calculateScores();
+    setScores(s);
     setShowResults(true);
-    
     const entry = {
       id: Date.now().toString(),
       date: new Date().toISOString(),
       formData,
-      result
+      scores: s,
     };
-    
-    const existingEntries = JSON.parse(localStorage.getItem('diaryEntries') || '[]');
-    existingEntries.push(entry);
-    localStorage.setItem('diaryEntries', JSON.stringify(existingEntries));
-
-    // Log notifications for RN dashboard
-    if (result.ipvFlagged) {
-      console.log('🚨 CRITICAL IPV ALERT: Client indicated feeling unsafe in relationships');
-      console.log('Entry ID:', entry.id);
-      console.log('Timestamp:', entry.date);
-    }
-    if (result.safetyFlagged) {
-      console.log('🚨 CRITICAL SAFETY ALERT: Client flagged personal safety concerns');
-      console.log('Entry ID:', entry.id);
-      console.log('Timestamp:', entry.date);
-    }
-    if (result.crisisFlagged) {
-      console.log('🚨 CRITICAL CRISIS ALERT: Client at risk of self-harm');
-      console.log('Entry ID:', entry.id);
-      console.log('Timestamp:', entry.date);
-    }
-    if (result.providerNotification) {
-      console.log(`🔔 PROVIDER NOTIFICATION: ${result.wellnessGap} wellness at ${result.riskLevel} risk level`);
+    const existing = JSON.parse(localStorage.getItem('diaryEntries') || '[]');
+    existing.push(entry);
+    localStorage.setItem('diaryEntries', JSON.stringify(existing));
+    if (formData.psychosocial.personalSafetyConcerns) {
+      console.log('🚨 SAFETY PROTOCOL: Personal safety concerns indicated. Entry ID:', entry.id);
     }
   };
 
-  const QuestionSlider = ({ 
-    label, 
-    value, 
-    onChange, 
-    lowText, 
-    highText 
-  }: { 
-    label: string; 
-    value: number; 
-    onChange: (val: number) => void;
-    lowText: string;
-    highText: string;
-  }) => (
-    <div style={{ marginBottom: '28px' }}>
-      <label style={{ display: 'block', fontSize: '15px', fontWeight: '600', marginBottom: '12px', color: '#374151' }}>
+  const resetForm = () => {
+    setShowResults(false);
+    setShowSafetyProtocol(false);
+    setScores(null);
+    setCurrentStep(1);
+    setFormData({
+      physical: {
+        comfort: 3,
+        adls: 3,
+        adlsConcerns: [],
+        movementDiscomfort: 3,
+        energy: 3,
+        changeFromYesterday: 3,
+        notes: '',
+        photo: null,
+      },
+      psychological: {
+        emotionalComfort: 3,
+        emotionalConcerns: [],
+        coping: 3,
+        mentalClarity: 3,
+        changeFromYesterday: 3,
+        notes: '',
+        photo: null,
+      },
+      psychosocial: {
+        connection: 3,
+        communication: 3,
+        support: 3,
+        basicNeedsSafety: 3,
+        basicNeedsConcerns: [],
+        personalSafetyConcerns: false,
+        changeFromYesterday: 3,
+        notes: '',
+        photo: null,
+      },
+      professional: {
+        purpose: 3,
+        motivation: 3,
+        abilityToAct: 3,
+        changeFromYesterday: 3,
+        notes: '',
+        photo: null,
+      },
+    });
+  };
+
+  const QuestionSlider: React.FC<{
+    label: string;
+    value: number;
+    onChange: (v: number) => void;
+  }> = ({ label, value, onChange }) => (
+    <div style={{ marginBottom: '24px' }}>
+      <label style={{ display: 'block', fontSize: '15px', fontWeight: '600', marginBottom: '10px', color: '#374151' }}>
         {label}
       </label>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '8px' }}>
-        <div style={{ flex: 1, position: 'relative' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+        <div style={{ flex: '1 1 200px', minWidth: 0 }}>
           <input
             type="range"
-            min="1"
-            max="5"
+            min={1}
+            max={5}
             value={value}
-            onChange={(e) => onChange(parseInt(e.target.value))}
-            style={{ width: '100%', height: '8px', cursor: 'pointer', accentColor: getScoreColor(value) }}
+            onChange={(e) => onChange(parseInt(e.target.value, 10))}
+            style={{
+              width: '100%',
+              height: '10px',
+              cursor: 'pointer',
+              accentColor: accentOrange,
+            }}
           />
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
-            <span>{lowText}</span>
-            <span>{highText}</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#6b7280', marginTop: '6px' }}>
+            <span>1 — {SCALE_LOW}</span>
+            <span>5 — {SCALE_HIGH}</span>
           </div>
         </div>
-        <div style={{
-          minWidth: '60px',
-          textAlign: 'center',
-          padding: '10px 18px',
-          borderRadius: '10px',
-          background: `linear-gradient(135deg, ${getScoreColor(value)} 0%, ${getScoreColor(value)}dd 100%)`,
-          color: 'white',
-          fontWeight: 'bold',
-          fontSize: '20px',
-          boxShadow: '0 3px 8px rgba(0,0,0,0.15)'
-        }}>
+        <div
+          style={{
+            minWidth: '56px',
+            textAlign: 'center',
+            padding: '10px 16px',
+            borderRadius: '12px',
+            background: gradientOrange,
+            color: 'white',
+            fontWeight: 'bold',
+            fontSize: '20px',
+            boxShadow: '0 4px 12px rgba(251, 146, 60, 0.35)',
+          }}
+        >
           {value}
         </div>
       </div>
     </div>
   );
 
-  const CheckboxGroup = ({ 
-    options, 
-    selected, 
-    onChange 
-  }: { 
-    options: string[]; 
-    selected: string[]; 
-    onChange: (vals: string[]) => void;
-  }) => (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '10px', marginTop: '12px' }}>
-      {options.map(option => (
-        <label key={option} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '8px', borderRadius: '6px', background: selected.includes(option) ? '#f0f9ff' : 'transparent', border: selected.includes(option) ? '2px solid #3b82f6' : '2px solid transparent' }}>
-          <input
-            type="checkbox"
-            checked={selected.includes(option)}
-            onChange={(e) => {
-              if (e.target.checked) {
-                onChange([...selected, option]);
-              } else {
-                onChange(selected.filter(s => s !== option));
-              }
-            }}
-            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-          />
-          <span style={{ fontSize: '14px', color: '#374151' }}>{option}</span>
+  const PhotoUpload: React.FC<{ section: keyof FormData; label: string }> = ({ section, label }) => {
+    const data = formData[section] as PhysicalData | PsychologicalData | PsychosocialData | ProfessionalData;
+    const photo = data.photo;
+    return (
+      <div style={{ marginTop: '24px' }}>
+        <label style={{ display: 'block', fontWeight: '600', marginBottom: '8px', color: '#374151', fontSize: '15px' }}>
+          {label}
         </label>
-      ))}
+        <input
+          ref={(el) => { fileInputRefs.current[section] = el; }}
+          type="file"
+          accept="image/*"
+          onChange={(e) => handlePhotoChange(section, e)}
+          style={{ display: 'none' }}
+        />
+        {photo ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <img
+              src={photo}
+              alt="Upload preview"
+              style={{
+                maxWidth: '160px',
+                maxHeight: '120px',
+                borderRadius: '12px',
+                objectFit: 'cover',
+                border: '2px solid #e5e7eb',
+              }}
+            />
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={() => fileInputRefs.current[section]?.click()}
+                style={{
+                  padding: '10px 18px',
+                  background: '#f3f4f6',
+                  border: '2px solid #e5e7eb',
+                  borderRadius: '10px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  color: '#374151',
+                }}
+              >
+                Replace
+              </button>
+              <button
+                type="button"
+                onClick={() => removePhoto(section)}
+                style={{
+                  padding: '10px 18px',
+                  background: '#fef2f2',
+                  border: '2px solid #fecaca',
+                  borderRadius: '10px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  color: '#991b1b',
+                }}
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => fileInputRefs.current[section]?.click()}
+            style={{
+              padding: '14px 24px',
+              background: 'rgba(251, 146, 60, 0.1)',
+              border: '2px dashed ' + accentOrange,
+              borderRadius: '12px',
+              color: accentOrange,
+              fontWeight: '600',
+              cursor: 'pointer',
+              width: '100%',
+              maxWidth: '280px',
+            }}
+          >
+            📷 Add photo (optional)
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  const SafetyProtocolModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        padding: '20px',
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          ...cardStyle,
+          maxWidth: '560px',
+          width: '100%',
+          maxHeight: '90vh',
+          overflow: 'auto',
+          border: '3px solid #dc2626',
+          boxShadow: '0 20px 60px rgba(220, 38, 38, 0.25)',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 style={{ fontSize: '22px', fontWeight: 'bold', marginBottom: '16px', color: '#991b1b' }}>
+          🚨 Safety Resources — You deserve to feel safe
+        </h3>
+        <p style={{ fontSize: '15px', color: '#374151', marginBottom: '20px', lineHeight: 1.6 }}>
+          If you are in immediate danger, call <strong>911</strong>. Confidential support is available 24/7:
+        </p>
+        <div style={{ background: '#fef2f2', padding: '20px', borderRadius: '12px', marginBottom: '20px', border: '2px solid #fecaca' }}>
+          <div style={{ marginBottom: '14px' }}>
+            <strong style={{ color: '#1f2937' }}>📞 National Domestic Violence Hotline</strong>
+            <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#dc2626', marginTop: '4px' }}>1-800-799-7233</div>
+            <div style={{ fontSize: '13px', color: '#6b7280' }}>24/7, free, confidential</div>
+          </div>
+          <div style={{ marginBottom: '14px' }}>
+            <strong style={{ color: '#1f2937' }}>💬 Text support</strong>
+            <div style={{ fontSize: '17px', fontWeight: 'bold', color: '#dc2626', marginTop: '4px' }}>Text "START" to 88788</div>
+          </div>
+          <div>
+            <strong style={{ color: '#1f2937' }}>🚨 Emergency</strong>
+            <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#dc2626', marginTop: '4px' }}>Call 911</div>
+          </div>
+        </div>
+        <p style={{ fontSize: '13px', color: '#6b7280', fontStyle: 'italic', marginBottom: '20px' }}>
+          All communications are confidential. Our RN Care Manager can also provide a private consultation: (682) 556-8472.
+        </p>
+        <button
+          type="button"
+          onClick={onClose}
+          style={{
+            width: '100%',
+            padding: '14px',
+            background: gradientOrange,
+            color: 'white',
+            border: 'none',
+            borderRadius: '12px',
+            fontSize: '16px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            boxShadow: '0 4px 12px rgba(251, 146, 60, 0.4)',
+          }}
+        >
+          I understand — continue
+        </button>
+      </div>
     </div>
   );
 
-  if (showResults && scoringResult) {
+  if (showSafetyProtocol) {
+    return <SafetyProtocolModal onClose={() => setShowSafetyProtocol(false)} />;
+  }
+
+  if (showResults && scores) {
+    const domainNames = { physical: 'Physical', psychological: 'Psychological', psychosocial: 'Psychosocial', professional: 'Professional' };
+    const vals = Object.entries(scores) as [keyof typeof scores, number][];
+    const lowest = vals.reduce((a, b) => (scores[a[0]] <= scores[b[0]] ? a : b));
     return (
-      <div style={{
-        background: (scoringResult.safetyFlagged || scoringResult.crisisFlagged || scoringResult.ipvFlagged) ? 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        padding: '40px',
-        borderRadius: '24px',
-        color: 'white',
-        boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
-      }}>
-        <div style={{ 
-          background: 'rgba(255,255,255,0.97)', 
-          borderRadius: '20px', 
-          padding: '40px',
-          color: '#1f2937'
-        }}>
-          <h2 style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '24px', textAlign: 'center', color: '#1f2937' }}>
-            📊 Your Wellness Assessment
+      <div style={{ padding: '8px 0' }}>
+        <div style={{ ...cardStyle, padding: '36px' }}>
+          <h2 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '24px', color: '#1f2937', textAlign: 'center' }}>
+            📊 Your 4Ps Wellness Summary
           </h2>
-
-          {/* Crisis Alert if flagged */}
-          {scoringResult.crisisFlagged && (
-            <div style={{
-              background: 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)',
-              border: '3px solid #dc2626',
-              borderRadius: '16px',
-              padding: '32px',
-              marginBottom: '32px',
-              boxShadow: '0 8px 24px rgba(220, 38, 38, 0.2)'
-            }}>
-              <h3 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '16px', color: '#991b1b' }}>
-                🚨 Crisis Resources - Help is Available Now
-              </h3>
-              <p style={{ fontSize: '16px', marginBottom: '20px', color: '#7f1d1d', lineHeight: '1.6', fontWeight: '600' }}>
-                If you are in immediate danger or having thoughts of harming yourself, please reach out for help right now:
-              </p>
-              
-              <div style={{ background: 'white', padding: '20px', borderRadius: '12px', marginBottom: '20px' }}>
-                <div style={{ marginBottom: '16px' }}>
-                  <strong style={{ fontSize: '16px', color: '#1f2937' }}>📞 988 Suicide & Crisis Lifeline (24/7):</strong>
-                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#dc2626', marginTop: '8px' }}>Call or Text 988</div>
-                  <p style={{ fontSize: '14px', color: '#6b7280', marginTop: '4px' }}>Free, confidential support for people in distress</p>
-                </div>
-                <div style={{ marginBottom: '16px' }}>
-                  <strong style={{ fontSize: '16px', color: '#1f2937' }}>💬 Crisis Text Line:</strong>
-                  <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#dc2626', marginTop: '8px' }}>Text HOME to 741741</div>
-                </div>
-                <div>
-                  <strong style={{ fontSize: '16px', color: '#1f2937' }}>🚨 Emergency:</strong>
-                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#dc2626', marginTop: '8px' }}>Call 911</div>
-                  <p style={{ fontSize: '14px', color: '#6b7280', marginTop: '4px' }}>Or go to your nearest emergency room</p>
-                </div>
-              </div>
-
-              <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '16px', fontStyle: 'italic', textAlign: 'center' }}>
-                🔒 All calls and texts are confidential and free
-              </p>
-            </div>
-          )}
-
-          {/* IPV/Safety Alert if flagged */}
-          {(scoringResult.safetyFlagged || scoringResult.ipvFlagged) && !scoringResult.crisisFlagged && (
-            <div style={{
-              background: 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)',
-              border: '3px solid #dc2626',
-              borderRadius: '16px',
-              padding: '32px',
-              marginBottom: '32px',
-              boxShadow: '0 8px 24px rgba(220, 38, 38, 0.2)'
-            }}>
-              <h3 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '16px', color: '#991b1b' }}>
-                🚨 Safety Resources Available
-              </h3>
-              <p style={{ fontSize: '16px', marginBottom: '20px', color: '#7f1d1d', lineHeight: '1.6' }}>
-                You deserve to feel safe. Confidential help is available 24/7.
-              </p>
-              
-              <div style={{ background: 'white', padding: '20px', borderRadius: '12px', marginBottom: '20px' }}>
-                <div style={{ marginBottom: '16px' }}>
-                  <strong style={{ fontSize: '16px', color: '#1f2937' }}>📞 National Domestic Violence Hotline (24/7):</strong>
-                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#dc2626', marginTop: '8px' }}>1-800-799-7233</div>
-                </div>
-                <div style={{ marginBottom: '16px' }}>
-                  <strong style={{ fontSize: '16px', color: '#1f2937' }}>💬 Text Support:</strong>
-                  <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#dc2626', marginTop: '8px' }}>Text "START" to 88788</div>
-                </div>
-                <div>
-                  <strong style={{ fontSize: '16px', color: '#1f2937' }}>🚨 Emergency:</strong>
-                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#dc2626', marginTop: '8px' }}>Call 911</div>
-                </div>
-              </div>
-
-              <button
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '28px' }}>
+            {(Object.keys(scores) as (keyof typeof scores)[]).map((d) => (
+              <div
+                key={d}
                 style={{
-                  width: '100%',
-                  padding: '16px',
-                  background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '12px',
-                  fontSize: '16px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
-                  marginBottom: '12px',
-                  boxShadow: '0 4px 12px rgba(220, 38, 38, 0.3)'
+                  ...cardStyle,
+                  padding: '20px',
+                  border: lowest[0] === d ? '3px solid ' + accentOrange : '1px solid rgba(0,0,0,0.08)',
+                  background: lowest[0] === d ? 'rgba(251, 146, 60, 0.08)' : 'rgba(255,255,255,0.98)',
                 }}
               >
-                📄 Download Safety Resources (National & Local)
-              </button>
-
-              <div style={{ background: '#fef3c7', padding: '16px', borderRadius: '10px', border: '2px solid #f59e0b' }}>
-                <p style={{ fontSize: '15px', fontWeight: '600', marginBottom: '12px', color: '#92400e' }}>
-                  Optional: Confidential Consultation with RN Care Manager
-                </p>
-                <p style={{ fontSize: '14px', color: '#78350f', marginBottom: '16px', lineHeight: '1.6' }}>
-                  If you would like to speak privately with an RN Care Manager about local resources and support options, all conversations are completely confidential and will not be disclosed unless you specifically authorize it.
-                </p>
-                <button
-                  style={{
-                    padding: '12px 24px',
-                    background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '10px',
-                    fontSize: '15px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    marginBottom: '12px',
-                    boxShadow: '0 3px 8px rgba(245, 158, 11, 0.3)'
-                  }}
-                >
-                  📞 Request Private RN Callback
-                </button>
-                <div style={{ fontSize: '13px', color: '#78350f' }}>
-                  <strong>Office Hours:</strong> Mon-Sat, 9am-9pm CST<br/>
-                  <strong>Phone:</strong> (682) 556-8472
+                <div style={{ fontSize: '14px', fontWeight: '600', color: '#6b7280', marginBottom: '8px' }}>{domainNames[d]}</div>
+                <div style={{ fontSize: '32px', fontWeight: 'bold', color: getScoreColor(scores[d]) }}>{scores[d]}</div>
+                <div style={{ width: '100%', height: '6px', background: '#e5e7eb', borderRadius: '3px', marginTop: '8px', overflow: 'hidden' }}>
+                  <div style={{ width: `${(scores[d] / 5) * 100}%`, height: '100%', background: getScoreColor(scores[d]), borderRadius: '3px' }} />
                 </div>
               </div>
-
-              <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '16px', fontStyle: 'italic', textAlign: 'center' }}>
-                🔒 All communications are confidential
-              </p>
-            </div>
-          )}
-
-          {/* Risk Level Badge */}
-          <div style={{ 
-            textAlign: 'center', 
-            marginBottom: '32px',
-            padding: '28px',
-            background: scoringResult.riskLevel === 'Critical' ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' :
-                       scoringResult.riskLevel === 'High' ? 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)' :
-                       scoringResult.riskLevel === 'Moderate' ? 'linear-gradient(135deg, #eab308 0%, #ca8a04 100%)' :
-                       'linear-gradient(135deg, #86efac 0%, #10b981 100%)',
-            borderRadius: '16px',
-            color: 'white',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.2)'
-          }}>
-            <div style={{ fontSize: '52px', fontWeight: 'bold', marginBottom: '8px' }}>
-              {scoringResult.lowestScore}/5
-            </div>
-            <div style={{ fontSize: '26px', fontWeight: 'bold', marginBottom: '16px' }}>
-              {scoringResult.riskLevel} Risk Level
-            </div>
-            <div style={{ fontSize: '15px', opacity: 0.95, maxWidth: '600px', margin: '0 auto', lineHeight: '1.6' }}>
-              {getRiskDefinition(scoringResult.riskLevel)}
-            </div>
+            ))}
           </div>
-
-          {/* Wellness Gap */}
-          <div style={{ 
-            background: 'linear-gradient(135deg, #fb923c 0%, #f97316 100%)',
-            padding: '24px',
-            borderRadius: '16px',
-            marginBottom: '24px',
-            color: 'white',
-            boxShadow: '0 4px 12px rgba(251, 146, 60, 0.3)'
-          }}>
-            <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '12px' }}>
-              🎯 Primary Wellness Gap
-            </h3>
-            <p style={{ fontSize: '18px', marginBottom: '8px' }}>
-              <strong style={{ textTransform: 'capitalize' }}>{scoringResult.wellnessGap}</strong> wellness (Score: {scoringResult.scores[scoringResult.wellnessGap]}/5)
-            </p>
-            <p style={{ fontSize: '14px', opacity: 0.95 }}>
-              Addressing this area first will create the foundation for improvements in other areas
-            </p>
+          <div style={{ background: 'linear-gradient(135deg, rgba(251,146,60,0.15) 0%, rgba(249,115,22,0.1) 100%)', padding: '20px', borderRadius: '16px', marginBottom: '24px', border: '2px solid rgba(251,146,60,0.4)' }}>
+            <div style={{ fontSize: '14px', color: '#92400e', fontWeight: '600', marginBottom: '6px' }}>Primary wellness gap</div>
+            <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#1f2937' }}>{domainNames[lowest[0]]} ({scores[lowest[0]]}/5)</div>
           </div>
-
-          {/* All Domain Scores */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-            {(['physical', 'psychological', 'psychosocial', 'professional'] as const).map(domain => {
-              const score = scoringResult.scores[domain];
-              const isGap = scoringResult.wellnessGap === domain;
-              return (
-                <div key={domain} style={{
-                  background: 'white',
-                  padding: '20px',
-                  borderRadius: '12px',
-                  border: isGap ? '3px solid #fb923c' : '2px solid #e5e7eb',
-                  boxShadow: isGap ? '0 6px 16px rgba(251, 146, 60, 0.2)' : '0 2px 4px rgba(0,0,0,0.05)',
-                  position: 'relative'
-                }}>
-                  {isGap && (
-                    <div style={{
-                      position: 'absolute',
-                      top: '-12px',
-                      right: '12px',
-                      background: '#fb923c',
-                      color: 'white',
-                      padding: '6px 14px',
-                      borderRadius: '16px',
-                      fontSize: '12px',
-                      fontWeight: 'bold',
-                      boxShadow: '0 2px 6px rgba(0,0,0,0.2)'
-                    }}>
-                      ⚠️ PRIMARY GAP
-                    </div>
-                  )}
-                  <h4 style={{ fontSize: '16px', fontWeight: 'bold', textTransform: 'capitalize', marginBottom: '12px', color: '#1f2937' }}>{domain}</h4>
-                  <div style={{ fontSize: '36px', fontWeight: 'bold', color: getScoreColor(score), marginBottom: '8px' }}>
-                    {score}
-                  </div>
-                  <div style={{ width: '100%', height: '6px', background: '#e5e7eb', borderRadius: '3px', marginBottom: '8px', overflow: 'hidden' }}>
-                    <div style={{ width: `${(score / 5) * 100}%`, height: '100%', background: getScoreColor(score), transition: 'width 0.5s' }} />
-                  </div>
-                  <p style={{ fontSize: '13px', color: getScoreColor(score), fontWeight: '600' }}>
-                    {getStabilityLevel(score)}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Monitoring Frequency */}
-          <div style={{ 
-            background: '#f0f9ff',
-            border: '2px solid #3b82f6',
-            padding: '20px',
-            borderRadius: '12px',
-            marginBottom: '24px'
-          }}>
-            <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '12px', color: '#1e40af' }}>
-              📅 Recommended Monitoring Schedule
-            </h3>
-            <p style={{ fontSize: '16px', color: '#1f2937', fontWeight: '600' }}>
-              {scoringResult.monitoringFrequency}
-            </p>
-            <p style={{ fontSize: '14px', color: '#6b7280', marginTop: '8px' }}>
-              Consistent documentation builds stronger legal evidence and helps track your recovery
-            </p>
-          </div>
-
-          {/* Provider Notification */}
-          {scoringResult.providerNotification && (
-            <div style={{ 
-              background: '#fef3c7',
-              border: '2px solid #f59e0b',
-              padding: '20px',
-              borderRadius: '12px',
-              marginBottom: '24px'
-            }}>
-              <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '12px', color: '#92400e' }}>
-                🔔 Provider Notification Sent
-              </h3>
-              <p style={{ fontSize: '15px', color: '#78350f', marginBottom: '12px' }}>
-                Your treating provider has been automatically notified of your {scoringResult.scores.physical <= 3 ? 'physical' : 'psychological'} wellness status at {scoringResult.riskLevel.toLowerCase()} risk level. They will follow up with you according to their care protocol.
-              </p>
-              <p style={{ fontSize: '13px', color: '#78350f', fontStyle: 'italic' }}>
-                Note: Provider notifications are sent for physical or psychological wellness scores of 3 or below to ensure timely medical intervention and support.
+          {formData.psychosocial.personalSafetyConcerns && (
+            <div style={{ background: '#fef2f2', border: '2px solid #fecaca', padding: '16px', borderRadius: '12px', marginBottom: '24px' }}>
+              <div style={{ fontWeight: '600', color: '#991b1b', marginBottom: '8px' }}>🚨 Safety</div>
+              <p style={{ fontSize: '14px', color: '#7f1d1d', lineHeight: 1.5 }}>
+                You indicated personal safety concerns. Please use the safety resources we shared. Our team is here to support you.
               </p>
             </div>
           )}
-
-          {/* Upcoming Appointments */}
-          {scoringResult.upcomingAppointments.length > 0 && (
-            <div style={{
-              background: '#f0fdf4',
-              border: '2px solid #10b981',
-              padding: '20px',
-              borderRadius: '12px',
-              marginBottom: '24px'
-            }}>
-              <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '12px', color: '#065f46' }}>
-                📅 Upcoming Appointments
-              </h3>
-              <p style={{ fontSize: '14px', color: '#047857', marginBottom: '16px' }}>
-                You will receive a reminder 48-72 hours before each appointment to check if you need transportation assistance or have any barriers to attending.
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {scoringResult.upcomingAppointments.map(apt => (
-                  <div key={apt.id} style={{
-                    background: 'white',
-                    border: '2px solid #d1fae5',
-                    padding: '16px',
-                    borderRadius: '10px'
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
-                      <div>
-                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#1f2937', marginBottom: '4px' }}>
-                          {apt.provider}
-                        </div>
-                        <div style={{ fontSize: '14px', color: '#6b7280' }}>
-                          {apt.type}
-                        </div>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '15px', fontWeight: '600', color: '#059669' }}>
-                          {new Date(apt.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                        </div>
-                        <div style={{ fontSize: '14px', color: '#6b7280' }}>
-                          {apt.time}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Recommendations */}
-          {scoringResult.recommendations.length > 0 && (
-            <div style={{ marginBottom: '32px' }}>
-              <h3 style={{ fontSize: '22px', fontWeight: 'bold', marginBottom: '16px', color: '#1f2937' }}>
-                💡 Recommended Action Steps
-              </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {scoringResult.recommendations.map((rec, idx) => (
-                  <div 
-                    key={idx}
-                    style={{
-                      background: 'white',
-                      border: '2px solid #e5e7eb',
-                      padding: '16px',
-                      borderRadius: '12px',
-                      fontSize: '15px',
-                      lineHeight: '1.6',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-                    }}
-                  >
-                    {rec}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* RN Care Manager Contact */}
-          {!scoringResult.safetyFlagged && !scoringResult.crisisFlagged && !scoringResult.ipvFlagged && (
-            <div style={{
-              background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
-              border: '2px solid #3b82f6',
-              padding: '24px',
-              borderRadius: '16px',
-              marginBottom: '32px'
-            }}>
-              <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '12px', color: '#1e40af' }}>
-                💬 Questions or Concerns?
-              </h3>
-              <p style={{ fontSize: '15px', color: '#1f2937', marginBottom: '16px', lineHeight: '1.6' }}>
-                If you have questions about your care, treatment, or appointments, our RN Care Managers are here to help.
-              </p>
-              <div style={{ fontSize: '14px', color: '#374151' }}>
-                <div style={{ marginBottom: '8px' }}>
-                  <strong>📞 Phone:</strong> (682) 556-8472
-                </div>
-                <div>
-                  <strong>🕐 Hours:</strong> Monday-Saturday, 9am-9pm CST
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Action Buttons */}
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
             <button
-              onClick={() => {
-                setShowResults(false);
-                setCurrentStep(1);
-                setFormData({
-                  physical: { physicalComfort: 3, abilityManageTasks: 3, tasksHarder: [], discomfortMovement: 3, physicalEnergy: 3, changeFromYesterday: 3, notes: '' },
-                  psychological: { emotionalComfort: 3, abilityCopeStress: 3, mentalClarity: 3, changeFromYesterday: 3, emotionalExperiences: [], crisisRisk: 3, notes: '' },
-                  psychosocial: { senseConnection: 3, abilityCommunicate: 3, supportAvailability: 3, basicNeedsSafety: 3, basicNeedsConcerns: [], personalSafety: 5, ipvQuestion: null, changeFromYesterday: 3, notes: '' },
-                  professional: { workTaskCompletion: 3, workEfficiency: 3, workloadManageability: 3, workEnergyLevel: 3, changeFromYesterday: 3, notes: '' }
-                });
-              }}
+              onClick={resetForm}
               style={{
                 flex: 1,
-                minWidth: '200px',
-                padding: '18px',
-                background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                minWidth: '180px',
+                padding: '16px 24px',
+                background: gradientOrange,
                 color: 'white',
                 border: 'none',
                 borderRadius: '12px',
-                fontSize: '18px',
+                fontSize: '16px',
                 fontWeight: 'bold',
                 cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.4)'
+                boxShadow: '0 4px 12px rgba(251, 146, 60, 0.4)',
               }}
             >
-              ✏️ Create Next Entry
+              ✏️ Create another entry
             </button>
             <button
               onClick={() => window.print()}
               style={{
-                padding: '18px 28px',
+                padding: '16px 28px',
                 background: 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)',
                 color: 'white',
                 border: 'none',
                 borderRadius: '12px',
-                fontSize: '18px',
+                fontSize: '16px',
                 fontWeight: 'bold',
                 cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(107, 114, 128, 0.3)'
               }}
             >
               🖨️ Print
@@ -902,718 +571,378 @@ export const ClientFourPsForm: React.FC = () => {
     );
   }
 
-  // Form rendering with all 4 steps
+  const steps = ['Physical', 'Psychological', 'Psychosocial', 'Professional'] as const;
+
   return (
-    <div>
-      {/* Progress Bar */}
-      <div style={{ marginBottom: '40px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
-          {['Physical', 'Psychological', 'Psychosocial', 'Professional'].map((label, idx) => (
-            <div key={label} style={{ 
-              fontSize: '13px', 
-              color: currentStep === idx + 1 ? '#fb923c' : currentStep > idx + 1 ? '#10b981' : '#9ca3af',
-              fontWeight: currentStep === idx + 1 ? 'bold' : 'normal',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '6px',
-              flex: '1',
-              minWidth: '80px'
-            }}>
-              <span style={{
-                display: 'inline-block',
-                width: '36px',
-                height: '36px',
-                borderRadius: '50%',
-                background: currentStep === idx + 1 ? 'linear-gradient(135deg, #fb923c 0%, #f97316 100%)' : 
-                           currentStep > idx + 1 ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : '#e5e7eb',
-                color: currentStep > idx ? 'white' : '#9ca3af',
-                textAlign: 'center',
-                lineHeight: '36px',
-                fontSize: '15px',
-                fontWeight: 'bold',
-                boxShadow: currentStep >= idx + 1 ? '0 3px 10px rgba(0,0,0,0.15)' : 'none'
-              }}>
+    <div style={{ padding: '8px 0' }}>
+      <div style={{ marginBottom: '32px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+          {steps.map((label, idx) => (
+            <div
+              key={label}
+              style={{
+                flex: 1,
+                minWidth: '80px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              <span
+                style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '50%',
+                  background: currentStep === idx + 1 ? gradientOrange : currentStep > idx + 1 ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : '#e5e7eb',
+                  color: currentStep > idx + 1 ? 'white' : currentStep === idx + 1 ? 'white' : '#9ca3af',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 'bold',
+                  fontSize: '15px',
+                }}
+              >
                 {currentStep > idx + 1 ? '✓' : idx + 1}
               </span>
-              <span style={{ fontSize: '12px', textAlign: 'center' }}>{label}</span>
+              <span style={{ fontSize: '12px', fontWeight: currentStep === idx + 1 ? 'bold' : 'normal', color: currentStep === idx + 1 ? accentOrange : '#6b7280' }}>
+                {label}
+              </span>
             </div>
           ))}
         </div>
-        <div style={{ 
-          width: '100%', 
-          height: '12px', 
-          background: '#e5e7eb',
-          borderRadius: '6px',
-          overflow: 'hidden',
-          boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1)'
-        }}>
-          <div style={{ 
-            width: `${(currentStep / 4) * 100}%`,
-            height: '100%',
-            background: 'linear-gradient(90deg, #fb923c 0%, #f97316 100%)',
-            transition: 'width 0.3s ease',
-            boxShadow: '0 0 10px rgba(251, 146, 60, 0.5)'
-          }} />
+        <div style={{ height: '10px', background: '#e5e7eb', borderRadius: '6px', overflow: 'hidden' }}>
+          <div
+            style={{
+              width: `${(currentStep / 4) * 100}%`,
+              height: '100%',
+              background: gradientOrange,
+              transition: 'width 0.3s ease',
+            }}
+          />
         </div>
       </div>
 
-      {/* Step 1: Physical Wellness */}
-      {currentStep === 1 && (
-        <div>
-          <h2 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '8px', color: '#1f2937' }}>
-            1. Physical Wellness
-          </h2>
-          <p style={{ fontSize: '15px', color: '#6b7280', marginBottom: '32px' }}>
-            Document your physical health, comfort, and functional abilities today
-          </p>
+      <div style={cardStyle}>
+        {/* P1 — Physical */}
+        {currentStep === 1 && (
+          <>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '6px', color: '#1f2937' }}>1. Physical Wellness</h2>
+            <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '28px' }}>Rate your physical health and function today (1 = Crisis, 5 = Optimal).</p>
 
-          <QuestionSlider
-            label="How would you rate your overall physical comfort today?"
-            value={formData.physical.physicalComfort}
-            onChange={(val) => setFormData({ ...formData, physical: { ...formData.physical, physicalComfort: val } })}
-            lowText="No comfort"
-            highText="Excellent comfort"
-          />
-
-          <QuestionSlider
-            label="How able do you feel to manage your everyday tasks today?"
-            value={formData.physical.abilityManageTasks}
-            onChange={(val) => setFormData({ ...formData, physical: { ...formData.physical, abilityManageTasks: val } })}
-            lowText="Not able"
-            highText="Fully able"
-          />
-
-          {formData.physical.abilityManageTasks <= 3 && (
-            <div style={{ background: '#fef3c7', padding: '20px', borderRadius: '12px', marginBottom: '28px', border: '2px solid #f59e0b' }}>
-              <label style={{ display: 'block', fontWeight: '600', marginBottom: '12px', color: '#92400e' }}>
-                Which tasks were harder than usual today? (Select all that apply)
-              </label>
-              <CheckboxGroup
-                options={[
-                  'Getting dressed',
-                  'Bathing/showering',
-                  'Getting in/out of bed',
-                  'Standing from a chair',
-                  'Walking short distances',
-                  'Carrying items',
-                  'Reaching overhead',
-                  'Bending/twisting',
-                  'Household tasks',
-                  'Driving/transportation',
-                  'Work-related tasks',
-                  'Other'
-                ]}
-                selected={formData.physical.tasksHarder}
-                onChange={(vals) => setFormData({ ...formData, physical: { ...formData.physical, tasksHarder: vals } })}
-              />
-            </div>
-          )}
-
-          <QuestionSlider
-            label="How would you rate your physical discomfort when moving your body today?"
-            value={formData.physical.discomfortMovement}
-            onChange={(val) => setFormData({ ...formData, physical: { ...formData.physical, discomfortMovement: val } })}
-            lowText="Severe discomfort"
-            highText="No discomfort"
-          />
-
-          <QuestionSlider
-            label="How would you rate your physical energy level today?"
-            value={formData.physical.physicalEnergy}
-            onChange={(val) => setFormData({ ...formData, physical: { ...formData.physical, physicalEnergy: val } })}
-            lowText="No energy"
-            highText="Excellent energy"
-          />
-
-          <QuestionSlider
-            label="Compared to yesterday, how would you rate your physical condition today?"
-            value={formData.physical.changeFromYesterday}
-            onChange={(val) => setFormData({ ...formData, physical: { ...formData.physical, changeFromYesterday: val } })}
-            lowText="Much worse"
-            highText="Much better"
-          />
-
-          <div style={{ marginTop: '32px' }}>
-            <label style={{ display: 'block', fontWeight: '600', marginBottom: '8px', color: '#374151', fontSize: '16px' }}>
-              Additional Details & Context
-            </label>
-            <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '10px', fontStyle: 'italic' }}>
-              Use this space to provide any additional details that help your nurse understand your situation and make appropriate referrals
-            </p>
-            <textarea
-              value={formData.physical.notes}
-              onChange={(e) => setFormData({ ...formData, physical: { ...formData.physical, notes: e.target.value } })}
-              placeholder="Example: Describe pain patterns, medication effects, activities attempted, how symptoms affected your day, conversations with providers..."
-              style={{
-                width: '100%',
-                padding: '16px',
-                border: '2px solid #e5e7eb',
-                borderRadius: '12px',
-                fontSize: '15px',
-                minHeight: '140px',
-                fontFamily: 'inherit',
-                resize: 'vertical',
-                lineHeight: '1.6'
-              }}
+            <QuestionSlider
+              label="How would you rate your overall physical comfort today?"
+              value={formData.physical.comfort}
+              onChange={(v) => setFormData({ ...formData, physical: { ...formData.physical, comfort: v } })}
             />
-            <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '6px', textAlign: 'right' }}>
-              {formData.physical.notes.length} characters
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Step 2: Psychological Wellness */}
-      {currentStep === 2 && (
-        <div>
-          <h2 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '8px', color: '#1f2937' }}>
-            2. Psychological / Emotional Wellness
-          </h2>
-          <p style={{ fontSize: '15px', color: '#6b7280', marginBottom: '32px' }}>
-            Document your emotional health, mental clarity, and ability to cope today
-          </p>
-
-          <QuestionSlider
-            label="How would you rate your overall emotional comfort today?"
-            value={formData.psychological.emotionalComfort}
-            onChange={(val) => setFormData({ ...formData, psychological: { ...formData.psychological, emotionalComfort: val } })}
-            lowText="No emotional comfort"
-            highText="Excellent emotional comfort"
-          />
-
-          {formData.psychological.emotionalComfort <= 3 && (
-            <div style={{ background: '#fef3c7', padding: '20px', borderRadius: '12px', marginBottom: '28px', border: '2px solid #f59e0b' }}>
-              <label style={{ display: 'block', fontWeight: '600', marginBottom: '12px', color: '#92400e' }}>
-                Which emotional experiences were harder than usual today? (Select all that apply)
-              </label>
-              <CheckboxGroup
-                options={[
-                  'Feeling overwhelmed',
-                  'Feeling anxious or tense',
-                  'Feeling sad or low',
-                  'Feeling frustrated or irritable',
-                  'Feeling disconnected or numb',
-                  'Difficulty relaxing',
-                  'Other'
-                ]}
-                selected={formData.psychological.emotionalExperiences}
-                onChange={(vals) => setFormData({ ...formData, psychological: { ...formData.psychological, emotionalExperiences: vals } })}
-              />
-            </div>
-          )}
-
-          <QuestionSlider
-            label="How able do you feel to cope with stress or challenges today?"
-            value={formData.psychological.abilityCopeStress}
-            onChange={(val) => setFormData({ ...formData, psychological: { ...formData.psychological, abilityCopeStress: val } })}
-            lowText="Not able"
-            highText="Fully able"
-          />
-
-          <QuestionSlider
-            label="How would you rate your ability to think clearly and focus today?"
-            value={formData.psychological.mentalClarity}
-            onChange={(val) => setFormData({ ...formData, psychological: { ...formData.psychological, mentalClarity: val } })}
-            lowText="Not able to focus"
-            highText="Excellent clarity and focus"
-          />
-
-          <QuestionSlider
-            label="How safe do you feel from thoughts of harming yourself today?"
-            value={formData.psychological.crisisRisk}
-            onChange={(val) => setFormData({ ...formData, psychological: { ...formData.psychological, crisisRisk: val } })}
-            lowText="Not safe at all"
-            highText="Completely safe"
-          />
-
-          {formData.psychological.crisisRisk <= 2 && (
-            <div style={{
-              background: '#fef2f2',
-              border: '3px solid #dc2626',
-              padding: '20px',
-              borderRadius: '12px',
-              marginBottom: '28px'
-            }}>
-              <h4 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '12px', color: '#991b1b' }}>
-                🚨 Crisis Support Available Now
-              </h4>
-              <p style={{ fontSize: '15px', color: '#7f1d1d', marginBottom: '16px', lineHeight: '1.6' }}>
-                If you are having thoughts of harming yourself or are in crisis, please reach out for help immediately:
-              </p>
-              <div style={{ background: 'white', padding: '16px', borderRadius: '10px', marginBottom: '12px' }}>
-                <div style={{ marginBottom: '12px' }}>
-                  <strong style={{ color: '#1f2937' }}>📞 988 Suicide & Crisis Lifeline:</strong>
-                  <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#dc2626', marginTop: '4px' }}>
-                    Call or Text 988 (24/7, Free, Confidential)
-                  </div>
-                </div>
-                <div style={{ marginBottom: '12px' }}>
-                  <strong style={{ color: '#1f2937' }}>💬 Crisis Text Line:</strong>
-                  <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#dc2626', marginTop: '4px' }}>
-                    Text HOME to 741741
-                  </div>
-                </div>
-                <div>
-                  <strong style={{ color: '#1f2937' }}>🚨 Emergency:</strong>
-                  <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#dc2626', marginTop: '4px' }}>
-                    Call 911 or go to your nearest ER
-                  </div>
-                </div>
-              </div>
-              <p style={{ fontSize: '13px', color: '#6b7280', fontStyle: 'italic', textAlign: 'center' }}>
-                You are not alone. Help is available 24/7.
-              </p>
-            </div>
-          )}
-
-          <QuestionSlider
-            label="Compared to yesterday, how would you rate your emotional well-being today?"
-            value={formData.psychological.changeFromYesterday}
-            onChange={(val) => setFormData({ ...formData, psychological: { ...formData.psychological, changeFromYesterday: val } })}
-            lowText="Much worse"
-            highText="Much better"
-          />
-
-          <div style={{ marginTop: '32px' }}>
-            <label style={{ display: 'block', fontWeight: '600', marginBottom: '8px', color: '#374151', fontSize: '16px' }}>
-              Additional Details & Context
-            </label>
-            <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '10px', fontStyle: 'italic' }}>
-              Use this space to provide any additional details that help your nurse understand your situation and make appropriate referrals
-            </p>
-            <textarea
-              value={formData.psychological.notes}
-              onChange={(e) => setFormData({ ...formData, psychological: { ...formData.psychological, notes: e.target.value } })}
-              placeholder="Example: Describe mood patterns, sleep quality, coping strategies tried, triggers encountered, therapy sessions..."
-              style={{
-                width: '100%',
-                padding: '16px',
-                border: '2px solid #e5e7eb',
-                borderRadius: '12px',
-                fontSize: '15px',
-                minHeight: '140px',
-                fontFamily: 'inherit',
-                resize: 'vertical',
-                lineHeight: '1.6'
-              }}
+            <QuestionSlider
+              label="How able are you to manage your everyday tasks / ADLs today?"
+              value={formData.physical.adls}
+              onChange={(v) => setFormData({ ...formData, physical: { ...formData.physical, adls: v } })}
             />
-            <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '6px', textAlign: 'right' }}>
-              {formData.psychological.notes.length} characters
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Step 3: Psychosocial Wellness */}
-      {currentStep === 3 && (
-        <div>
-          <h2 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '8px', color: '#1f2937' }}>
-            3. Psychosocial Wellness
-          </h2>
-          <p style={{ fontSize: '15px', color: '#6b7280', marginBottom: '32px' }}>
-            Document your social connections, support system, and basic needs today
-          </p>
-
-          <QuestionSlider
-            label="How connected do you feel to the people who matter to you today?"
-            value={formData.psychosocial.senseConnection}
-            onChange={(val) => setFormData({ ...formData, psychosocial: { ...formData.psychosocial, senseConnection: val } })}
-            lowText="Not connected"
-            highText="Very connected"
-          />
-
-          <QuestionSlider
-            label="How able do you feel to express your needs or ask for help today?"
-            value={formData.psychosocial.abilityCommunicate}
-            onChange={(val) => setFormData({ ...formData, psychosocial: { ...formData.psychosocial, abilityCommunicate: val } })}
-            lowText="Not able"
-            highText="Fully able"
-          />
-
-          <QuestionSlider
-            label="How supported do you feel by the people around you today?"
-            value={formData.psychosocial.supportAvailability}
-            onChange={(val) => setFormData({ ...formData, psychosocial: { ...formData.psychosocial, supportAvailability: val } })}
-            lowText="Not supported"
-            highText="Fully supported"
-          />
-
-          <QuestionSlider
-            label="How secure do you feel with your basic needs (food, housing, transportation) today?"
-            value={formData.psychosocial.basicNeedsSafety}
-            onChange={(val) => setFormData({ ...formData, psychosocial: { ...formData.psychosocial, basicNeedsSafety: val } })}
-            lowText="Very insecure"
-            highText="Very secure"
-          />
-
-          {formData.psychosocial.basicNeedsSafety <= 3 && (
-            <div style={{ background: '#fef3c7', padding: '20px', borderRadius: '12px', marginBottom: '28px', border: '2px solid #f59e0b' }}>
-              <div style={{ background: '#fefce8', padding: '16px', borderRadius: '10px', marginBottom: '16px', border: '2px solid #eab308' }}>
-                <p style={{ fontSize: '14px', color: '#713f12', lineHeight: '1.6', marginBottom: '8px' }}>
-                  <strong>🔒 Confidential Information:</strong> All information you provide is completely confidential and secure.
-                </p>
-                <p style={{ fontSize: '14px', color: '#713f12', lineHeight: '1.6' }}>
-                  If you need assistance with any basic needs, we can provide community support referrals to help you access resources in your area.
-                </p>
-              </div>
-              
-              <label style={{ display: 'block', fontWeight: '600', marginBottom: '12px', color: '#92400e' }}>
-                Which basic needs felt harder to meet today? (Select all that apply)
-              </label>
-              <CheckboxGroup
-                options={[
-                  'Food/groceries',
-                  'Safe housing',
-                  'Transportation to appointments/work',
-                  'Childcare/daycare',
-                  'Financial resources',
-                  'Other'
-                ]}
-                selected={formData.psychosocial.basicNeedsConcerns}
-                onChange={(vals) => setFormData({ ...formData, psychosocial: { ...formData.psychosocial, basicNeedsConcerns: vals } })}
-              />
-            </div>
-          )}
-
-          <QuestionSlider
-            label="How safe do you feel in your personal relationships and home environment today?"
-            value={formData.psychosocial.personalSafety}
-            onChange={(val) => setFormData({ ...formData, psychosocial: { ...formData.psychosocial, personalSafety: val } })}
-            lowText="Not safe at all"
-            highText="Completely safe"
-          />
-
-          {formData.psychosocial.personalSafety <= 2 && (
-            <div style={{
-              background: '#fef2f2',
-              border: '3px solid #dc2626',
-              padding: '20px',
-              borderRadius: '12px',
-              marginBottom: '28px'
-            }}>
-              <h4 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '12px', color: '#991b1b' }}>
-                🚨 Safety Resources Available
-              </h4>
-              <p style={{ fontSize: '15px', color: '#7f1d1d', marginBottom: '16px', lineHeight: '1.6' }}>
-                You deserve to feel safe. If you are in immediate danger, call 911. Confidential support is also available 24/7:
-              </p>
-              <div style={{ background: 'white', padding: '16px', borderRadius: '10px', marginBottom: '12px' }}>
-                <div style={{ marginBottom: '12px' }}>
-                  <strong style={{ color: '#1f2937' }}>📞 National Domestic Violence Hotline:</strong>
-                  <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#dc2626', marginTop: '4px' }}>
-                    1-800-799-7233 (24/7, Free, Confidential)
-                  </div>
-                </div>
-                <div style={{ marginBottom: '12px' }}>
-                  <strong style={{ color: '#1f2937' }}>💬 Text Support:</strong>
-                  <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#dc2626', marginTop: '4px' }}>
-                    Text "START" to 88788
-                  </div>
-                </div>
-                <div>
-                  <strong style={{ color: '#1f2937' }}>🚨 Emergency:</strong>
-                  <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#dc2626', marginTop: '4px' }}>
-                    Call 911 if you are in immediate danger
-                  </div>
-                </div>
-              </div>
-              <button
-                style={{
-                  width: '100%',
-                  padding: '14px',
-                  background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '10px',
-                  fontSize: '15px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
-                  boxShadow: '0 3px 8px rgba(220, 38, 38, 0.3)'
-                }}
-              >
-                📄 Download Safety Resources (National & Local Options)
-              </button>
-              <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '12px', fontStyle: 'italic', textAlign: 'center' }}>
-                🔒 All communications are confidential
-              </p>
-            </div>
-          )}
-
-          {/* NEW IPV QUESTION - OPTIONAL */}
-          <div style={{ background: '#f0f9ff', padding: '24px', borderRadius: '12px', marginTop: '32px', border: '2px solid #3b82f6' }}>
-            <div style={{ background: '#dbeafe', padding: '14px', borderRadius: '8px', marginBottom: '16px' }}>
-              <p style={{ fontSize: '13px', color: '#1e40af', lineHeight: '1.6', fontWeight: '600' }}>
-                ℹ️ Optional Question: You may skip this question if you prefer not to answer. Your response will remain completely confidential.
-              </p>
-            </div>
-            
-            <label style={{ display: 'block', fontSize: '15px', fontWeight: '600', marginBottom: '16px', color: '#374151' }}>
-              Has anyone you are close to made you feel afraid or unsafe recently?
-            </label>
-            
-            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              <button
-                onClick={() => setFormData({ ...formData, psychosocial: { ...formData.psychosocial, ipvQuestion: 1 } })}
-                style={{
-                  padding: '12px 24px',
-                  background: formData.psychosocial.ipvQuestion === 1 ? 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)' : 'white',
-                  color: formData.psychosocial.ipvQuestion === 1 ? 'white' : '#1f2937',
-                  border: formData.psychosocial.ipvQuestion === 1 ? 'none' : '2px solid #e5e7eb',
-                  borderRadius: '8px',
-                  fontSize: '15px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  boxShadow: formData.psychosocial.ipvQuestion === 1 ? '0 3px 8px rgba(220, 38, 38, 0.3)' : 'none'
-                }}
-              >
-                Yes
-              </button>
-              <button
-                onClick={() => setFormData({ ...formData, psychosocial: { ...formData.psychosocial, ipvQuestion: 5 } })}
-                style={{
-                  padding: '12px 24px',
-                  background: formData.psychosocial.ipvQuestion === 5 ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'white',
-                  color: formData.psychosocial.ipvQuestion === 5 ? 'white' : '#1f2937',
-                  border: formData.psychosocial.ipvQuestion === 5 ? 'none' : '2px solid #e5e7eb',
-                  borderRadius: '8px',
-                  fontSize: '15px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  boxShadow: formData.psychosocial.ipvQuestion === 5 ? '0 3px 8px rgba(16, 185, 129, 0.3)' : 'none'
-                }}
-              >
-                No
-              </button>
-              <button
-                onClick={() => setFormData({ ...formData, psychosocial: { ...formData.psychosocial, ipvQuestion: null } })}
-                style={{
-                  padding: '12px 24px',
-                  background: formData.psychosocial.ipvQuestion === null ? 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)' : 'white',
-                  color: formData.psychosocial.ipvQuestion === null ? 'white' : '#1f2937',
-                  border: formData.psychosocial.ipvQuestion === null ? 'none' : '2px solid #e5e7eb',
-                  borderRadius: '8px',
-                  fontSize: '15px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  boxShadow: formData.psychosocial.ipvQuestion === null ? '0 3px 8px rgba(107, 114, 128, 0.3)' : 'none'
-                }}
-              >
-                Prefer not to answer
-              </button>
-            </div>
-
-            {formData.psychosocial.ipvQuestion === 1 && (
-              <div style={{
-                background: '#fef2f2',
-                border: '2px solid #dc2626',
-                padding: '16px',
-                borderRadius: '10px',
-                marginTop: '16px'
-              }}>
-                <p style={{ fontSize: '14px', color: '#7f1d1d', marginBottom: '12px', lineHeight: '1.6', fontWeight: '600' }}>
-                  We want you to know that help is available. All resources below are confidential:
-                </p>
-                <div style={{ fontSize: '13px', color: '#991b1b', marginBottom: '8px' }}>
-                  📞 <strong>National Hotline:</strong> 1-800-799-7233 (24/7)
-                </div>
-                <div style={{ fontSize: '13px', color: '#991b1b', marginBottom: '8px' }}>
-                  💬 <strong>Text Support:</strong> Text "START" to 88788
-                </div>
-                <div style={{ fontSize: '13px', color: '#991b1b', marginBottom: '8px' }}>
-                  🚨 <strong>Emergency:</strong> Call 911 if in immediate danger
-                </div>
-                <div style={{ fontSize: '13px', color: '#991b1b' }}>
-                  ☎️ <strong>Private RN Consultation:</strong> (682) 556-8472 - Completely confidential, not disclosed without your authorization
+            {formData.physical.adls <= 3 && (
+              <div style={{ background: 'rgba(251, 146, 60, 0.08)', padding: '20px', borderRadius: '14px', marginBottom: '24px', border: '2px solid rgba(251, 146, 60, 0.35)' }}>
+                <div style={{ fontWeight: '600', marginBottom: '12px', color: '#92400e' }}>Which tasks were harder than usual? (Select all that apply)</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                  {['Getting dressed', 'Bathing/showering', 'Mobility (bed/chair)', 'Walking', 'Household tasks', 'Driving', 'Other'].map((opt) => (
+                    <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={formData.physical.adlsConcerns.includes(opt)}
+                        onChange={() => toggleConcern('physical', 'adlsConcerns', opt)}
+                      />
+                      <span style={{ fontSize: '14px', color: '#374151' }}>{opt}</span>
+                    </label>
+                  ))}
                 </div>
               </div>
             )}
-          </div>
-
-          <QuestionSlider
-            label="Compared to yesterday, how would you rate your personal/social well-being today?"
-            value={formData.psychosocial.changeFromYesterday}
-            onChange={(val) => setFormData({ ...formData, psychosocial: { ...formData.psychosocial, changeFromYesterday: val } })}
-            lowText="Much worse"
-            highText="Much better"
-          />
-
-          <div style={{ marginTop: '32px' }}>
-            <label style={{ display: 'block', fontWeight: '600', marginBottom: '8px', color: '#374151', fontSize: '16px' }}>
-              Additional Details & Context
-            </label>
-            <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '10px', fontStyle: 'italic' }}>
-              Use this space to provide any additional details that help your nurse understand your situation and make appropriate referrals
-            </p>
-            <textarea
-              value={formData.psychosocial.notes}
-              onChange={(e) => setFormData({ ...formData, psychosocial: { ...formData.psychosocial, notes: e.target.value } })}
-              placeholder="Example: Describe social interactions, support system changes, housing concerns, transportation barriers, access to resources..."
-              style={{
-                width: '100%',
-                padding: '16px',
-                border: '2px solid #e5e7eb',
-                borderRadius: '12px',
-                fontSize: '15px',
-                minHeight: '140px',
-                fontFamily: 'inherit',
-                resize: 'vertical',
-                lineHeight: '1.6'
-              }}
+            <QuestionSlider
+              label="How would you rate discomfort when moving your body today?"
+              value={formData.physical.movementDiscomfort}
+              onChange={(v) => setFormData({ ...formData, physical: { ...formData.physical, movementDiscomfort: v } })}
             />
-            <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '6px', textAlign: 'right' }}>
-              {formData.psychosocial.notes.length} characters
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Step 4: Professional/Vocational/Educational Wellness */}
-      {currentStep === 4 && (
-        <div>
-          <h2 style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '8px', color: '#1f2937' }}>
-            4. Professional / Vocational / Educational Wellness
-          </h2>
-          <p style={{ fontSize: '15px', color: '#6b7280', marginBottom: '32px' }}>
-            Document how your accident/injury/illness has impacted your work, school, or vocational activities
-          </p>
-
-          <QuestionSlider
-            label="How able are you to complete your normal work tasks since your accident/injury/illness?"
-            value={formData.professional.workTaskCompletion}
-            onChange={(val) => setFormData({ ...formData, professional: { ...formData.professional, workTaskCompletion: val } })}
-            lowText="Not able at all"
-            highText="Fully able"
-          />
-
-          <QuestionSlider
-            label="How would you rate your work efficiency compared to before your accident/injury/illness?"
-            value={formData.professional.workEfficiency}
-            onChange={(val) => setFormData({ ...formData, professional: { ...formData.professional, workEfficiency: val } })}
-            lowText="Much slower/less efficient"
-            highText="Same efficiency as before"
-          />
-
-          <QuestionSlider
-            label="How manageable does your workload feel given your current condition?"
-            value={formData.professional.workloadManageability}
-            onChange={(val) => setFormData({ ...formData, professional: { ...formData.professional, workloadManageability: val } })}
-            lowText="Completely unmanageable"
-            highText="Fully manageable"
-          />
-
-          <QuestionSlider
-            label="How would you rate your energy level for completing work throughout the day?"
-            value={formData.professional.workEnergyLevel}
-            onChange={(val) => setFormData({ ...formData, professional: { ...formData.professional, workEnergyLevel: val } })}
-            lowText="No energy/constant exhaustion"
-            highText="Excellent energy throughout day"
-          />
-
-          <QuestionSlider
-            label="Compared to yesterday, how would you rate your work/vocational well-being today?"
-            value={formData.professional.changeFromYesterday}
-            onChange={(val) => setFormData({ ...formData, professional: { ...formData.professional, changeFromYesterday: val } })}
-            lowText="Much worse"
-            highText="Much better"
-          />
-
-          <div style={{ marginTop: '32px' }}>
-            <label style={{ display: 'block', fontWeight: '600', marginBottom: '8px', color: '#374151', fontSize: '16px' }}>
-              Additional Details & Context
-            </label>
-            <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '10px', fontStyle: 'italic' }}>
-              Use this space to provide any additional details that help your nurse understand your situation and make appropriate referrals
-            </p>
-            <textarea
-              value={formData.professional.notes}
-              onChange={(e) => setFormData({ ...formData, professional: { ...formData.professional, notes: e.target.value } })}
-              placeholder="Example: Describe work/school impacts, missed days, accommodations needed, financial concerns, lost income, disability applications, vocational barriers..."
-              style={{
-                width: '100%',
-                padding: '16px',
-                border: '2px solid #e5e7eb',
-                borderRadius: '12px',
-                fontSize: '15px',
-                minHeight: '140px',
-                fontFamily: 'inherit',
-                resize: 'vertical',
-                lineHeight: '1.6'
-              }}
+            <QuestionSlider
+              label="How would you rate your physical energy level today?"
+              value={formData.physical.energy}
+              onChange={(v) => setFormData({ ...formData, physical: { ...formData.physical, energy: v } })}
             />
-            <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '6px', textAlign: 'right' }}>
-              {formData.professional.notes.length} characters
+            <QuestionSlider
+              label="Compared to yesterday, how is your physical condition today?"
+              value={formData.physical.changeFromYesterday}
+              onChange={(v) => setFormData({ ...formData, physical: { ...formData.physical, changeFromYesterday: v } })}
+            />
+            <div style={{ marginTop: '20px' }}>
+              <label style={{ display: 'block', fontWeight: '600', marginBottom: '8px', color: '#374151' }}>Additional notes (optional)</label>
+              <textarea
+                value={formData.physical.notes}
+                onChange={(e) => setFormData({ ...formData, physical: { ...formData.physical, notes: e.target.value } })}
+                placeholder="e.g. pain patterns, medication effects, activities tried..."
+                style={{ width: '100%', padding: '14px', border: '2px solid #e5e7eb', borderRadius: '12px', fontSize: '15px', minHeight: '100px', fontFamily: 'inherit', resize: 'vertical' }}
+              />
             </div>
-          </div>
-        </div>
-      )}
+            <PhotoUpload section="physical" label="Photo for this section (optional)" />
+          </>
+        )}
 
-      {/* Navigation Buttons */}
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between',
-        marginTop: '48px',
-        paddingTop: '24px',
-        borderTop: '2px solid #e5e7eb',
-        gap: '12px',
-        flexWrap: 'wrap'
-      }}>
-        <button
-          onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
-          disabled={currentStep === 1}
+        {/* P2 — Psychological */}
+        {currentStep === 2 && (
+          <>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '6px', color: '#1f2937' }}>2. Psychological Wellness</h2>
+            <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '28px' }}>Rate your emotional and mental wellness today (1 = Crisis, 5 = Optimal).</p>
+
+            <QuestionSlider
+              label="How would you rate your overall emotional comfort today?"
+              value={formData.psychological.emotionalComfort}
+              onChange={(v) => setFormData({ ...formData, psychological: { ...formData.psychological, emotionalComfort: v } })}
+            />
+            {formData.psychological.emotionalComfort <= 3 && (
+              <div style={{ background: 'rgba(251, 146, 60, 0.08)', padding: '20px', borderRadius: '14px', marginBottom: '24px', border: '2px solid rgba(251, 146, 60, 0.35)' }}>
+                <div style={{ fontWeight: '600', marginBottom: '12px', color: '#92400e' }}>Which emotional experiences were harder today? (Select all that apply)</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                  {['Overwhelmed', 'Anxious', 'Sad or low', 'Frustrated or irritable', 'Disconnected or numb', 'Difficulty relaxing', 'Other'].map((opt) => (
+                    <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={formData.psychological.emotionalConcerns.includes(opt)}
+                        onChange={() => toggleConcern('psychological', 'emotionalConcerns', opt)}
+                      />
+                      <span style={{ fontSize: '14px', color: '#374151' }}>{opt}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+            <QuestionSlider
+              label="How able do you feel to cope with stress or challenges today?"
+              value={formData.psychological.coping}
+              onChange={(v) => setFormData({ ...formData, psychological: { ...formData.psychological, coping: v } })}
+            />
+            <QuestionSlider
+              label="How would you rate your mental clarity and ability to focus today?"
+              value={formData.psychological.mentalClarity}
+              onChange={(v) => setFormData({ ...formData, psychological: { ...formData.psychological, mentalClarity: v } })}
+            />
+            <QuestionSlider
+              label="Compared to yesterday, how is your emotional well-being today?"
+              value={formData.psychological.changeFromYesterday}
+              onChange={(v) => setFormData({ ...formData, psychological: { ...formData.psychological, changeFromYesterday: v } })}
+            />
+            <div style={{ marginTop: '20px' }}>
+              <label style={{ display: 'block', fontWeight: '600', marginBottom: '8px', color: '#374151' }}>Additional notes (optional)</label>
+              <textarea
+                value={formData.psychological.notes}
+                onChange={(e) => setFormData({ ...formData, psychological: { ...formData.psychological, notes: e.target.value } })}
+                placeholder="e.g. mood, sleep, coping strategies, triggers..."
+                style={{ width: '100%', padding: '14px', border: '2px solid #e5e7eb', borderRadius: '12px', fontSize: '15px', minHeight: '100px', fontFamily: 'inherit', resize: 'vertical' }}
+              />
+            </div>
+            <PhotoUpload section="psychological" label="Photo for this section (optional)" />
+          </>
+        )}
+
+        {/* P3 — Psychosocial */}
+        {currentStep === 3 && (
+          <>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '6px', color: '#1f2937' }}>3. Psychosocial Wellness</h2>
+            <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '28px' }}>Rate your connections, support, and basic needs today (1 = Crisis, 5 = Optimal).</p>
+
+            <QuestionSlider
+              label="How connected do you feel to the people who matter to you today?"
+              value={formData.psychosocial.connection}
+              onChange={(v) => setFormData({ ...formData, psychosocial: { ...formData.psychosocial, connection: v } })}
+            />
+            <QuestionSlider
+              label="How able do you feel to communicate your needs or ask for help today?"
+              value={formData.psychosocial.communication}
+              onChange={(v) => setFormData({ ...formData, psychosocial: { ...formData.psychosocial, communication: v } })}
+            />
+            <QuestionSlider
+              label="How supported do you feel by those around you today?"
+              value={formData.psychosocial.support}
+              onChange={(v) => setFormData({ ...formData, psychosocial: { ...formData.psychosocial, support: v } })}
+            />
+            <QuestionSlider
+              label="How secure do you feel with basic needs (food, housing, safety) today?"
+              value={formData.psychosocial.basicNeedsSafety}
+              onChange={(v) => setFormData({ ...formData, psychosocial: { ...formData.psychosocial, basicNeedsSafety: v } })}
+            />
+            {formData.psychosocial.basicNeedsSafety <= 3 && (
+              <div style={{ background: 'rgba(251, 146, 60, 0.08)', padding: '20px', borderRadius: '14px', marginBottom: '24px', border: '2px solid rgba(251, 146, 60, 0.35)' }}>
+                <div style={{ fontWeight: '600', marginBottom: '12px', color: '#92400e' }}>Which areas are of concern? (Select all that apply)</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                  {['Food / groceries', 'Housing', 'Transportation', 'Childcare', 'Financial resources', 'Personal safety concerns', 'Other'].map((opt) => (
+                    <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={
+                          opt === 'Personal safety concerns'
+                            ? formData.psychosocial.personalSafetyConcerns
+                            : formData.psychosocial.basicNeedsConcerns.includes(opt)
+                        }
+                        onChange={() => {
+                          if (opt === 'Personal safety concerns') {
+                            setPersonalSafetyConcerns(!formData.psychosocial.personalSafetyConcerns);
+                          } else {
+                            toggleConcern('psychosocial', 'basicNeedsConcerns', opt);
+                          }
+                        }}
+                      />
+                      <span style={{ fontSize: '14px', color: '#374151' }}>{opt}</span>
+                    </label>
+                  ))}
+                </div>
+                {formData.psychosocial.personalSafetyConcerns && (
+                  <div style={{ marginTop: '16px', padding: '14px', background: '#fef2f2', borderRadius: '10px', border: '2px solid #fecaca' }}>
+                    <div style={{ fontWeight: '600', color: '#991b1b', marginBottom: '8px' }}>🚨 Safety protocol</div>
+                    <p style={{ fontSize: '14px', color: '#7f1d1d', marginBottom: '12px', lineHeight: 1.5 }}>
+                      You indicated personal safety concerns. We’ve shared resources. If you’re in immediate danger, call 911.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setShowSafetyProtocol(true)}
+                      style={{
+                        padding: '10px 18px',
+                        background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '10px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      View safety resources again
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+            <QuestionSlider
+              label="Compared to yesterday, how is your social / personal well-being today?"
+              value={formData.psychosocial.changeFromYesterday}
+              onChange={(v) => setFormData({ ...formData, psychosocial: { ...formData.psychosocial, changeFromYesterday: v } })}
+            />
+            <div style={{ marginTop: '20px' }}>
+              <label style={{ display: 'block', fontWeight: '600', marginBottom: '8px', color: '#374151' }}>Additional notes (optional)</label>
+              <textarea
+                value={formData.psychosocial.notes}
+                onChange={(e) => setFormData({ ...formData, psychosocial: { ...formData.psychosocial, notes: e.target.value } })}
+                placeholder="e.g. social interactions, support changes, housing, transportation..."
+                style={{ width: '100%', padding: '14px', border: '2px solid #e5e7eb', borderRadius: '12px', fontSize: '15px', minHeight: '100px', fontFamily: 'inherit', resize: 'vertical' }}
+              />
+            </div>
+            <PhotoUpload section="psychosocial" label="Photo for this section (optional)" />
+          </>
+        )}
+
+        {/* P4 — Professional */}
+        {currentStep === 4 && (
+          <>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '6px', color: '#1f2937' }}>4. Professional Wellness</h2>
+            <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '28px' }}>Rate purpose, motivation, and ability to act (1 = Crisis, 5 = Optimal).</p>
+
+            <QuestionSlider
+              label="How would you rate your sense of purpose (work, school, or vocation) today?"
+              value={formData.professional.purpose}
+              onChange={(v) => setFormData({ ...formData, professional: { ...formData.professional, purpose: v } })}
+            />
+            <QuestionSlider
+              label="How motivated do you feel to engage in work or daily responsibilities today?"
+              value={formData.professional.motivation}
+              onChange={(v) => setFormData({ ...formData, professional: { ...formData.professional, motivation: v } })}
+            />
+            <QuestionSlider
+              label="How able do you feel to take action on tasks or goals today?"
+              value={formData.professional.abilityToAct}
+              onChange={(v) => setFormData({ ...formData, professional: { ...formData.professional, abilityToAct: v } })}
+            />
+            <QuestionSlider
+              label="Compared to yesterday, how is your work/vocational well-being today?"
+              value={formData.professional.changeFromYesterday}
+              onChange={(v) => setFormData({ ...formData, professional: { ...formData.professional, changeFromYesterday: v } })}
+            />
+            <div style={{ marginTop: '20px' }}>
+              <label style={{ display: 'block', fontWeight: '600', marginBottom: '8px', color: '#374151' }}>Additional notes (optional)</label>
+              <textarea
+                value={formData.professional.notes}
+                onChange={(e) => setFormData({ ...formData, professional: { ...formData.professional, notes: e.target.value } })}
+                placeholder="e.g. work impacts, missed days, accommodations, financial impact..."
+                style={{ width: '100%', padding: '14px', border: '2px solid #e5e7eb', borderRadius: '12px', fontSize: '15px', minHeight: '100px', fontFamily: 'inherit', resize: 'vertical' }}
+              />
+            </div>
+            <PhotoUpload section="professional" label="Photo for this section (optional)" />
+          </>
+        )}
+
+        <div
           style={{
-            padding: '16px 32px',
-            background: currentStep === 1 ? '#e5e7eb' : 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)',
-            color: currentStep === 1 ? '#9ca3af' : 'white',
-            border: 'none',
-            borderRadius: '12px',
-            fontSize: '17px',
-            fontWeight: 'bold',
-            cursor: currentStep === 1 ? 'not-allowed' : 'pointer',
-            boxShadow: currentStep === 1 ? 'none' : '0 4px 12px rgba(107, 114, 128, 0.3)',
-            minWidth: '140px'
+            display: 'flex',
+            justifyContent: 'space-between',
+            marginTop: '36px',
+            paddingTop: '24px',
+            borderTop: '2px solid #e5e7eb',
+            gap: '12px',
+            flexWrap: 'wrap',
           }}
         >
-          ← Previous
-        </button>
-
-        {currentStep < 4 ? (
           <button
-            onClick={() => setCurrentStep(currentStep + 1)}
+            type="button"
+            onClick={() => setCurrentStep((s) => Math.max(1, s - 1))}
+            disabled={currentStep === 1}
             style={{
-              padding: '16px 32px',
-              background: 'linear-gradient(135deg, #fb923c 0%, #f97316 100%)',
-              color: 'white',
+              padding: '14px 28px',
+              background: currentStep === 1 ? '#e5e7eb' : 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)',
+              color: currentStep === 1 ? '#9ca3af' : 'white',
               border: 'none',
               borderRadius: '12px',
-              fontSize: '17px',
+              fontSize: '16px',
               fontWeight: 'bold',
-              cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(251, 146, 60, 0.4)',
-              minWidth: '140px'
+              cursor: currentStep === 1 ? 'not-allowed' : 'pointer',
+              minWidth: '130px',
             }}
           >
-            Next →
+            ← Previous
           </button>
-        ) : (
-          <button
-            onClick={handleSubmit}
-            style={{
-              padding: '16px 36px',
-              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '12px',
-              fontSize: '17px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(16, 185, 129, 0.4)',
-              minWidth: '160px'
-            }}
-          >
-            Submit Entry ✓
-          </button>
-        )}
+          {currentStep < 4 ? (
+            <button
+              type="button"
+              onClick={() => setCurrentStep((s) => s + 1)}
+              style={{
+                padding: '14px 28px',
+                background: gradientOrange,
+                color: 'white',
+                border: 'none',
+                borderRadius: '12px',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                boxShadow: '0 4px 14px rgba(251, 146, 60, 0.4)',
+                minWidth: '130px',
+              }}
+            >
+              Next →
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleSubmit}
+              style={{
+                padding: '14px 32px',
+                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '12px',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                boxShadow: '0 4px 14px rgba(16, 185, 129, 0.4)',
+                minWidth: '160px',
+              }}
+            >
+              Submit entry ✓
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -1,0 +1,19 @@
+# Dependencies
+node_modules
+
+# Local env (Supabase URL + anon key)
+.env
+.env.local
+.env.production.local
+.env.*.local
+
+# Build
+dist
+*.local
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+*.log
+.idea
+.vscode
