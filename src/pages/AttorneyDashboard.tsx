@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/auth/supabaseAuth";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { CASE_BRAND } from "@/constants/brand";
 
@@ -15,6 +15,8 @@ interface PendingIntake {
 export default function AttorneyDashboard() {
   const { user, signOut, role } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const pendingListRef = useRef<HTMLDivElement>(null);
   const [pendingIntakes, setPendingIntakes] = useState<PendingIntake[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -97,7 +99,7 @@ export default function AttorneyDashboard() {
       setPendingIntakes(filtered);
       setLoading(false);
     })();
-  }, [user, role]);
+  }, [user, role, location.pathname]);
 
   if (role !== "attorney" || !user) {
     return (
@@ -129,26 +131,51 @@ export default function AttorneyDashboard() {
     }
   };
 
+  const pendingCount = pendingIntakes.length;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0f172a] to-[#1e293b] text-white p-6">
       <div className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-2xl font-bold text-orange-500">Attorney Dashboard</h1>
-            <p className="text-slate-400 text-sm mt-1">{user.email}</p>
-          </div>
+        {pendingCount > 0 && (
           <button
-            onClick={async () => {
-              await signOut();
-              navigate("/");
-            }}
-            className="px-4 py-2 rounded-lg bg-red-600/80 text-white hover:bg-red-600 text-sm"
+            type="button"
+            onClick={() => pendingListRef.current?.scrollIntoView({ behavior: "smooth" })}
+            className="w-full mb-6 py-3 px-4 rounded-lg text-white font-medium text-center transition-opacity hover:opacity-90"
+            style={{ backgroundColor: "#f97316" }}
           >
-            Sign Out
+            You have {pendingCount} new client intake{pendingCount !== 1 ? "s" : ""} awaiting your review
           </button>
+        )}
+        <div className="flex justify-between items-center mb-8">
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-orange-500">Attorney Dashboard</h1>
+            {pendingCount > 0 && (
+              <span
+                className="inline-flex items-center justify-center min-w-[1.5rem] h-6 px-2 rounded-full text-xs font-semibold text-white"
+                style={{ backgroundColor: "#f97316" }}
+              >
+                {pendingCount}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <p className="text-slate-400 text-sm hidden sm:block">{user.email}</p>
+            <button
+              onClick={async () => {
+                await signOut();
+                navigate("/");
+              }}
+              className="px-4 py-2 rounded-lg bg-red-600/80 text-white hover:bg-red-600 text-sm"
+            >
+              Sign Out
+            </button>
+          </div>
         </div>
 
-        <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+        <div
+          ref={pendingListRef}
+          className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden"
+        >
           <div className="p-6 border-b border-slate-700">
             <h2 className="text-lg font-semibold text-white">{CASE_BRAND.platformName}</h2>
             <p className="text-slate-400 text-sm mt-1">Pending client intakes requiring attestation</p>
