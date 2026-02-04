@@ -24,6 +24,18 @@ export default function Index() {
         {CASE_BRAND.tagline}
       </p>
       <div style={{ display: "flex", gap: "24px", flexWrap: "wrap", justifyContent: "center" }}>
+        <Link to="/intake" style={{
+          padding: "20px 40px",
+          backgroundColor: "#fb923c",
+          color: "white",
+          borderRadius: "12px",
+          fontSize: "18px",
+          fontWeight: "bold",
+          textDecoration: "none",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
+        }}>
+          Start Your Intake
+        </Link>
         <Link to="/client-login" style={{
           padding: "20px 40px",
           backgroundColor: "white",

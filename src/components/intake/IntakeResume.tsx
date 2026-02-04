@@ -15,6 +15,7 @@ export function IntakeResume() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const [notFound, setNotFound] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,6 +28,7 @@ export function IntakeResume() {
       toast.error("Database not configured");
       return;
     }
+    setNotFound(false);
     setLoading(true);
     const { data, error } = await supabase
       .from("rc_client_intake_sessions")
@@ -42,7 +44,7 @@ export function IntakeResume() {
       return;
     }
     if (!data?.resume_token) {
-      toast.error("No draft intake found for this email");
+      setNotFound(true);
       return;
     }
     navigate(`/intake?resume=${encodeURIComponent(data.resume_token)}`);
@@ -72,6 +74,14 @@ export function IntakeResume() {
               {loading ? "Looking up…" : "Resume intake"}
             </button>
           </form>
+          {notFound && (
+            <p className="mt-4 p-4 bg-slate-700/50 border border-slate-600 rounded-lg text-slate-300 text-sm text-center">
+              No saved intake found for this email.{" "}
+              <Link to="/intake" className="text-orange-500 hover:underline font-medium">
+                You can start a new intake.
+              </Link>
+            </p>
+          )}
           <p className="mt-6 text-center">
             <Link to="/intake" className="text-orange-500 hover:underline text-sm">
               Start a new intake instead
