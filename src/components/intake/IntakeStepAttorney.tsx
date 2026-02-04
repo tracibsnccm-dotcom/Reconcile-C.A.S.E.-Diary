@@ -25,18 +25,23 @@ export function IntakeStepAttorney({
 
   useEffect(() => {
     if (!supabase) {
+      console.log("ATTORNEY DROPDOWN: Supabase not configured");
       setError("Database not configured");
       setLoading(false);
       return;
     }
     (async () => {
+      console.log("ATTORNEY DROPDOWN: Fetching attorneys...");
       const { data: rows, error: e } = await supabase
         .from("rc_users")
         .select("id, attorney_code, full_name, first_name, last_name")
-        .eq("role", "attorney")
+        .ilike("role", "attorney")
         .order("full_name", { ascending: true });
 
+      console.log("ATTORNEY DROPDOWN: Result", { data: rows, error: e });
+
       if (e) {
+        console.error("ATTORNEY DROPDOWN: Query error", e);
         setError(e.message);
         setAttorneys([]);
       } else {

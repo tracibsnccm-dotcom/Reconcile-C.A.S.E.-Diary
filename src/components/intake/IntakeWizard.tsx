@@ -20,7 +20,7 @@ import { IntakeStepSummary } from "./IntakeStepSummary";
 
 const TOTAL_STEPS = STEPS.length;
 const WRAPPER_CLASS =
-  "min-h-screen bg-gradient-to-br from-[#0f172a] to-[#1e293b] text-white font-sans";
+  "w-full min-h-screen bg-gradient-to-br from-[#0f172a] to-[#1e293b] text-white font-sans";
 const PROGRESS_BAR = "h-2 bg-slate-600 rounded-full overflow-hidden";
 const BTN_BACK =
   "px-5 py-2.5 rounded-lg border border-slate-500 text-slate-300 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors";
@@ -309,7 +309,7 @@ export function IntakeWizard() {
   return (
     <div className={WRAPPER_CLASS}>
       <div ref={topRef} />
-      <div className="max-w-2xl mx-auto px-4 py-6 sm:py-8">
+      <div className="max-w-2xl mx-auto px-4 py-8">
         <p className="text-right mb-4">
           <Link to="/intake/resume" className="text-orange-500 hover:underline text-sm">
             Resume saved intake
