@@ -157,8 +157,12 @@ export const ClientFourPsForm: React.FC = () => {
     option: string
   ) => {
     const key = section as keyof FormData;
-    const data = formData[key] as PhysicalData | PsychologicalData | PsychosocialData;
-    const current = (data as Record<string, string[] | boolean>)[field] as string[];
+    const current: string[] =
+      section === 'physical'
+        ? formData.physical.adlsConcerns
+        : section === 'psychological'
+          ? formData.psychological.emotionalConcerns
+          : formData.psychosocial.basicNeedsConcerns;
     const next = current.includes(option)
       ? current.filter((x) => x !== option)
       : [...current, option];
@@ -175,7 +179,7 @@ export const ClientFourPsForm: React.FC = () => {
         ...prev.psychosocial,
         personalSafetyConcerns: value,
         basicNeedsConcerns: value
-          ? [...new Set([...prev.psychosocial.basicNeedsConcerns, 'Personal safety concerns'])]
+          ? Array.from(new Set([...prev.psychosocial.basicNeedsConcerns, 'Personal safety concerns']))
           : prev.psychosocial.basicNeedsConcerns.filter((x) => x !== 'Personal safety concerns'),
       },
     }));
