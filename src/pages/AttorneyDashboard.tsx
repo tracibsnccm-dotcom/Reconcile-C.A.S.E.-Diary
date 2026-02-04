@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/auth/supabaseAuth";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { CASE_BRAND } from "@/constants/brand";
 
@@ -182,6 +182,12 @@ export default function AttorneyDashboard() {
           <div className="p-6 border-b border-slate-700">
             <h2 className="text-lg font-semibold text-white">{CASE_BRAND.platformName}</h2>
             <p className="text-slate-400 text-sm mt-1">Pending client intakes requiring attestation</p>
+            <Link
+              to="/attorney/pending-intakes"
+              className="mt-3 inline-block text-orange-500 hover:text-orange-400 text-sm font-medium"
+            >
+              View full intake list →
+            </Link>
           </div>
 
           <div className="p-6">
