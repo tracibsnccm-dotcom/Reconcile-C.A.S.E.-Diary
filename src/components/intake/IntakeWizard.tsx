@@ -196,13 +196,20 @@ export function IntakeWizard() {
     }
     toast.success("Draft saved. You can return later to continue.");
     navigate("/client-login");
-  }, [saveSession, resumeToken, navigate]);
+  }, [formData, step, saveSession, resumeToken, navigate]);
 
   const handleSubmit = useCallback(async () => {
     if (!supabase || !formData.attorney || !resumeToken) {
       toast.error("Missing attorney or database");
       return;
     }
+    const clientName = [formData.personal.firstName, formData.personal.lastName]
+      .filter(Boolean)
+      .join(" ");
+    console.log("INTAKE: Submitting...", {
+      attorneyId: formData.attorney.attorneyId,
+      clientName,
+    });
     setSubmitting(true);
     const { error: saveErr } = await saveSession({ intakeStatus: "pending_submit" });
     if (saveErr) {
@@ -215,16 +222,21 @@ export function IntakeWizard() {
     });
     setSubmitting(false);
     if (error) {
+      console.error("INTAKE: FAILED", error);
       toast.error("Submit failed: " + (error.message || "Unknown error"));
       return;
     }
     const intNumber = intakeId ?? "";
+    const caseId = (rpcData as { case_id?: string } | null)?.case_id ?? null;
+    console.log("INTAKE: SUCCESS", { intNumber, caseId });
     setSubmitted({ intNumber });
     toast.success("Intake submitted successfully.");
   }, [formData, resumeToken, saveSession, intakeId]);
 
   const goNext = useCallback(() => {
     if (step < TOTAL_STEPS - 1) {
+      const nextStep = step + 1;
+      console.log("INTAKE: Moving to step", nextStep + 1, STEPS[nextStep as StepIndex]);
       setStep((s) => s + 1);
       saveSession({ intakeStatus: "draft" }).then(({ error }) => {
         if (error) toast.error("Could not save progress");
@@ -234,6 +246,8 @@ export function IntakeWizard() {
 
   const goBack = useCallback(() => {
     if (step > 0) {
+      const prevStep = step - 1;
+      console.log("INTAKE: Moving to step", prevStep + 1, STEPS[prevStep as StepIndex]);
       setStep((s) => s - 1);
       saveSession({ intakeStatus: "draft" }).then(({ error }) => {
         if (error) toast.error("Could not save progress");

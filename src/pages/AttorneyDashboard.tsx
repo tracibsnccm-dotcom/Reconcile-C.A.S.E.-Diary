@@ -40,6 +40,8 @@ export default function AttorneyDashboard() {
         return;
       }
 
+      console.log("ATTORNEY: Loading pending intakes for", attorneyRow.id);
+
       // 2. Query rc_client_intake_sessions where:
       //    - intake_status in ('submitted', 'submitted_pending_attorney')
       //    - case's attorney_id matches attorney's rc_users.id
@@ -96,6 +98,7 @@ export default function AttorneyDashboard() {
           };
         });
 
+      console.log("ATTORNEY: Found", filtered.length, "pending intakes");
       setPendingIntakes(filtered);
       setLoading(false);
     })();

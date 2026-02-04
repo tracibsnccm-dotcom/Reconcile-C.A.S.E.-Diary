@@ -118,6 +118,8 @@ export function AttestationReview() {
   const handleConfirm = async () => {
     if (!supabase || !user || !intakeId || !caseId) return;
 
+    console.log("ATTEST: Confirming intake", intakeId);
+
     // Get attorney's rc_users record
     const { data: attorneyRow, error: attorneyErr } = await supabase
       .from("rc_users")
@@ -146,6 +148,7 @@ export function AttestationReview() {
     const sameDayCount = count ?? 0;
     const caseNumber = generateCaseNumber(intakeIdDisplay, attorneyRow.attorney_code, sameDayCount);
     const clientPin = generatePin();
+    console.log("ATTEST: Case number", caseNumber, "PIN", clientPin);
     const now = new Date().toISOString();
 
     try {
@@ -159,6 +162,7 @@ export function AttestationReview() {
         .eq("resume_token", intakeId);
 
       if (sessionErr) {
+        console.error("ATTEST: FAILED", sessionErr);
         toast.error("Failed to update intake: " + sessionErr.message);
         setConfirming(false);
         return;
@@ -185,6 +189,7 @@ export function AttestationReview() {
         .eq("id", caseId);
 
       if (caseErr) {
+        console.error("ATTEST: FAILED", caseErr);
         toast.error("Failed to update case: " + caseErr.message);
         setConfirming(false);
         return;
@@ -200,9 +205,11 @@ export function AttestationReview() {
         created_at: now,
       });
 
+      console.log("ATTEST: SUCCESS", { caseNumber, pin: clientPin, caseId });
       setConfirmed({ caseNumber, pin: clientPin });
       toast.success("Client confirmed successfully.");
     } catch (e) {
+      console.error("ATTEST: FAILED", e);
       toast.error("Attestation failed.");
       setConfirming(false);
     } finally {
