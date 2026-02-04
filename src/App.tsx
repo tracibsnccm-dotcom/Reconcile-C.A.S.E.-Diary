@@ -8,6 +8,7 @@ import AttorneyLogin from "@/pages/AttorneyLogin";
 import ClientPortal from "@/pages/ClientPortal";
 import AttorneyDashboard from "@/pages/AttorneyDashboard";
 import { IntakeWizard } from "@/components/intake/IntakeWizard";
+import { IntakeResume } from "@/components/intake/IntakeResume";
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
           <Route path="/attorney-login" element={<AttorneyLogin />} />
           <Route path="/client" element={<ClientPortal />} />
           <Route path="/intake" element={<IntakeWizard />} />
+          <Route path="/intake/resume" element={<IntakeResume />} />
           <Route path="/attorney" element={<AttorneyDashboard />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

@@ -50,7 +50,7 @@ export default function ClientLogin() {
         <p style={{ color: "#6b7280", fontSize: "14px", textAlign: "center", marginBottom: "24px" }}>
           Enter your case number and PIN to access your {CASE_BRAND.diaryName}
         </p>
-        <p style={{ textAlign: "center", marginBottom: "24px" }}>
+        <p style={{ textAlign: "center", marginBottom: "12px" }}>
           <Link
             to="/intake"
             style={{
@@ -61,6 +61,19 @@ export default function ClientLogin() {
             }}
           >
             New client? Start intake
+          </Link>
+        </p>
+        <p style={{ textAlign: "center", marginBottom: "24px" }}>
+          <Link
+            to="/intake/resume"
+            style={{
+              fontSize: "14px",
+              color: "#f97316",
+              textDecoration: "underline",
+              fontWeight: 500,
+            }}
+          >
+            Resume saved intake
           </Link>
         </p>
         <form onSubmit={handleSubmit}>

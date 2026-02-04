@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -29,8 +29,68 @@ const BTN_NEXT =
 const BTN_SAVE =
   "px-5 py-2.5 rounded-lg border border-slate-500 text-slate-400 hover:text-slate-300 hover:bg-slate-700 transition-colors";
 
+/** Map form accidentType to RPC incidentType */
+function toIncidentType(accidentType: string): "MVA" | "slip_fall" | "work_injury" | "other" {
+  if (accidentType === "auto") return "MVA";
+  if (accidentType === "slip_fall" || accidentType === "work_injury" || accidentType === "other") {
+    return accidentType;
+  }
+  return "other";
+}
+
+/** Build form_data jsonb for rc_client_intake_sessions (RPC-expected structure + full form for resume) */
+function buildFormData(data: IntakeFormData): Record<string, unknown> {
+  const w = data.wellness;
+  const s = data.sdoh;
+  return {
+    client: { phone: data.personal.phone?.trim() ?? "" },
+    intake: {
+      incidentDate: data.injury.dateOfInjury ?? "",
+      incidentType: toIncidentType(data.injury.accidentType),
+      accidentTypeOther: data.injury.accidentTypeOther?.trim() || null,
+      description: data.injury.description?.trim() || null,
+    },
+    fourPs: {
+      physical: w.physical,
+      psychological: w.psychological,
+      psychosocial: w.psychosocial,
+      professional: w.professional,
+    },
+    sdoh: {
+      housing: s.housingStability,
+      food: s.foodSecurity,
+      transport: s.transportation,
+      insuranceGap: s.childcare,
+      financial: s.financialStrain,
+      employment: 3,
+      social_support: 3,
+      safety: s.intimatePartnerSafety,
+      healthcare_access: 3,
+      income_range: null as string | null,
+    },
+    personal: data.personal,
+    attorney: data.attorney,
+    injury: data.injury,
+    diagnoses: data.diagnoses,
+    medications: data.medications,
+    wellness: data.wellness,
+    consent: data.consent,
+  };
+}
+
+/** Generate intake_id: INT-YYMMDD-XXX */
+function generateIntakeId(): string {
+  const d = new Date();
+  const yy = d.getFullYear().toString().slice(-2);
+  const mm = (d.getMonth() + 1).toString().padStart(2, "0");
+  const dd = d.getDate().toString().padStart(2, "0");
+  const suffix = Math.random().toString(36).slice(2, 5).toUpperCase();
+  return `INT-${yy}${mm}${dd}-${suffix}`;
+}
+
 export function IntakeWizard() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const topRef = useRef<HTMLDivElement>(null);
   const [step, setStep] = useState<number>(0);
   const [formData, setFormData] = useState<IntakeFormData>(INITIAL_FORM_DATA);
@@ -38,116 +98,161 @@ export function IntakeWizard() {
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState<{ intNumber: string } | null>(null);
-  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [resumeToken, setResumeToken] = useState<string | null>(null);
+  const [intakeId, setIntakeId] = useState<string | null>(null);
+  const [resumeLoading, setResumeLoading] = useState(true);
+  const hasInitializedResume = useRef(false);
 
   // Scroll to top when step changes
   useEffect(() => {
     topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [step]);
 
+  // Initialize: generate resume_token or load from ?resume=TOKEN
+  useEffect(() => {
+    if (hasInitializedResume.current) return;
+    hasInitializedResume.current = true;
+    const token = searchParams.get("resume");
+    if (token) {
+      if (!supabase) {
+        setResumeLoading(false);
+        return;
+      }
+      (async () => {
+        const { data, error } = await supabase
+          .from("rc_client_intake_sessions")
+          .select("resume_token, form_data, current_step, intake_id")
+          .eq("resume_token", token)
+          .eq("intake_status", "draft")
+          .maybeSingle();
+        setResumeLoading(false);
+        if (error || !data) return;
+        setResumeToken(data.resume_token);
+        setIntakeId(data.intake_id ?? null);
+        setStep(Math.min(Math.max(0, data.current_step ?? 0), TOTAL_STEPS - 1));
+        const fd = data.form_data as Record<string, unknown> | null;
+        if (fd?.personal) {
+          setFormData((prev) => ({
+            ...prev,
+            personal: fd.personal as IntakeFormData["personal"],
+            attorney: (fd.attorney as IntakeFormData["attorney"]) ?? null,
+            injury: (fd.injury as IntakeFormData["injury"]) ?? prev.injury,
+            diagnoses: (fd.diagnoses as IntakeFormData["diagnoses"]) ?? prev.diagnoses,
+            medications: (fd.medications as IntakeFormData["medications"]) ?? prev.medications,
+            wellness: (fd.wellness as IntakeFormData["wellness"]) ?? prev.wellness,
+            sdoh: (fd.sdohForm as IntakeFormData["sdoh"]) ?? prev.sdoh,
+            consent: (fd.consent as IntakeFormData["consent"]) ?? prev.consent,
+          }));
+        }
+      })();
+    } else {
+      setResumeToken(crypto.randomUUID());
+      setIntakeId(generateIntakeId());
+      setResumeLoading(false);
+    }
+  }, [searchParams]);
+
+  const saveSession = useCallback(
+    async (opts?: { intakeStatus?: "draft" | "pending_submit" }) => {
+      if (!supabase || !resumeToken) return { error: null as Error | null };
+      const status = opts?.intakeStatus ?? "draft";
+      const row = {
+        resume_token: resumeToken,
+        intake_id: intakeId ?? generateIntakeId(),
+        attorney_id: formData.attorney?.attorneyId ?? null,
+        attorney_code: formData.attorney?.attorneyCode ?? null,
+        first_name: formData.personal.firstName?.trim() || null,
+        last_name: formData.personal.lastName?.trim() || null,
+        email: formData.personal.email?.trim() || null,
+        current_step: step,
+        form_data: buildFormData(formData),
+        intake_status: status,
+        updated_at: new Date().toISOString(),
+      };
+      const { error } = await supabase
+        .from("rc_client_intake_sessions")
+        .upsert(row, { onConflict: "resume_token" });
+      if (!intakeId && row.intake_id) setIntakeId(row.intake_id);
+      return { error: error ? new Error(error.message) : null };
+    },
+    [formData, step, resumeToken, intakeId]
+  );
+
   const saveDraft = useCallback(async () => {
     if (!supabase) {
       toast.error("Database not configured");
       return;
     }
+    if (!resumeToken) {
+      toast.error("Session not ready. Please wait a moment and try again.");
+      return;
+    }
     setSaving(true);
-    const { data, error } = sessionId
-      ? await supabase
-          .from("rc_client_intake_sessions")
-          .update({
-            session_data: formData,
-            current_step: step,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", sessionId)
-          .select("id")
-          .single()
-      : await supabase
-          .from("rc_client_intake_sessions")
-          .insert({
-            session_data: formData,
-            current_step: step,
-          })
-          .select("id")
-          .single();
-
+    const { error } = await saveSession({ intakeStatus: "draft" });
     setSaving(false);
     if (error) {
       toast.error("Could not save draft: " + (error.message || "Unknown error"));
       return;
     }
-    if (data?.id) setSessionId(data.id);
     toast.success("Draft saved. You can return later to continue.");
     navigate("/client-login");
-  }, [formData, step, sessionId, navigate]);
+  }, [saveSession, resumeToken, navigate]);
 
   const handleSubmit = useCallback(async () => {
-    if (!supabase || !formData.attorney) {
+    if (!supabase || !formData.attorney || !resumeToken) {
       toast.error("Missing attorney or database");
       return;
     }
     setSubmitting(true);
-    const payload = {
-      attorney_id: formData.attorney.attorneyId,
-      attorney_code: formData.attorney.attorneyCode,
-      first_name: formData.personal.firstName.trim(),
-      last_name: formData.personal.lastName.trim(),
-      date_of_birth: formData.personal.dateOfBirth,
-      email: formData.personal.email.trim(),
-      phone: formData.personal.phone.trim(),
-      date_of_injury: formData.injury.dateOfInjury,
-      accident_type: formData.injury.accidentType,
-      accident_type_other: formData.injury.accidentTypeOther.trim() || null,
-      description: formData.injury.description.trim(),
-      diagnoses: formData.diagnoses.selected,
-      diagnoses_other: formData.diagnoses.other.trim() || null,
-      medications: formData.medications.rows.map((r) => ({
-        name: r.name,
-        dosage: r.dosage,
-        frequency: r.frequency,
-        is_prn: r.isPrn,
-        prn_for: r.prnFor || null,
-      })),
-      wellness_physical: formData.wellness.physical,
-      wellness_psychological: formData.wellness.psychological,
-      wellness_psychosocial: formData.wellness.psychosocial,
-      wellness_professional: formData.wellness.professional,
-      sdoh_housing_stability: formData.sdoh.housingStability,
-      sdoh_food_security: formData.sdoh.foodSecurity,
-      sdoh_transportation: formData.sdoh.transportation,
-      sdoh_childcare: formData.sdoh.childcare,
-      sdoh_financial_strain: formData.sdoh.financialStrain,
-      sdoh_intimate_partner_safety: formData.sdoh.intimatePartnerSafety,
-    };
-
-    const { data: rpcData, error } = await supabase.rpc(
-      "submit_intake_create_case",
-      payload
-    );
-
+    const { error: saveErr } = await saveSession({ intakeStatus: "pending_submit" });
+    if (saveErr) {
+      setSubmitting(false);
+      toast.error("Could not save before submit: " + saveErr.message);
+      return;
+    }
+    const { data: rpcData, error } = await supabase.rpc("submit_intake_create_case", {
+      p_resume_token: resumeToken,
+    });
     setSubmitting(false);
     if (error) {
       toast.error("Submit failed: " + (error.message || "Unknown error"));
       return;
     }
-    // RPC returns the generated INT case number (e.g. INT-260204-01A)
-    const intNumber =
-      typeof rpcData === "string"
-        ? rpcData
-        : (rpcData as { int_number?: string })?.int_number ?? (rpcData as { case_number?: string })?.case_number ?? String(rpcData ?? "");
+    const intNumber = intakeId ?? "";
     setSubmitted({ intNumber });
     toast.success("Intake submitted successfully.");
-  }, [formData]);
+  }, [formData, resumeToken, saveSession, intakeId]);
 
-  const goNext = () => {
-    if (step < TOTAL_STEPS - 1) setStep((s) => s + 1);
-  };
-  const goBack = () => {
-    if (step > 0) setStep((s) => s - 1);
-  };
+  const goNext = useCallback(() => {
+    if (step < TOTAL_STEPS - 1) {
+      setStep((s) => s + 1);
+      saveSession({ intakeStatus: "draft" }).then(({ error }) => {
+        if (error) toast.error("Could not save progress");
+      });
+    }
+  }, [step, saveSession]);
+
+  const goBack = useCallback(() => {
+    if (step > 0) {
+      setStep((s) => s - 1);
+      saveSession({ intakeStatus: "draft" }).then(({ error }) => {
+        if (error) toast.error("Could not save progress");
+      });
+    }
+  }, [step, saveSession]);
 
   const isLastStep = step === TOTAL_STEPS - 1;
   const canProceed = stepValid;
+
+  if (resumeLoading) {
+    return (
+      <div className={WRAPPER_CLASS}>
+        <div className="max-w-2xl mx-auto px-4 py-12 text-center text-slate-400">
+          Loading…
+        </div>
+      </div>
+    );
+  }
 
   // Confirmation screen after submit
   if (submitted) {
@@ -189,6 +294,11 @@ export function IntakeWizard() {
     <div className={WRAPPER_CLASS}>
       <div ref={topRef} />
       <div className="max-w-2xl mx-auto px-4 py-6 sm:py-8">
+        <p className="text-right mb-4">
+          <Link to="/intake/resume" className="text-orange-500 hover:underline text-sm">
+            Resume saved intake
+          </Link>
+        </p>
         <div className="mb-6">
           <p className="text-slate-400 text-sm mb-2">
             Step {step + 1} of {TOTAL_STEPS}
