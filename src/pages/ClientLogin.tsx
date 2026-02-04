@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/auth/supabaseAuth";
 import { CASE_BRAND } from "@/constants/brand";
 import { toast } from "sonner";
@@ -47,8 +47,21 @@ export default function ClientLogin() {
         <h2 style={{ fontSize: "28px", fontWeight: "bold", color: "#1e3a8a", marginBottom: "8px", textAlign: "center" }}>
           Client Login
         </h2>
-        <p style={{ color: "#6b7280", fontSize: "14px", textAlign: "center", marginBottom: "32px" }}>
+        <p style={{ color: "#6b7280", fontSize: "14px", textAlign: "center", marginBottom: "24px" }}>
           Enter your case number and PIN to access your {CASE_BRAND.diaryName}
+        </p>
+        <p style={{ textAlign: "center", marginBottom: "24px" }}>
+          <Link
+            to="/intake"
+            style={{
+              fontSize: "14px",
+              color: "#f97316",
+              textDecoration: "underline",
+              fontWeight: 500,
+            }}
+          >
+            New client? Start intake
+          </Link>
         </p>
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: "20px" }}>
