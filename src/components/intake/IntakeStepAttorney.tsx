@@ -23,37 +23,28 @@ export function IntakeStepAttorney({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Load attorneys via get_attorney_directory RPC (same as C.A.R.E. client intake)
   useEffect(() => {
     if (!supabase) {
-      console.log("ATTORNEY DROPDOWN: Supabase not configured");
       setError("Database not configured");
       setLoading(false);
       return;
     }
     (async () => {
-      console.log("ATTORNEY DROPDOWN: Fetching attorneys...");
-      const { data: rows, error: e } = await supabase
-        .from("rc_users")
-        .select("id, attorney_code, full_name, first_name, last_name")
-        .ilike("role", "attorney")
-        .order("full_name", { ascending: true });
-
-      console.log("ATTORNEY DROPDOWN: Result", { data: rows, error: e });
-
-      if (e) {
-        console.error("ATTORNEY DROPDOWN: Query error", e);
-        setError(e.message);
+      const { data, error: e } = await supabase.rpc("get_attorney_directory");
+      if (e || !data) {
+        setError(e?.message ?? "Unable to load attorneys. Please refresh or contact support.");
         setAttorneys([]);
       } else {
+        const rows = Array.isArray(data) ? data : [data];
         setAttorneys(
-          (rows || []).map((r: { id: string; attorney_code: string | null; full_name: string | null; first_name: string | null; last_name: string | null }) => ({
-            attorneyId: r.id,
-            attorneyCode: r.attorney_code || "",
-            displayName:
-              r.full_name ||
-              [r.first_name, r.last_name].filter(Boolean).join(" ") ||
-              `Attorney ${r.attorney_code || r.id}`,
-          }))
+          rows.map(
+            (r: { attorney_id: string; attorney_name: string; attorney_code?: string | null }) => ({
+              attorneyId: r.attorney_id,
+              attorneyCode: r.attorney_code ?? "",
+              displayName: r.attorney_name || "Unknown",
+            })
+          )
         );
       }
       setLoading(false);
