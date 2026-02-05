@@ -1651,9 +1651,31 @@ export default function IntakeWizard() {
     // 2. There IS a stored attorney AND it's different from URL
     // Don't clear on first visit (when storedAttorneyId is null)
     if (intakeSubmitted === 'true' || (storedAttorneyId && urlAttorneyId && urlAttorneyId !== storedAttorneyId)) {
-      // Clear all session storage
+      // Preserve client identity — these must survive across the wizard
+      const preserveKeys = [
+        'rcms_client_first_name',
+        'rcms_client_last_name',
+        'rcms_client_email',
+        'rcms_intake_session_id',
+        'rcms_intake_id',
+        'rcms_resume_token',
+        'rcms_intake_created_at',
+        'rcms_date_of_injury',
+        'rcms_consents_completed'
+      ];
+      const preserved: Record<string, string> = {};
+      for (const key of preserveKeys) {
+        const val = sessionStorage.getItem(key);
+        if (val) preserved[key] = val;
+      }
+
       sessionStorage.clear();
-      
+
+      // Restore preserved values
+      for (const [key, val] of Object.entries(preserved)) {
+        sessionStorage.setItem(key, val);
+      }
+
       // Set new attorney ID
       if (urlAttorneyId) {
         sessionStorage.setItem('rcms_current_attorney_id', urlAttorneyId);
