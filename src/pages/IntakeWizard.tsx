@@ -61,7 +61,6 @@ import { useInactivityDetection } from "@/hooks/useInactivityDetection";
 import { MedicationAutocomplete } from "@/components/MedicationAutocomplete";
 import { FileUploadZone } from "@/components/FileUploadZone";
 import { InactivityModal } from "@/components/InactivityModal";
-import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { supabaseGet, supabaseInsert, supabaseUpdate } from '@/lib/supabaseRest';
@@ -434,6 +433,20 @@ export default function IntakeWizard() {
     const storedDOI = sessionStorage.getItem("rcms_date_of_injury");
     if (storedDOI && storedDOI !== intake.incidentDate) {
       setIntake((prev) => ({ ...prev, incidentDate: storedDOI }));
+    }
+  }, []);
+
+  // Hydrate client firstName/lastName from sessionStorage on load (set by IntakeIdentity) so name carries through wizard
+  useEffect(() => {
+    const storedFirst = sessionStorage.getItem("rcms_client_first_name")?.trim() || "";
+    const storedLast = sessionStorage.getItem("rcms_client_last_name")?.trim() || "";
+    if (storedFirst || storedLast) {
+      setClient((prev) => ({
+        ...prev,
+        firstName: storedFirst || prev.firstName,
+        lastName: storedLast || prev.lastName,
+        fullName: [storedFirst, storedLast].filter(Boolean).join(" ") || prev.fullName,
+      }));
     }
   }, []);
 
@@ -942,10 +955,10 @@ export default function IntakeWizard() {
     console.log('IntakeWizard handleSubmit: Resolved attorneyId', attorneyId);
     setSubmitDiag((prev) => ({ ...prev, attorneyIdResolved: attorneyId }));
 
-    // Get client information: sessionStorage first (set by IntakeIdentity), then intake session DB
-    // So firstName/lastName persist through the entire wizard and are available at Review & Submit
-    let clientFirstName = sessionStorage.getItem("rcms_client_first_name") || "";
-    let clientLastName = sessionStorage.getItem("rcms_client_last_name") || "";
+    // Get client information: sessionStorage first (set by IntakeIdentity), then form state, then intake session DB
+    // Fallback to sessionStorage so "firstName/lastName required" never appears if name was entered on IntakeIdentity
+    let clientFirstName = sessionStorage.getItem("rcms_client_first_name")?.trim() || (client as any).firstName?.trim() || "";
+    let clientLastName = sessionStorage.getItem("rcms_client_last_name")?.trim() || (client as any).lastName?.trim() || "";
     let clientEmail = sessionStorage.getItem("rcms_client_email") || "";
     let intakeIdFromSession: string | null = sessionStorage.getItem("rcms_intake_id") || null;
     
@@ -975,7 +988,11 @@ export default function IntakeWizard() {
       } catch (_) {}
     }
 
-    // STEP 2: Hard stop — do not allow submission if identity is missing
+    // STEP 2: Final fallback — re-read from sessionStorage in case form state was cleared
+    if (!clientFirstName || !clientLastName) {
+      clientFirstName = sessionStorage.getItem("rcms_client_first_name")?.trim() || clientFirstName;
+      clientLastName = sessionStorage.getItem("rcms_client_last_name")?.trim() || clientLastName;
+    }
     if (!clientFirstName || !clientLastName) {
       setSubmitStage("blocked_validation");
       setSubmitError("We couldn't confirm your name details. Please return to the Identity step.");
@@ -2676,7 +2693,13 @@ export default function IntakeWizard() {
             <h3 className="text-lg font-semibold text-black mb-4">Review & Submit</h3>
             {submitSuccess && (
               <div className="space-y-4">
-                {/* Restored top-of-page info block: INT#, status/summary */}
+                {/* Client name at top, then RCMS Case ID */}
+                {(() => {
+                  const displayName = [client.firstName, client.lastName].filter(Boolean).join(" ") || [sessionStorage.getItem("rcms_client_first_name"), sessionStorage.getItem("rcms_client_last_name")].filter(Boolean).join(" ") || "";
+                  return displayName ? (
+                    <p className="text-xl font-bold text-black mb-2">{displayName}</p>
+                  ) : null;
+                })()}
                 <div className="p-4 rounded-lg bg-green-50 border-2 border-green-200">
                   <h4 className="font-semibold text-green-900">Intake submitted successfully.</h4>
                   <p className="text-sm text-green-800 mt-2">
@@ -2684,10 +2707,10 @@ export default function IntakeWizard() {
                   </p>
                   <p className="text-sm text-green-800 mt-1">Your intake is now pending attorney review. You can expect to be contacted within 24–48 hours.</p>
                 </div>
-                {/* What happens next — approved copy only */}
-                <div className="p-4 rounded-lg bg-green-50 border-2 border-green-200 space-y-4">
-                  <h4 className="font-semibold text-green-900">What happens next</h4>
-                  <div className="text-sm text-green-800 space-y-3">
+                {/* What happens next — CARE-style: bg-green-100 border-green-300 text-black */}
+                <div className="p-4 rounded-lg bg-green-100 border-2 border-green-300 space-y-4 text-black">
+                  <h4 className="font-semibold text-black">What happens next</h4>
+                  <div className="text-sm text-black space-y-3">
                     <p>Your intake has been submitted successfully.</p>
                     <p>Here&apos;s what happens next:</p>
                     <ul className="list-disc pl-5 space-y-1">
@@ -2898,9 +2921,15 @@ export default function IntakeWizard() {
               </div>
             </div>
 
-            {/* Case Summary - Final Review */}
+            {/* Case Summary - Final Review: client name at top above RCMS ID */}
             <div className="mt-8 p-6 bg-gradient-to-br from-secondary/10 to-secondary/5 rounded-lg border-2 border-border">
               <h4 className="text-lg font-bold mb-4 text-black">Case Summary</h4>
+              {(() => {
+                const displayName = [client.firstName, client.lastName].filter(Boolean).join(" ") || [sessionStorage.getItem("rcms_client_first_name"), sessionStorage.getItem("rcms_client_last_name")].filter(Boolean).join(" ") || "";
+                return displayName ? (
+                  <p className="text-xl font-bold text-black mb-4">{displayName}</p>
+                ) : null;
+              })()}
               <div className="space-y-3 text-sm">
                 <div className="flex py-2 border-b border-border">
                   <span className="font-medium w-40">RCMS ID:</span>
@@ -2965,8 +2994,8 @@ export default function IntakeWizard() {
                 </div>
               </div>
 
-              {/* What happens next — approved copy */}
-              <div className="mt-6 p-4 rounded-lg border-2 border-border bg-card space-y-3">
+              {/* What happens next — CARE-style: bg-green-100 border-green-300 text-black */}
+              <div className="mt-6 p-4 rounded-lg border-2 border-green-300 bg-green-100 space-y-3 text-black">
                 <h4 className="font-semibold text-black">What happens next</h4>
                 <div className="text-sm text-black space-y-3">
                   <p>Your intake has been submitted successfully.</p>
@@ -3046,12 +3075,6 @@ export default function IntakeWizard() {
                 onClick={() => {
                   setSubmitClicks((n) => n + 1);
                   setSubmitStage("clicked");
-                  const list = buildIncompleteSections({ intake, mentalHealth, fourPs, preInjuryMeds, postInjuryMeds });
-                  if (list.length > 0) {
-                    setIncompleteSectionsList(list);
-                    setIncompleteWarningOpen(true);
-                    return;
-                  }
                   submit();
                 }}
                 aria-label="Submit intake"
@@ -3106,44 +3129,6 @@ export default function IntakeWizard() {
               }
             />
 
-            {/* Pre-submit incomplete-sections warning (client-only) */}
-            <Dialog open={incompleteWarningOpen} onOpenChange={(open) => !open && setIncompleteWarningOpen(false)}>
-              <DialogContent className="sm:max-w-md bg-white text-black [&>button]:text-black">
-                <DialogHeader>
-                  <DialogTitle className="text-black">Before you submit</DialogTitle>
-                  <DialogDescription className="text-black">
-                    Some sections are incomplete. You can submit now, or go back and add details.
-                  </DialogDescription>
-                </DialogHeader>
-                <ul className="list-disc pl-5 text-sm text-black space-y-1 my-2">
-                  {incompleteSectionsList.map((s) => (
-                    <li key={s.stepIndex}>{s.label}</li>
-                  ))}
-                </ul>
-                <DialogFooter className="gap-2 sm:gap-0">
-                  <Button
-                    onClick={() => {
-                      if (incompleteSectionsList.length > 0) {
-                        setStep(incompleteSectionsList[0].stepIndex);
-                      }
-                      setIncompleteWarningOpen(false);
-                    }}
-                  >
-                    Go back to complete
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setIncompleteWarningOpen(false);
-                      submit();
-                    }}
-                  >
-                    Submit anyway
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-            
             <InactivityModal
               isOpen={isInactive}
               onContinue={dismissInactivity}

@@ -97,6 +97,8 @@ export interface Client {
   state?: string;
   fullName?: string;            // stored but RBAC-gated in UI
   displayNameMasked?: string;   // masked fallback (e.g., "A*** B***")
+  firstName?: string;         // intake flow: from IntakeIdentity, persisted in sessionStorage
+  lastName?: string;
 }
 
 export interface Intake {
