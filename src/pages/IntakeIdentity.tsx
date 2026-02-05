@@ -258,12 +258,18 @@ export default function IntakeIdentity() {
               </div>
 
               <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4 max-w-md mx-auto">
-                <p className="font-semibold text-yellow-800">⚠️ Write this down!</p>
-                <p className="text-sm text-yellow-700 mt-1">
+                <p className="font-semibold text-yellow-800">⚠️ Important — Write this down!</p>
+                <p className="text-sm text-yellow-700 mt-2">
                   You&apos;ll need your Intake ID and the PIN you created to resume or check your status.
                 </p>
-                <p className="text-sm text-yellow-700 mt-1">
+                <p className="text-sm text-yellow-700 mt-2">
                   You can leave at any time and come back later using these credentials.
+                </p>
+                <p className="text-sm text-yellow-700 mt-2 font-medium">
+                  You have 7 days to complete your intake. After 7 days, your information will be deleted and you will need to start over.
+                </p>
+                <p className="text-sm text-yellow-700 mt-2">
+                  Watch the countdown clock at the top of your assessment pages to track your remaining time.
                 </p>
               </div>
 
