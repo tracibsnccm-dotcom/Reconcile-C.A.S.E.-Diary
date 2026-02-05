@@ -133,7 +133,27 @@ export default function IntakeWizard() {
   const [attorneyDisplayName, setAttorneyDisplayName] = useState<string | null>(null);
   const [attorneyName, setAttorneyName] = useState<string>(() => sessionStorage.getItem("rcms_attorney_name") || "");
   const [showWelcome, setShowWelcome] = useState(false); // Skip welcome - consents already signed
+  const [hipaaAcknowledged, setHipaaAcknowledged] = useState(() => {
+    return sessionStorage.getItem("rcms_hipaa_sensitivity_ack") === "true";
+  });
   const [sensitiveTag, setSensitiveTag] = useState(false);
+  const [demographics, setDemographics] = useState({
+    dob: (typeof sessionStorage !== "undefined" ? sessionStorage.getItem("rcms_client_dob") : null) || "",
+    phone: (typeof sessionStorage !== "undefined" ? sessionStorage.getItem("rcms_client_phone") : null) || "",
+    preferredName: (typeof sessionStorage !== "undefined" ? sessionStorage.getItem("rcms_client_preferred_name") : null) || "",
+    gender: (typeof sessionStorage !== "undefined" ? sessionStorage.getItem("rcms_client_gender") : null) || "",
+    pronouns: (typeof sessionStorage !== "undefined" ? sessionStorage.getItem("rcms_client_pronouns") : null) || "",
+    maritalStatus: (typeof sessionStorage !== "undefined" ? sessionStorage.getItem("rcms_client_marital_status") : null) || "",
+    addressStreet: (typeof sessionStorage !== "undefined" ? sessionStorage.getItem("rcms_client_address_street") : null) || "",
+    addressCity: (typeof sessionStorage !== "undefined" ? sessionStorage.getItem("rcms_client_address_city") : null) || "",
+    addressState: (typeof sessionStorage !== "undefined" ? sessionStorage.getItem("rcms_client_address_state") : null) || "",
+    addressZip: (typeof sessionStorage !== "undefined" ? sessionStorage.getItem("rcms_client_address_zip") : null) || "",
+    emergencyName: (typeof sessionStorage !== "undefined" ? sessionStorage.getItem("rcms_client_emergency_name") : null) || "",
+    emergencyPhone: (typeof sessionStorage !== "undefined" ? sessionStorage.getItem("rcms_client_emergency_phone") : null) || "",
+    preferredLanguage: (typeof sessionStorage !== "undefined" ? sessionStorage.getItem("rcms_client_preferred_language") : null) || "",
+    preferredLanguageOther: (typeof sessionStorage !== "undefined" ? sessionStorage.getItem("rcms_client_preferred_language_other") : null) || "",
+    occupation: (typeof sessionStorage !== "undefined" ? sessionStorage.getItem("rcms_client_occupation") : null) || "",
+  });
   const [showCaraModal, setShowCaraModal] = useState(false);
   const [medications, setMedications] = useState<any[]>([]);
   const [preInjuryMeds, setPreInjuryMeds] = useState<MedicationEntry[]>([]);
@@ -312,7 +332,8 @@ export default function IntakeWizard() {
     overlayContextFlags,
     overlay_answers: overlayAnswers,
     attorneyName,
-  }), [client, consent, intake, fourPs, sdoh, medsBlock, sensitiveTag, medications, preInjuryMeds, postInjuryMeds, preInjuryTreatments, postInjuryTreatments, medAllergies, uploadedFiles, mentalHealth, hasMeds, incidentNarrative, incidentNarrativeExtra, physicalPreDiagnoses, physicalPreNotes, physicalPreOtherText, physicalPostDiagnoses, physicalPostNotes, physicalPostOtherText, bhPreDiagnoses, bhPreOtherText, bhPostDiagnoses, bhPostOtherText, bhNotes, bhPreMeds, bhPostMeds, clinicalContext, overlayContextFlags, overlayAnswers, attorneyName]);
+    demographics,
+  }), [client, consent, intake, fourPs, sdoh, medsBlock, sensitiveTag, medications, preInjuryMeds, postInjuryMeds, preInjuryTreatments, postInjuryTreatments, medAllergies, uploadedFiles, mentalHealth, hasMeds, incidentNarrative, incidentNarrativeExtra, physicalPreDiagnoses, physicalPreNotes, physicalPreOtherText, physicalPostDiagnoses, physicalPostNotes, physicalPostOtherText, bhPreDiagnoses, bhPreOtherText, bhPostDiagnoses, bhPostOtherText, bhNotes, bhPreMeds, bhPostMeds, clinicalContext, overlayContextFlags, overlayAnswers, attorneyName, demographics]);
 
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -420,6 +441,25 @@ export default function IntakeWizard() {
     }
   }, []);
 
+  // Sync demographics to sessionStorage whenever they change
+  useEffect(() => {
+    sessionStorage.setItem("rcms_client_dob", demographics.dob);
+    sessionStorage.setItem("rcms_client_phone", demographics.phone);
+    sessionStorage.setItem("rcms_client_preferred_name", demographics.preferredName);
+    sessionStorage.setItem("rcms_client_gender", demographics.gender);
+    sessionStorage.setItem("rcms_client_pronouns", demographics.pronouns);
+    sessionStorage.setItem("rcms_client_marital_status", demographics.maritalStatus);
+    sessionStorage.setItem("rcms_client_address_street", demographics.addressStreet);
+    sessionStorage.setItem("rcms_client_address_city", demographics.addressCity);
+    sessionStorage.setItem("rcms_client_address_state", demographics.addressState);
+    sessionStorage.setItem("rcms_client_address_zip", demographics.addressZip);
+    sessionStorage.setItem("rcms_client_emergency_name", demographics.emergencyName);
+    sessionStorage.setItem("rcms_client_emergency_phone", demographics.emergencyPhone);
+    sessionStorage.setItem("rcms_client_preferred_language", demographics.preferredLanguage);
+    sessionStorage.setItem("rcms_client_preferred_language_other", demographics.preferredLanguageOther);
+    sessionStorage.setItem("rcms_client_occupation", demographics.occupation);
+  }, [demographics]);
+
   // Load available attorneys on mount via get_attorney_directory RPC (no rc_users)
   useEffect(() => {
     const loadAttorneys = async () => {
@@ -518,6 +558,7 @@ export default function IntakeWizard() {
               if (data.clinicalContext) setClinicalContext({ age_ranges: data.clinicalContext.age_ranges || [] });
               if (data.overlayContextFlags) setOverlayContextFlags(data.overlayContextFlags);
               if (data.overlay_answers && typeof data.overlay_answers === "object" && !Array.isArray(data.overlay_answers)) setOverlayAnswers(data.overlay_answers);
+              if (data.demographics && typeof data.demographics === "object") setDemographics(data.demographics);
               if (typeof data.step === 'number') setStep(data.step);
               if (data.attorneyName) {
                 setAttorneyName(data.attorneyName);
@@ -579,6 +620,7 @@ export default function IntakeWizard() {
             if (data.clinicalContext) setClinicalContext({ age_ranges: data.clinicalContext?.age_ranges || [] });
             if (data.overlayContextFlags) setOverlayContextFlags(data.overlayContextFlags);
             if (data.overlay_answers && typeof data.overlay_answers === "object" && !Array.isArray(data.overlay_answers)) setOverlayAnswers(data.overlay_answers);
+            if (data.demographics && typeof data.demographics === "object") setDemographics(data.demographics);
             if (typeof data.step === "number") setStep(data.step);
             if (data.attorneyName) {
               setAttorneyName(data.attorneyName);
@@ -645,10 +687,10 @@ export default function IntakeWizard() {
     if (urlAttorneyCode && !attorneyCode) setAttorneyCode(urlAttorneyCode);
   }, [searchParams]);
 
-  // Fetch attorney display name for Case Summary when on Review step (step 4, pre-submit)
+  // Fetch attorney display name for Case Summary when on Review step (step 5, pre-submit)
   // Use get_attorney_directory (no rc_users) - prefer availableAttorneys if already loaded
   useEffect(() => {
-    if (step !== 4 || submitSuccess) return;
+    if (step !== 5 || submitSuccess) return;
     if (!selectedAttorneyId) {
       setAttorneyDisplayName("Not assigned");
       return;
@@ -767,6 +809,19 @@ export default function IntakeWizard() {
         description: "Incident date is required.",
         variant: "destructive",
       });
+      return;
+    }
+
+    if (!demographics.dob?.trim() || !demographics.phone?.trim()) {
+      setSubmitStage("blocked_validation");
+      setSubmitError("Unable to submit yet.");
+      setSubmitErrorDetail("Reason: Date of Birth and Phone Number are required (Demographics step).");
+      toast({
+        title: "Validation",
+        description: "Please complete the Demographics step (Date of Birth and Phone Number are required).",
+        variant: "destructive",
+      });
+      setSubmitting(false);
       return;
     }
 
@@ -980,8 +1035,8 @@ export default function IntakeWizard() {
       return;
     }
 
-    // Phone: optional; from wizard state or sessionStorage (IntakeIdentity does not collect phone yet)
-    const clientPhone = (client as any).phone || sessionStorage.getItem("rcms_client_phone") || "";
+    // Phone: from demographics (required in Demographics step) or sessionStorage
+    const clientPhone = demographics.phone?.trim() || (client as any).phone || sessionStorage.getItem("rcms_client_phone") || "";
 
     // Get date of injury from sessionStorage
     const dateOfInjury = sessionStorage.getItem("rcms_date_of_injury") || intake.incidentDate || null;
@@ -1047,6 +1102,7 @@ export default function IntakeWizard() {
           sdoh: sdohData,
           intake: { ...intake, incidentDate: dateOfInjury || intake.incidentDate, incidentType: intake.incidentType || 'MVA' },
           client: { ...client, phone: clientPhone },
+          demographics,
         },
       });
     } catch (e) {
@@ -1656,6 +1712,22 @@ export default function IntakeWizard() {
         'rcms_client_first_name',
         'rcms_client_last_name',
         'rcms_client_email',
+        'rcms_hipaa_sensitivity_ack',
+        'rcms_client_dob',
+        'rcms_client_phone',
+        'rcms_client_preferred_name',
+        'rcms_client_gender',
+        'rcms_client_pronouns',
+        'rcms_client_marital_status',
+        'rcms_client_address_street',
+        'rcms_client_address_city',
+        'rcms_client_address_state',
+        'rcms_client_address_zip',
+        'rcms_client_emergency_name',
+        'rcms_client_emergency_phone',
+        'rcms_client_preferred_language',
+        'rcms_client_preferred_language_other',
+        'rcms_client_occupation',
         'rcms_intake_session_id',
         'rcms_intake_id',
         'rcms_resume_token',
@@ -1981,6 +2053,44 @@ export default function IntakeWizard() {
     );
   }
 
+  // HIPAA sensitivity acknowledgment — must be accepted before any wizard content
+  if (!hipaaAcknowledged) {
+    return (
+      <div className="min-h-screen bg-gray-50 text-black">
+        <IntakeCountdownBanner onExpired={setCountdownExpired} />
+        <div className="max-w-2xl mx-auto p-6">
+          <Card className="p-6">
+            <h2 className="text-xl font-bold text-black mb-4">Before You Continue</h2>
+            <div className="space-y-4 text-black">
+              <p>The following information you provide is HIPAA-sensitive and RCMS takes every possible precaution to keep your information safe.</p>
+              <p>By completing the following sections, you give RCMS permission to use this information to create and generate care plans and coordinate care among various providers.</p>
+              <p>You are never under any obligation to share information you don&apos;t want anyone to know. Simply because you decline to provide certain information does not mean you are disqualified or excluded from receiving care management services from RCMS.</p>
+              <p className="font-medium">Your care manager will work with the information you choose to provide.</p>
+            </div>
+            <div className="flex gap-4 mt-6">
+              <Button
+                onClick={() => {
+                  sessionStorage.setItem("rcms_hipaa_sensitivity_ack", "true");
+                  setHipaaAcknowledged(true);
+                }}
+                className="flex-1 bg-green-700 hover:bg-green-800 text-white"
+              >
+                I Understand — Continue
+              </Button>
+              <Button
+                onClick={() => { window.location.href = "/"; }}
+                variant="outline"
+                className="flex-1"
+              >
+                Return to Home
+              </Button>
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 text-black">
       <IntakeCountdownBanner onExpired={setCountdownExpired} />
@@ -2022,8 +2132,10 @@ export default function IntakeWizard() {
             <div className="mb-8">
               <div className="flex items-start justify-between">
                 <div>
-                  <h1 className="text-3xl font-bold text-black">Client Intake Wizard</h1>
-                  <p className="text-black mt-1">Complete the intake process step by step</p>
+                  <h1 className="text-3xl font-bold text-black">
+                    Client Self-Assessment: {[sessionStorage.getItem("rcms_client_first_name"), sessionStorage.getItem("rcms_client_last_name")].filter(Boolean).join(" ") || "Client Self-Assessment"}
+                  </h1>
+                  <p className="text-black mt-1">Complete the self-assessment step by step</p>
                 </div>
                 {intakeStartedAt && (
                   <div className="text-right">
@@ -2062,7 +2174,7 @@ export default function IntakeWizard() {
             <Stepper
               step={step}
               setStep={setStep}
-              labels={["Incident", "Medical", "Mental Health", "4Ps + SDOH", "Review"]}
+              labels={["Demographics", "Incident/Injury Overview", "Post-Injury Self-Assessment", "Pre-Injury Self-Assessment", "4Ps + SDOH Self-Assessment", "Review & Submit"]}
             />
             
             {/* Progress Bar */}
@@ -2070,8 +2182,145 @@ export default function IntakeWizard() {
               <IntakeProgressBar percent={progressPercent} />
             </div>
 
-        {/* Step 0: Incident Details (previously Step 1) */}
+        {/* Step 0: Demographics */}
         {step === 0 && (
+          <Card className="p-6 border-border">
+            <h3 className="text-lg font-semibold text-black mb-4">Demographics</h3>
+            <div className="bg-muted/30 p-4 rounded-lg mb-6">
+              <p className="text-sm text-gray-600">Client Name</p>
+              <p className="text-lg font-semibold text-black">
+                {sessionStorage.getItem("rcms_client_first_name") || ""} {sessionStorage.getItem("rcms_client_last_name") || ""}
+              </p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 mb-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Date of Birth *</label>
+                <Input
+                  type="date"
+                  value={demographics.dob}
+                  onChange={(e) => setDemographics((d) => ({ ...d, dob: e.target.value }))}
+                  max={new Date().toISOString().slice(0, 10)}
+                />
+              </div>
+              <LabeledInput
+                label="Phone Number *"
+                type="tel"
+                value={demographics.phone}
+                onChange={(v) => setDemographics((d) => ({ ...d, phone: v }))}
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 mb-4">
+              <LabeledInput
+                label="What would you like us to call you?"
+                value={demographics.preferredName}
+                onChange={(v) => setDemographics((d) => ({ ...d, preferredName: v }))}
+                placeholder="Preferred name (optional)"
+              />
+              <LabeledSelect
+                label="Gender"
+                value={demographics.gender}
+                onChange={(v) => setDemographics((d) => ({ ...d, gender: v }))}
+                options={["", "Male", "Female", "Non-binary", "Other", "Prefer not to say"]}
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 mb-4">
+              <LabeledSelect
+                label="Pronouns"
+                value={demographics.pronouns}
+                onChange={(v) => setDemographics((d) => ({ ...d, pronouns: v }))}
+                options={["", "He/Him", "She/Her", "They/Them", "Other", "Prefer not to say"]}
+              />
+              <LabeledSelect
+                label="Marital Status"
+                value={demographics.maritalStatus}
+                onChange={(v) => setDemographics((d) => ({ ...d, maritalStatus: v }))}
+                options={["", "Single", "Married", "Divorced", "Widowed", "Separated", "Domestic Partnership", "Prefer not to say"]}
+              />
+            </div>
+            <div className="space-y-4 mb-4">
+              <LabeledInput
+                label="Address — Street"
+                value={demographics.addressStreet}
+                onChange={(v) => setDemographics((d) => ({ ...d, addressStreet: v }))}
+              />
+              <div className="grid gap-4 sm:grid-cols-3">
+                <LabeledInput
+                  label="Address — City"
+                  value={demographics.addressCity}
+                  onChange={(v) => setDemographics((d) => ({ ...d, addressCity: v }))}
+                />
+                <LabeledSelect
+                  label="Address — State"
+                  value={demographics.addressState}
+                  onChange={(v) => setDemographics((d) => ({ ...d, addressState: v }))}
+                  options={["", "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"]}
+                />
+                <LabeledInput
+                  label="Address — ZIP"
+                  value={demographics.addressZip}
+                  onChange={(v) => setDemographics((d) => ({ ...d, addressZip: v }))}
+                />
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 mb-4">
+              <LabeledInput
+                label="Emergency Contact Name"
+                value={demographics.emergencyName}
+                onChange={(v) => setDemographics((d) => ({ ...d, emergencyName: v }))}
+                placeholder="Optional"
+              />
+              <LabeledInput
+                label="Emergency Contact Phone"
+                type="tel"
+                value={demographics.emergencyPhone}
+                onChange={(v) => setDemographics((d) => ({ ...d, emergencyPhone: v }))}
+                placeholder="Optional"
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 mb-4">
+              <div className="space-y-2">
+                <LabeledSelect
+                  label="Preferred Language"
+                  value={demographics.preferredLanguage}
+                  onChange={(v) => setDemographics((d) => ({ ...d, preferredLanguage: v }))}
+                  options={["", "English", "Spanish", "Vietnamese", "Chinese", "Korean", "Tagalog", "Other"]}
+                />
+                {demographics.preferredLanguage === "Other" && (
+                  <LabeledInput
+                    label="Please specify"
+                    value={demographics.preferredLanguageOther}
+                    onChange={(v) => setDemographics((d) => ({ ...d, preferredLanguageOther: v }))}
+                  />
+                )}
+              </div>
+              <LabeledInput
+                label="Your occupation (helps us understand how the injury affects your work)"
+                value={demographics.occupation}
+                onChange={(v) => setDemographics((d) => ({ ...d, occupation: v }))}
+                placeholder="Optional"
+              />
+            </div>
+            {(!demographics.dob.trim() || !demographics.phone.trim()) && (
+              <Alert variant="destructive" className="mt-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>Date of Birth and Phone Number are required.</AlertDescription>
+              </Alert>
+            )}
+            <div className="mt-6">
+              <Button
+                onClick={() => setStep(1)}
+                disabled={!demographics.dob.trim() || !demographics.phone.trim()}
+                className="w-full sm:w-auto"
+              >
+                Continue to Incident Overview
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
+          </Card>
+        )}
+
+        {/* Step 1: Incident Details (Incident/Injury Overview) */}
+        {step === 1 && (
           <Card className="p-6 border-border">
             <h3 className="text-lg font-semibold text-black mb-4">Incident Details</h3>
             
@@ -2174,7 +2423,7 @@ export default function IntakeWizard() {
             )}
             <div className="mt-6">
               <Button 
-                onClick={() => setStep(1)}
+                onClick={() => setStep(2)}
                 disabled={!requiredIncidentOk}
                 className="w-full sm:w-auto"
               >
@@ -2185,8 +2434,8 @@ export default function IntakeWizard() {
           </Card>
         )}
 
-        {/* Step 1: Medical History (previously Step 2) */}
-        {step === 1 && (
+        {/* Step 2: Medical History (Post-Injury Self-Assessment) */}
+        {step === 2 && (
           <div className="space-y-8">
             {/* Allergies Section */}
             <IntakeMedicationAllergies
@@ -2253,7 +2502,7 @@ export default function IntakeWizard() {
             
             <div className="mt-6">
               <Button 
-                onClick={() => setStep(2)}
+                onClick={() => setStep(3)}
                 className="w-full sm:w-auto"
                 disabled={
                   (physicalPreDiagnoses.includes("Other") && !(physicalPreOtherText || "").trim()) ||
@@ -2267,8 +2516,8 @@ export default function IntakeWizard() {
           </div>
         )}
 
-        {/* Step 2: Mental Health & Well-Being (previously Step 3) */}
-        {step === 2 && (
+        {/* Step 3: Mental Health & Well-Being (Pre-Injury Self-Assessment) */}
+        {step === 3 && (
           <div className="space-y-8">
             {/* Mental Health Screening Section */}
             <Card className="p-6 border-border">
@@ -2425,7 +2674,7 @@ export default function IntakeWizard() {
 
             <div className="mt-6">
               <Button 
-                onClick={() => setStep(3)}
+                onClick={() => setStep(4)}
                 className="w-full sm:w-auto"
                 disabled={
                   (bhPreDiagnoses.includes("Other") && !(bhPreOtherText || "").trim()) ||
@@ -2439,8 +2688,8 @@ export default function IntakeWizard() {
           </div>
         )}
 
-        {/* Step 3: 4Ps & SDOH (previously Step 4) */}
-        {step === 3 && (
+        {/* Step 4: 4Ps & SDOH (4Ps + SDOH Self-Assessment) */}
+        {step === 4 && (
           <Card className="p-6 border-border">
             <h3 className="text-lg font-semibold text-black mb-4 text-center">
               Optional 4Ps & SDOH
@@ -2672,7 +2921,7 @@ export default function IntakeWizard() {
 
             <div className="mt-6">
               <Button
-                onClick={() => setStep(4)}
+                onClick={() => setStep(5)}
                 className="w-full sm:w-auto"
               >
                 Continue to Review
@@ -2682,8 +2931,8 @@ export default function IntakeWizard() {
           </Card>
         )}
 
-        {/* Step 4: Review & Submit */}
-        {step === 4 && (
+        {/* Step 5: Review & Submit */}
+        {step === 5 && (
           <Card className="p-6 border-border">
             <h3 className="text-lg font-semibold text-black mb-4">Review & Submit</h3>
             {submitSuccess && (
@@ -2786,7 +3035,7 @@ export default function IntakeWizard() {
 
             {/* Assessment Snapshot Explainer */}
             <AssessmentSnapshotExplainer 
-              onUpdateSnapshot={() => setStep(3)}
+              onUpdateSnapshot={() => setStep(4)}
               onAskCara={() => setShowCaraModal(true)}
               showUpdateButton={false}
             />
@@ -3091,7 +3340,7 @@ export default function IntakeWizard() {
                 <Download className="w-4 h-4 mr-2" />
                 Save PDF Summary
               </Button>
-              <Button variant="secondary" onClick={() => setStep(3)}>
+              <Button variant="secondary" onClick={() => setStep(4)}>
                 Back
               </Button>
               <Button variant="outline" onClick={() => setStep(0)}>
@@ -3106,19 +3355,22 @@ export default function IntakeWizard() {
             <WizardNav 
               step={step} 
               setStep={setStep} 
-              last={4}
+              last={5}
               canAdvance={
-                (step === 0 ? requiredIncidentOk :
-                step === 1 ? true :
-                step === 2 ? (sensitiveProgress ? !sensitiveProgress.blockNavigation : true) :
+                (step === 0 ? (!!demographics.dob.trim() && !!demographics.phone.trim()) :
+                step === 1 ? requiredIncidentOk :
+                step === 2 ? true :
+                step === 3 ? (sensitiveProgress ? !sensitiveProgress.blockNavigation : true) :
                 true) && !countdownExpired
               }
               blockReason={
                 countdownExpired
                   ? INTAKE_WINDOW_EXPIRED
-                  : step === 0 && !requiredIncidentOk
+                  : step === 0 && (!demographics.dob.trim() || !demographics.phone.trim())
+                  ? "Date of Birth and Phone Number are required."
+                  : step === 1 && !requiredIncidentOk
                   ? "Incident type and date are required."
-                  : step === 2 && sensitiveProgress?.blockNavigation 
+                  : step === 3 && sensitiveProgress?.blockNavigation 
                   ? "Please complete consent choices in the Sensitive Experiences section"
                   : undefined
               }
