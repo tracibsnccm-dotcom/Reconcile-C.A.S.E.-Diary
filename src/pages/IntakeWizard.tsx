@@ -3108,7 +3108,7 @@ export default function IntakeWizard() {
 
             {/* Pre-submit incomplete-sections warning (client-only) */}
             <Dialog open={incompleteWarningOpen} onOpenChange={(open) => !open && setIncompleteWarningOpen(false)}>
-              <DialogContent className="sm:max-w-md text-black">
+              <DialogContent className="sm:max-w-md bg-white text-black [&>button]:text-black">
                 <DialogHeader>
                   <DialogTitle className="text-black">Before you submit</DialogTitle>
                   <DialogDescription className="text-black">
