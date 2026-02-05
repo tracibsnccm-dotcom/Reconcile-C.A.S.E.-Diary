@@ -122,34 +122,6 @@ function buildIntakeIdentity(firstName: string, lastName: string, email: string,
   };
 }
 
-// --- Pre-submit incomplete-sections check (client-only). Returns sections that are incomplete, ordered by step. ---
-function buildIncompleteSections(p: {
-  intake: Intake;
-  mentalHealth: { depression: string; selfHarm: string; anxiety: string };
-  fourPs: FourPs;
-  preInjuryMeds: { length: number }[];
-  postInjuryMeds: { length: number }[];
-}): { label: string; stepIndex: number }[] {
-  const out: { label: string; stepIndex: number }[] = [];
-  if (!p.intake.incidentDate || !p.intake.incidentType) {
-    out.push({ label: "Incident Details", stepIndex: 0 });
-  }
-  if ((p.preInjuryMeds?.length ?? 0) === 0 && (p.postInjuryMeds?.length ?? 0) === 0) {
-    out.push({ label: "Medications & Treatments", stepIndex: 1 });
-  }
-  const dep = p.mentalHealth?.depression;
-  const self = p.mentalHealth?.selfHarm;
-  const anx = p.mentalHealth?.anxiety;
-  const step2Answered = (dep != null && dep !== '') && (self != null && self !== '') && (anx != null && anx !== '');
-  if (!step2Answered) {
-    out.push({ label: "Mental Health & Well-Being", stepIndex: 2 });
-  }
-  if (p.fourPs.physical === 3 && p.fourPs.psychological === 3 && p.fourPs.psychosocial === 3 && p.fourPs.professional === 3) {
-    out.push({ label: "Assessment Snapshot", stepIndex: 3 });
-  }
-  return out.sort((a, b) => a.stepIndex - b.stepIndex);
-}
-
 export default function IntakeWizard() {
   // ALL useState - must be declared before any useEffect or derived logic (prevents TDZ in production build)
   const [attorneyGuardOk, setAttorneyGuardOk] = useState<boolean | null>(null);
@@ -196,8 +168,6 @@ export default function IntakeWizard() {
     | "error"
   >("idle");
   const [submitDiag, setSubmitDiag] = useState<Record<string, any>>({});
-  const [incompleteWarningOpen, setIncompleteWarningOpen] = useState(false);
-  const [incompleteSectionsList, setIncompleteSectionsList] = useState<{ label: string; stepIndex: number }[]>([]);
   const [clientEsign, setClientEsign] = useState<{
     agreed: boolean;
     signerFullName: string;
@@ -2924,13 +2894,13 @@ export default function IntakeWizard() {
             {/* Case Summary - Final Review: client name at top above RCMS ID */}
             <div className="mt-8 p-6 bg-gradient-to-br from-secondary/10 to-secondary/5 rounded-lg border-2 border-border">
               <h4 className="text-lg font-bold mb-4 text-black">Case Summary</h4>
-              {(() => {
-                const displayName = [client.firstName, client.lastName].filter(Boolean).join(" ") || [sessionStorage.getItem("rcms_client_first_name"), sessionStorage.getItem("rcms_client_last_name")].filter(Boolean).join(" ") || "";
-                return displayName ? (
-                  <p className="text-xl font-bold text-black mb-4">{displayName}</p>
-                ) : null;
-              })()}
               <div className="space-y-3 text-sm">
+                <div className="flex py-2 border-b border-border">
+                  <span className="font-medium w-40">Client:</span>
+                  <span className="text-black font-semibold">
+                    {sessionStorage.getItem("rcms_client_first_name") || ""} {sessionStorage.getItem("rcms_client_last_name") || ""}
+                  </span>
+                </div>
                 <div className="flex py-2 border-b border-border">
                   <span className="font-medium w-40">RCMS ID:</span>
                   <span className="select-none text-black" title="PHI block">
@@ -2994,10 +2964,10 @@ export default function IntakeWizard() {
                 </div>
               </div>
 
-              {/* What happens next — CARE-style: bg-green-100 border-green-300 text-black */}
-              <div className="mt-6 p-4 rounded-lg border-2 border-green-300 bg-green-100 space-y-3 text-black">
-                <h4 className="font-semibold text-black">What happens next</h4>
-                <div className="text-sm text-black space-y-3">
+              {/* What happens next — CARE-style: green background in Case Summary */}
+              <div className="mt-6 p-4 rounded-lg border-2 border-green-300 bg-green-100 space-y-3">
+                <h4 className="font-semibold text-green-900">What happens next</h4>
+                <div className="text-sm text-green-800 space-y-3">
                   <p>Your intake has been submitted successfully.</p>
                   <p>Here&apos;s what happens next:</p>
                   <ul className="list-disc pl-5 space-y-1">
@@ -3005,12 +2975,12 @@ export default function IntakeWizard() {
                     <li>A registered nurse care manager may contact you by phone or email to ask follow-up questions and begin developing your care plan.</li>
                     <li>Please respond as promptly as possible if contacted, as delays can create gaps in care coordination.</li>
                   </ul>
-                  <p className="font-semibold pt-1 text-black">Checking your case status:</p>
+                  <p className="font-semibold pt-1 text-green-800">Checking your case status:</p>
                   <ul className="list-disc pl-5 space-y-1">
                     <li>You can check the status of your case at any time using the INT# you received.</li>
                     <li>From your portal, you may also view updates and send messages to your attorney.</li>
                   </ul>
-                  <p className="font-semibold pt-1 text-black">Important:</p>
+                  <p className="font-semibold pt-1 text-green-800">Important:</p>
                   <p>This platform supports care coordination and case review. It does not provide medical advice. If you have urgent medical concerns, contact emergency services or your healthcare provider.</p>
                 </div>
               </div>
