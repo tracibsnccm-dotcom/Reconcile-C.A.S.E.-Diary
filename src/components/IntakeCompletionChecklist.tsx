@@ -19,7 +19,7 @@ export function IntakeCompletionChecklist({
 }: IntakeCompletionChecklistProps) {
   const items = [
     { label: "Personal Information", completed: hasPersonalInfo },
-    { label: "Incident Details", completed: hasIncidentDetails },
+    { label: "Incident/Injury Overview", completed: hasIncidentDetails },
     { label: "Assessment Snapshot", completed: hasAssessment },
     { label: "Medications & Treatments", completed: hasMedications },
     { label: "Consent Signed", completed: hasConsent },

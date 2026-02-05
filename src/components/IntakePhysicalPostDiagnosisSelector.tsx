@@ -64,7 +64,7 @@ export function IntakePhysicalPostDiagnosisSelector({
         <div className="flex items-start gap-3 mb-6 p-4 bg-primary/5 rounded-lg border border-primary/20">
           <Info className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
           <div>
-            <h4 className="font-semibold text-sm mb-1">Post-Accident / Injury Conditions</h4>
+            <h4 className="font-semibold text-sm mb-1">Post-Injury / Injury Conditions</h4>
             <p className="text-sm text-black">
               Select all physical injuries or conditions that resulted from this incident.
             </p>

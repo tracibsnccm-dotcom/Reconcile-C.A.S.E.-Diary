@@ -125,7 +125,7 @@ function buildIntakeIdentity(firstName: string, lastName: string, email: string,
 export default function IntakeWizard() {
   // ALL useState - must be declared before any useEffect or derived logic (prevents TDZ in production build)
   const [attorneyGuardOk, setAttorneyGuardOk] = useState<boolean | null>(null);
-  const [step, setStep] = useState(0); // Step 0 is now Incident Details (was Step 1)
+  const [step, setStep] = useState(0); // Step 0 = Demographics; 1 = Incident/Injury; 2 = Post-Injury; 3 = Pre-Injury; 4 = Mental Health; 5 = 4Ps; 6 = SDOH; 7 = Review
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [selectedAttorneyId, setSelectedAttorneyId] = useState<string>("");
   const [attorneyCode, setAttorneyCode] = useState("");
@@ -559,7 +559,7 @@ export default function IntakeWizard() {
               if (data.overlayContextFlags) setOverlayContextFlags(data.overlayContextFlags);
               if (data.overlay_answers && typeof data.overlay_answers === "object" && !Array.isArray(data.overlay_answers)) setOverlayAnswers(data.overlay_answers);
               if (data.demographics && typeof data.demographics === "object") setDemographics(data.demographics);
-              if (typeof data.step === 'number') setStep(data.step);
+              if (typeof data.step === 'number') setStep(Math.min(7, Math.max(0, data.step)));
               if (data.attorneyName) {
                 setAttorneyName(data.attorneyName);
                 sessionStorage.setItem("rcms_attorney_name", data.attorneyName);
@@ -621,14 +621,14 @@ export default function IntakeWizard() {
             if (data.overlayContextFlags) setOverlayContextFlags(data.overlayContextFlags);
             if (data.overlay_answers && typeof data.overlay_answers === "object" && !Array.isArray(data.overlay_answers)) setOverlayAnswers(data.overlay_answers);
             if (data.demographics && typeof data.demographics === "object") setDemographics(data.demographics);
-            if (typeof data.step === "number") setStep(data.step);
+            if (typeof data.step === "number") setStep(Math.min(7, Math.max(0, data.step)));
             if (data.attorneyName) {
               setAttorneyName(data.attorneyName);
               sessionStorage.setItem("rcms_attorney_name", data.attorneyName);
             }
           }
           const stepNum = storedStep ? parseInt(storedStep, 10) : NaN;
-          if (!isNaN(stepNum) && stepNum >= 0) setStep(stepNum);
+          if (!isNaN(stepNum) && stepNum >= 0) setStep(Math.min(7, Math.max(0, stepNum)));
           const created = sessionStorage.getItem("rcms_intake_created_at");
           if (created) setIntakeStartedAt(new Date(created));
           const storedAttorneyId = sessionStorage.getItem("rcms_current_attorney_id");
@@ -687,10 +687,10 @@ export default function IntakeWizard() {
     if (urlAttorneyCode && !attorneyCode) setAttorneyCode(urlAttorneyCode);
   }, [searchParams]);
 
-  // Fetch attorney display name for Case Summary when on Review step (step 5, pre-submit)
+  // Fetch attorney display name for Case Summary when on Review step (step 7, pre-submit)
   // Use get_attorney_directory (no rc_users) - prefer availableAttorneys if already loaded
   useEffect(() => {
-    if (step !== 5 || submitSuccess) return;
+    if (step !== 7 || submitSuccess) return;
     if (!selectedAttorneyId) {
       setAttorneyDisplayName("Not assigned");
       return;
@@ -1562,9 +1562,9 @@ export default function IntakeWizard() {
     doc.text(`Attorney: ${attorneyCode || "N/A"}`, 20, yPos);
     yPos += 12;
     
-    // Incident Details
+    // Incident/Injury Overview
     doc.setFontSize(14);
-    doc.text("Incident Details", 20, yPos);
+    doc.text("Incident/Injury Overview", 20, yPos);
     yPos += 10;
     
     doc.setFontSize(10);
@@ -1656,7 +1656,7 @@ export default function IntakeWizard() {
 
   // Dev-only tripwire: log formData structure when entering Step 3 (no PHI)
   useEffect(() => {
-    if (step === 3 && import.meta.env.DEV) {
+    if (step === 4 && import.meta.env.DEV) {
       console.log("[Step3] formData snapshot", {
         keys: Object.keys(formData || {}),
         hasSdoh: !!formData?.sdoh,
@@ -1932,7 +1932,7 @@ export default function IntakeWizard() {
         if (data.overlayContextFlags) setOverlayContextFlags(data.overlayContextFlags);
         if (data.overlay_answers && typeof data.overlay_answers === "object" && !Array.isArray(data.overlay_answers)) setOverlayAnswers(data.overlay_answers);
         if (typeof data.sensitiveTag === 'boolean') setSensitiveTag(data.sensitiveTag);
-        if (typeof data.step === 'number') setStep(data.step);
+        if (typeof data.step === 'number') setStep(Math.min(7, Math.max(0, data.step)));
 
         toast({
           title: "Draft Loaded",
@@ -2196,7 +2196,7 @@ export default function IntakeWizard() {
             <Stepper
               step={step}
               setStep={setStep}
-              labels={["Demographics", "Incident/Injury Overview", "Post-Injury Self-Assessment", "Pre-Injury Self-Assessment", "4Ps + SDOH Self-Assessment", "Review & Submit"]}
+              labels={["Demographics", "Incident/Injury Overview", "Post-Injury Self-Assessment", "Pre-Injury Self-Assessment", "Mental Health & Well-Being Self-Assessment", "4Ps Self-Assessment", "SDOH Self-Assessment", "Review & Submit"]}
             />
             
             {/* Progress Bar */}
@@ -2381,17 +2381,17 @@ export default function IntakeWizard() {
                 disabled={!demographics.dob.trim() || !demographics.phone.trim()}
                 className="w-full sm:w-auto"
               >
-                Continue to Incident Overview
+                Continue to Incident/Injury Overview
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </div>
           </Card>
         )}
 
-        {/* Step 1: Incident Details (Incident/Injury Overview) */}
+        {/* Step 1: Incident/Injury Overview */}
         {step === 1 && (
           <Card className="p-6 border-border">
-            <h3 className="text-lg font-semibold text-black mb-4">Incident Details</h3>
+            <h3 className="text-lg font-semibold text-black mb-4">Incident/Injury Overview</h3>
             
             {/* Attorney Display (read-only, selected in ClientConsent or loaded from session) */}
             {(selectedAttorneyId || attorneyCode) && (
@@ -2483,23 +2483,97 @@ export default function IntakeWizard() {
                 disabled={!requiredIncidentOk}
                 className="w-full sm:w-auto"
               >
-                Continue to Medical History
+                Continue to Post-Injury Self-Assessment
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </div>
           </Card>
         )}
 
-        {/* Step 2: Medical History (Post-Injury Self-Assessment) */}
+        {/* Step 2: Post-Injury Self-Assessment */}
         {step === 2 && (
           <div className="space-y-8">
-            {/* Allergies Section */}
+            {/* Post-Injury Physical Section */}
+            <div className="border-4 border-destructive/30 rounded-lg p-6 space-y-6 bg-card/50">
+              <h3 className="text-xl font-bold text-black border-b-2 border-destructive pb-2">
+                POST-INJURY PHYSICAL
+              </h3>
+              
+              <IntakePhysicalPostDiagnosisSelector
+                selectedDiagnoses={physicalPostDiagnoses}
+                additionalNotes={physicalPostNotes}
+                otherText={physicalPostOtherText}
+                onDiagnosesChange={setPhysicalPostDiagnoses}
+                onNotesChange={setPhysicalPostNotes}
+                onOtherChange={setPhysicalPostOtherText}
+              />
+
+              <IntakePostInjuryMedications
+                medications={postInjuryMeds}
+                onChange={setPostInjuryMeds}
+              />
+
+              <IntakePostInjuryTreatments
+                treatments={postInjuryTreatments}
+                onChange={setPostInjuryTreatments}
+              />
+            </div>
+
+            {/* Post-Injury Behavioral Health Section */}
+            <div className="border-4 border-destructive/30 rounded-lg p-6 space-y-6 bg-card/50">
+              <h3 className="text-xl font-bold text-black border-b-2 border-destructive pb-2">
+                POST-INJURY BEHAVIORAL HEALTH
+              </h3>
+              
+              <IntakeBehavioralHealthDiagnosisSelector
+                selectedPreDiagnoses={[]}
+                selectedPostDiagnoses={bhPostDiagnoses}
+                additionalNotes={bhNotes}
+                onPreDiagnosesChange={() => {}}
+                onPostDiagnosesChange={setBhPostDiagnoses}
+                onNotesChange={setBhNotes}
+                showOnlyPost={true}
+                postOtherText={bhPostOtherText}
+                onPostOtherChange={setBhPostOtherText}
+              />
+
+              <IntakeBehavioralHealthMedications
+                preMedications={[]}
+                postMedications={bhPostMeds}
+                onPreChange={() => {}}
+                onPostChange={setBhPostMeds}
+                showOnlyPost={true}
+              />
+            </div>
+
+            <FileUploadZone
+              onFilesUploaded={(files) => setUploadedFiles(prev => [...prev, ...files])}
+              draftId={draftId || undefined}
+            />
+            
+            <div className="mt-6">
+              <Button 
+                onClick={() => setStep(3)}
+                className="w-full sm:w-auto"
+                disabled={physicalPostDiagnoses.includes("Other") && !(physicalPostOtherText || "").trim()}
+              >
+                Continue to Pre-Injury Self-Assessment
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Pre-Injury Self-Assessment */}
+        {step === 3 && (
+          <div className="space-y-8">
+            {/* Allergies Section (baseline) */}
             <IntakeMedicationAllergies
               allergies={medAllergies}
               onChange={setMedAllergies}
             />
 
-            {/* Pre-Injury Section */}
+            {/* Pre-Injury Physical Section */}
             <div className="border-4 border-primary/30 rounded-lg p-6 space-y-6 bg-card/50">
               <h3 className="text-xl font-bold text-black border-b-2 border-primary pb-2">
                 PRE-INJURY / CHRONIC CONDITIONS
@@ -2525,57 +2599,50 @@ export default function IntakeWizard() {
               />
             </div>
 
-            {/* Post-Injury Section */}
-            <div className="border-4 border-destructive/30 rounded-lg p-6 space-y-6 bg-card/50">
-              <h3 className="text-xl font-bold text-black border-b-2 border-destructive pb-2">
-                POST-INJURY / ACCIDENT-RELATED
+            {/* Pre-Injury Behavioral Health Section */}
+            <div className="border-4 border-primary/30 rounded-lg p-6 space-y-6 bg-card/50">
+              <h3 className="text-xl font-bold text-black border-b-2 border-primary pb-2">
+                PRE-INJURY BEHAVIORAL HEALTH
               </h3>
               
-              <IntakePhysicalPostDiagnosisSelector
-                selectedDiagnoses={physicalPostDiagnoses}
-                additionalNotes={physicalPostNotes}
-                otherText={physicalPostOtherText}
-                onDiagnosesChange={setPhysicalPostDiagnoses}
-                onNotesChange={setPhysicalPostNotes}
-                onOtherChange={setPhysicalPostOtherText}
+              <IntakeBehavioralHealthDiagnosisSelector
+                selectedPreDiagnoses={bhPreDiagnoses}
+                selectedPostDiagnoses={[]}
+                additionalNotes=""
+                onPreDiagnosesChange={setBhPreDiagnoses}
+                onPostDiagnosesChange={() => {}}
+                onNotesChange={() => {}}
+                showOnlyPre={true}
+                preOtherText={bhPreOtherText}
+                onPreOtherChange={setBhPreOtherText}
               />
 
-              <IntakePostInjuryMedications
-                medications={postInjuryMeds}
-                onChange={setPostInjuryMeds}
-              />
-
-              <IntakePostInjuryTreatments
-                treatments={postInjuryTreatments}
-                onChange={setPostInjuryTreatments}
+              <IntakeBehavioralHealthMedications
+                preMedications={bhPreMeds}
+                postMedications={[]}
+                onPreChange={setBhPreMeds}
+                onPostChange={() => {}}
+                showOnlyPre={true}
               />
             </div>
 
-            <FileUploadZone
-              onFilesUploaded={(files) => setUploadedFiles(prev => [...prev, ...files])}
-              draftId={draftId || undefined}
-            />
-            
             <div className="mt-6">
               <Button 
-                onClick={() => setStep(3)}
+                onClick={() => setStep(4)}
                 className="w-full sm:w-auto"
-                disabled={
-                  (physicalPreDiagnoses.includes("Other") && !(physicalPreOtherText || "").trim()) ||
-                  (physicalPostDiagnoses.includes("Other") && !(physicalPostOtherText || "").trim())
-                }
+                disabled={bhPreDiagnoses.includes("Other") && !(bhPreOtherText || "").trim()}
               >
-                Continue to Behavioral Health
+                Continue to Mental Health & Well-Being
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </div>
           </div>
         )}
 
-        {/* Step 3: Mental Health & Well-Being (Pre-Injury Self-Assessment) */}
-        {step === 3 && (
+        {/* Step 4: Mental Health & Well-Being Self-Assessment */}
+        {step === 4 && (
           <div className="space-y-8">
-            {/* Mental Health Screening Section */}
+            {/* Mental Health Screening Card */}
             <Card className="p-6 border-border">
               <h3 className="text-lg font-semibold text-black mb-4">
                 Mental Health & Well-Being Check-In
@@ -2666,7 +2733,7 @@ export default function IntakeWizard() {
               </div>
             </Card>
 
-            {/* Sensitive or Personal Experiences Section */}
+            {/* Sensitive or Personal Experiences */}
             <IntakeSensitiveExperiences
               data={sensitiveExperiences}
               onChange={setSensitiveExperiences}
@@ -2674,91 +2741,34 @@ export default function IntakeWizard() {
               onProgressChange={setSensitiveProgress}
             />
 
-            {/* Pre-Accident BH Section */}
-            <div className="border-4 border-primary/30 rounded-lg p-6 space-y-6 bg-card/50">
-              <h3 className="text-xl font-bold text-black border-b-2 border-primary pb-2">
-                PRE-ACCIDENT BEHAVIORAL HEALTH
-              </h3>
-              
-              <IntakeBehavioralHealthDiagnosisSelector
-                selectedPreDiagnoses={bhPreDiagnoses}
-                selectedPostDiagnoses={[]}
-                additionalNotes=""
-                onPreDiagnosesChange={setBhPreDiagnoses}
-                onPostDiagnosesChange={() => {}}
-                onNotesChange={() => {}}
-                showOnlyPre={true}
-                preOtherText={bhPreOtherText}
-                onPreOtherChange={setBhPreOtherText}
-              />
-
-              <IntakeBehavioralHealthMedications
-                preMedications={bhPreMeds}
-                postMedications={[]}
-                onPreChange={setBhPreMeds}
-                onPostChange={() => {}}
-                showOnlyPre={true}
-              />
-            </div>
-
-            {/* Post-Accident BH Section */}
-            <div className="border-4 border-destructive/30 rounded-lg p-6 space-y-6 bg-card/50">
-              <h3 className="text-xl font-bold text-black border-b-2 border-destructive pb-2">
-                POST-ACCIDENT BEHAVIORAL HEALTH
-              </h3>
-              
-              <IntakeBehavioralHealthDiagnosisSelector
-                selectedPreDiagnoses={[]}
-                selectedPostDiagnoses={bhPostDiagnoses}
-                additionalNotes={bhNotes}
-                onPreDiagnosesChange={() => {}}
-                onPostDiagnosesChange={setBhPostDiagnoses}
-                onNotesChange={setBhNotes}
-                showOnlyPost={true}
-                postOtherText={bhPostOtherText}
-                onPostOtherChange={setBhPostOtherText}
-              />
-
-              <IntakeBehavioralHealthMedications
-                preMedications={[]}
-                postMedications={bhPostMeds}
-                onPreChange={() => {}}
-                onPostChange={setBhPostMeds}
-                showOnlyPost={true}
-              />
-            </div>
-
             <div className="mt-6">
               <Button 
-                onClick={() => setStep(4)}
+                onClick={() => setStep(5)}
                 className="w-full sm:w-auto"
-                disabled={
-                  (bhPreDiagnoses.includes("Other") && !(bhPreOtherText || "").trim()) ||
-                  (bhPostDiagnoses.includes("Other") && !(bhPostOtherText || "").trim())
-                }
+                disabled={sensitiveProgress ? sensitiveProgress.blockNavigation : false}
               >
-                Continue to 4Ps & SDOH
+                Continue to 4Ps Self-Assessment
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </div>
           </div>
         )}
 
-        {/* Step 4: 4Ps & SDOH (4Ps + SDOH Self-Assessment) */}
-        {step === 4 && (
+        {/* Step 5: 4Ps Self-Assessment */}
+        {step === 5 && (
           <Card className="p-6 border-border">
             <h3 className="text-lg font-semibold text-black mb-4 text-center">
-              Optional 4Ps & SDOH
+              4Ps Self-Assessment
             </h3>
             
             {/* Scoring Directions */}
             <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 space-y-3 mb-6">
               <h4 className="font-semibold text-sm flex items-center gap-2">
                 <Info className="h-4 w-4" />
-                How to Score the 4Ps & SDOH
+                How to Score the 4Ps
               </h4>
               <p className="text-sm text-black">
-                Each category measures <strong>distress or impairment</strong>, not wellness. How to Use this scale to rate your impairment:
+                Each category measures <strong>distress or impairment</strong>, not wellness. Use this scale to rate your impairment:
               </p>
               <div className="space-y-2 text-sm">
                 <div className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-2 items-start">
@@ -2894,12 +2904,32 @@ export default function IntakeWizard() {
               </div>
             </TooltipProvider>
 
+            <div className="mt-6">
+              <Button
+                onClick={() => setStep(6)}
+                className="w-full sm:w-auto"
+              >
+                Continue to SDOH Self-Assessment
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
+          </Card>
+        )}
+
+        {/* Step 6: SDOH Self-Assessment */}
+        {step === 6 && (
+          <Card className="p-6 border-border">
+            <h3 className="text-lg font-semibold text-black mb-4 text-center">
+              SDOH Self-Assessment
+            </h3>
+            
+            <p className="text-sm text-black italic p-3 bg-muted/30 rounded-md border border-border/50 mb-6">
+              Answers to these questions are strictly voluntary and are only used to help determine if we can help provide access and information to resources you may be eligible for and benefit from.
+            </p>
+
             {/* SDOH Domains with 1-5 Scale */}
             <div className="space-y-6">
               <h4 className="font-semibold text-black">Social Drivers of Health (SDOH)</h4>
-              <p className="text-sm text-black italic p-3 bg-muted/30 rounded-md border border-border/50">
-                Answers to these questions are strictly voluntary and are only used to help determine if we can help provide access and information to resources you may be eligible for and benefit from.
-              </p>
               
               {[
                 { key: 'housing', label: 'Housing Stability' },
@@ -2977,18 +3007,18 @@ export default function IntakeWizard() {
 
             <div className="mt-6">
               <Button
-                onClick={() => setStep(5)}
+                onClick={() => setStep(7)}
                 className="w-full sm:w-auto"
               >
-                Continue to Review
+                Continue to Review & Submit
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </div>
           </Card>
         )}
 
-        {/* Step 5: Review & Submit */}
-        {step === 5 && (
+        {/* Step 7: Review & Submit */}
+        {step === 7 && (
           <Card className="p-6 border-border">
             <h3 className="text-lg font-semibold text-black mb-4">Review & Submit</h3>
             {submitSuccess && (
@@ -3091,7 +3121,7 @@ export default function IntakeWizard() {
 
             {/* Assessment Snapshot Explainer */}
             <AssessmentSnapshotExplainer 
-              onUpdateSnapshot={() => setStep(4)}
+              onUpdateSnapshot={() => setStep(5)}
               onAskCara={() => setShowCaraModal(true)}
               showUpdateButton={false}
             />
@@ -3364,7 +3394,7 @@ export default function IntakeWizard() {
               <Alert variant="destructive" className="mt-6">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  Please complete the &apos;Other&apos; condition description before submitting. Go back to <strong>Medical History</strong> (Pre-injury or Post-injury) or <strong>Behavioral Health</strong> (Pre-accident or Post-accident) to describe your condition.
+                  Please complete the &apos;Other&apos; condition description before submitting. Go back to <strong>Post-Injury Self-Assessment</strong> or <strong>Pre-Injury Self-Assessment</strong> to describe your condition.
                 </AlertDescription>
               </Alert>
             )}
@@ -3396,7 +3426,7 @@ export default function IntakeWizard() {
                 <Download className="w-4 h-4 mr-2" />
                 Save PDF Summary
               </Button>
-              <Button variant="secondary" onClick={() => setStep(4)}>
+              <Button variant="secondary" onClick={() => setStep(6)}>
                 Back
               </Button>
               <Button variant="outline" onClick={() => setStep(0)}>
@@ -3411,12 +3441,13 @@ export default function IntakeWizard() {
             <WizardNav 
               step={step} 
               setStep={setStep} 
-              last={5}
+              last={7}
               canAdvance={
                 (step === 0 ? (!!demographics.dob.trim() && !!demographics.phone.trim()) :
                 step === 1 ? requiredIncidentOk :
                 step === 2 ? true :
-                step === 3 ? (sensitiveProgress ? !sensitiveProgress.blockNavigation : true) :
+                step === 3 ? true :
+                step === 4 ? (sensitiveProgress ? !sensitiveProgress.blockNavigation : true) :
                 true) && !countdownExpired
               }
               blockReason={
@@ -3426,7 +3457,7 @@ export default function IntakeWizard() {
                   ? "Date of Birth and Phone Number are required."
                   : step === 1 && !requiredIncidentOk
                   ? "Incident type and date are required."
-                  : step === 3 && sensitiveProgress?.blockNavigation 
+                  : step === 4 && sensitiveProgress?.blockNavigation 
                   ? "Please complete consent choices in the Sensitive Experiences section"
                   : undefined
               }

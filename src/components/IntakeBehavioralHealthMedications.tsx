@@ -75,12 +75,12 @@ export function IntakeBehavioralHealthMedications({
         )}
 
         <div className="space-y-8">
-          {/* Pre-Accident Section */}
+          {/* Pre-Injury Section */}
           {!showOnlyPost && (
             <div>
               {!showOnlyPre && (
                 <h4 className="font-semibold text-base mb-4 text-black border-b pb-2">
-                  Pre-Accident Mental Health Medications
+                  Pre-Injury Mental Health Medications
                 </h4>
               )}
             <div className="space-y-4">
@@ -138,7 +138,7 @@ export function IntakeBehavioralHealthMedications({
 
               {preMedications.length === 0 && (
                 <p className="text-sm text-black text-center py-4">
-                  No pre-accident mental health medications added yet.
+                  No pre-injury mental health medications added yet.
                 </p>
               )}
 
@@ -149,18 +149,18 @@ export function IntakeBehavioralHealthMedications({
                 className="w-full"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Add Pre-Accident Mental Health Medication
+                Add Pre-Injury Mental Health Medication
               </Button>
             </div>
           </div>
           )}
 
-          {/* Post-Accident Section */}
+          {/* Post-Injury Section */}
           {!showOnlyPre && (
             <div>
               {!showOnlyPost && (
                 <h4 className="font-semibold text-base mb-4 text-black border-b pb-2">
-                  Post-Accident Mental Health Medications
+                  Post-Injury Mental Health Medications
                 </h4>
               )}
             <div className="space-y-4">
@@ -229,7 +229,7 @@ export function IntakeBehavioralHealthMedications({
                 className="w-full"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Add Post-Accident Mental Health Medication
+                Add Post-Injury Mental Health Medication
               </Button>
             </div>
           </div>

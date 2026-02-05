@@ -134,7 +134,7 @@ export function IntakeBehavioralHealthDiagnosisSelector({
             <div>
               {!showOnlyPre && (
                 <h4 className="font-semibold text-base mb-4 text-black border-b pb-2">
-                  Chronic / Pre-Accident
+                  Chronic / Pre-Injury
                 </h4>
               )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -193,7 +193,7 @@ export function IntakeBehavioralHealthDiagnosisSelector({
             <div>
               {!showOnlyPost && (
                 <h4 className="font-semibold text-base mb-4 text-black border-b pb-2">
-                  Post-Accident / New or Worsened
+                  Post-Injury / New or Worsened
                 </h4>
               )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
