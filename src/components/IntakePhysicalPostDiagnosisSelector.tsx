@@ -65,7 +65,7 @@ export function IntakePhysicalPostDiagnosisSelector({
           <Info className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
           <div>
             <h4 className="font-semibold text-sm mb-1">Post-Accident / Injury Conditions</h4>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-black">
               Select all physical injuries or conditions that resulted from this incident.
             </p>
           </div>
@@ -127,7 +127,7 @@ export function IntakePhysicalPostDiagnosisSelector({
             <Label htmlFor="physical-additional-conditions" className="font-semibold">
               Additional Physical Conditions or Notes
             </Label>
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-black">
               {additionalNotes.length} / 1000
             </span>
           </div>

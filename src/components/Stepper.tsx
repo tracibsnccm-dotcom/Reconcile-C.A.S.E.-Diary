@@ -21,7 +21,7 @@ export function Stepper({ step, setStep, labels }: StepperProps) {
                   ? "bg-primary text-primary-foreground border-primary"
                   : idx < step
                   ? "bg-success text-success-foreground border-success"
-                  : "bg-muted text-muted-foreground border-border"
+                  : "bg-muted text-black border-border"
               )}
               aria-label={`Step ${idx + 1}: ${label}`}
               aria-current={idx === step ? "step" : undefined}
@@ -31,7 +31,7 @@ export function Stepper({ step, setStep, labels }: StepperProps) {
             <span
               className={cn(
                 "ml-2 text-sm font-medium hidden md:inline",
-                idx === step ? "text-foreground" : "text-muted-foreground"
+                "text-black"
               )}
             >
               {label}

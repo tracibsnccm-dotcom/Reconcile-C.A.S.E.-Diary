@@ -471,6 +471,10 @@ export default function IntakeWizard() {
             // Persist to sessionStorage so countdown banner and others have intake/session ids
             if (session.intakeId) sessionStorage.setItem("rcms_intake_id", session.intakeId);
             if (session.id) sessionStorage.setItem("rcms_intake_session_id", session.id);
+            // Hydrate client name/email so Review & Submit has firstName/lastName
+            if (session.firstName) sessionStorage.setItem("rcms_client_first_name", session.firstName);
+            if (session.lastName) sessionStorage.setItem("rcms_client_last_name", session.lastName);
+            if (session.email) sessionStorage.setItem("rcms_client_email", session.email);
             // Anchor: prefer DB created_at when resuming by token; set only if missing or differs by >5s
             if (session.createdAt) {
               const existing = sessionStorage.getItem("rcms_intake_created_at");
@@ -500,7 +504,12 @@ export default function IntakeWizard() {
             // Load form data if available
             if (session.formData && Object.keys(session.formData).length > 0) {
               const data = session.formData as any;
-              if (data.client) setClient(data.client);
+              if (data.client) {
+                setClient(data.client);
+                if (data.client.firstName) sessionStorage.setItem("rcms_client_first_name", data.client.firstName);
+                if (data.client.lastName) sessionStorage.setItem("rcms_client_last_name", data.client.lastName);
+                if (data.client.email) sessionStorage.setItem("rcms_client_email", data.client.email);
+              }
               if (data.intake) setIntake(data.intake);
               if (data.fourPs) setFourPs(data.fourPs);
               if (data.sdoh) setSdoh(data.sdoh);
@@ -556,7 +565,12 @@ export default function IntakeWizard() {
         try {
           const data = JSON.parse(storedFormData) as any;
           if (data && typeof data === "object") {
-            if (data.client) setClient(data.client);
+            if (data.client) {
+              setClient(data.client);
+              if (data.client.firstName) sessionStorage.setItem("rcms_client_first_name", data.client.firstName);
+              if (data.client.lastName) sessionStorage.setItem("rcms_client_last_name", data.client.lastName);
+              if (data.client.email) sessionStorage.setItem("rcms_client_email", data.client.email);
+            }
             if (data.intake) setIntake(data.intake);
             if (data.fourPs) setFourPs(data.fourPs);
             if (data.sdoh) setSdoh(data.sdoh);
@@ -928,49 +942,29 @@ export default function IntakeWizard() {
     console.log('IntakeWizard handleSubmit: Resolved attorneyId', attorneyId);
     setSubmitDiag((prev) => ({ ...prev, attorneyIdResolved: attorneyId }));
 
-    // Get client information from intake session or sessionStorage
-    // intakeSessionId is now declared at function scope above, so it's available here
-    let clientFirstName = "";
-    let clientLastName = "";
-    let clientEmail = "";
-    let intakeIdFromSession: string | null = null; // The INT number from the session
+    // Get client information: sessionStorage first (set by IntakeIdentity), then intake session DB
+    // So firstName/lastName persist through the entire wizard and are available at Review & Submit
+    let clientFirstName = sessionStorage.getItem("rcms_client_first_name") || "";
+    let clientLastName = sessionStorage.getItem("rcms_client_last_name") || "";
+    let clientEmail = sessionStorage.getItem("rcms_client_email") || "";
+    let intakeIdFromSession: string | null = sessionStorage.getItem("rcms_intake_id") || null;
     
-    console.log('IntakeWizard: intakeSessionId from sessionStorage:', intakeSessionId);
-    
-    if (intakeSessionId) {
+    if (intakeSessionId && (!clientFirstName || !clientLastName || !clientEmail || !intakeIdFromSession)) {
       try {
-        const { data: sessionData, error: sessionError } = await supabaseGet(
+        const { data: sessionData } = await supabaseGet(
           'rc_client_intake_sessions',
           `id=eq.${intakeSessionId}&select=first_name,last_name,email,intake_id&limit=1`
         );
-        
-        console.log('IntakeWizard: Session query result:', { data: sessionData, error: sessionError });
-        
         if (sessionData) {
           const session = Array.isArray(sessionData) ? sessionData[0] : sessionData;
-          clientFirstName = session.first_name || "";
-          clientLastName = session.last_name || "";
-          clientEmail = session.email || "";
-          intakeIdFromSession = session.intake_id || null; // Get the INT number from session
-          console.log('IntakeWizard: Got client info from session:', { clientFirstName, clientLastName, clientEmail, intakeIdFromSession });
+          if (!clientFirstName) clientFirstName = session.first_name || "";
+          if (!clientLastName) clientLastName = session.last_name || "";
+          if (!clientEmail) clientEmail = session.email || "";
+          if (!intakeIdFromSession) intakeIdFromSession = session.intake_id || null;
         }
       } catch (e) {
         console.error("Error loading intake session:", e);
       }
-    }
-    
-    // FALLBACK: If we didn't get client info from database, try sessionStorage
-    if (!clientFirstName || !clientLastName || !clientEmail) {
-      console.log('IntakeWizard: Client info missing from database query, checking sessionStorage fallback');
-      const storedFirstName = sessionStorage.getItem("rcms_client_first_name");
-      const storedLastName = sessionStorage.getItem("rcms_client_last_name");
-      const storedEmail = sessionStorage.getItem("rcms_client_email");
-      
-      if (storedFirstName) clientFirstName = storedFirstName;
-      if (storedLastName) clientLastName = storedLastName;
-      if (storedEmail) clientEmail = storedEmail;
-      
-      console.log('IntakeWizard: After sessionStorage fallback:', { clientFirstName, clientLastName, clientEmail });
     }
 
     // STEP 2: Email fallback from auth (fallback ONLY for email)
@@ -1947,7 +1941,7 @@ export default function IntakeWizard() {
   if (attorneyGuardOk === null) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center text-muted-foreground">Verifying your session...</div>
+        <div className="text-center text-black">Verifying your session...</div>
       </div>
     );
   }
@@ -1959,11 +1953,11 @@ export default function IntakeWizard() {
         <IntakeCountdownBanner onExpired={setCountdownExpired} />
         <div className="max-w-4xl mx-auto py-8 px-4">
           <Card className="p-6 border-border">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Intake Submitted</h3>
-            <p className="text-muted-foreground mb-2">Your intake has been submitted and is pending attorney review.</p>
-            <p className="text-sm text-muted-foreground mb-4">You can check your status anytime using Resume / Check Status.</p>
+            <h3 className="text-lg font-semibold text-black mb-4">Intake Submitted</h3>
+            <p className="text-black mb-2">Your intake has been submitted and is pending attorney review.</p>
+            <p className="text-sm text-black mb-4">You can check your status anytime using Resume / Check Status.</p>
             {client.rcmsId && (
-              <p className="text-sm text-muted-foreground mb-4">Intake ID: <span className="font-mono">{client.rcmsId}</span></p>
+              <p className="text-sm text-black mb-4">Intake ID: <span className="font-mono">{client.rcmsId}</span></p>
             )}
             <div className="flex flex-wrap gap-3">
               <Button onClick={() => navigate("/resume-intake")}>Go to Resume / Check Status</Button>
@@ -1976,7 +1970,7 @@ export default function IntakeWizard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 text-black">
       <IntakeCountdownBanner onExpired={setCountdownExpired} />
       {!showWelcome && (
         <IntakeSaveBar 
@@ -2016,12 +2010,12 @@ export default function IntakeWizard() {
             <div className="mb-8">
               <div className="flex items-start justify-between">
                 <div>
-                  <h1 className="text-3xl font-bold text-foreground">Client Intake Wizard</h1>
-                  <p className="text-muted-foreground mt-1">Complete the intake process step by step</p>
+                  <h1 className="text-3xl font-bold text-black">Client Intake Wizard</h1>
+                  <p className="text-black mt-1">Complete the intake process step by step</p>
                 </div>
                 {intakeStartedAt && (
                   <div className="text-right">
-                    <div className="text-sm text-muted-foreground mb-1">Time Remaining</div>
+                    <div className="text-sm text-black mb-1">Time Remaining</div>
                     <div className={`text-lg font-mono font-bold ${clientWindowExpired ? 'text-destructive' : 'text-primary'}`}>
                       {(() => {
                         if (clientMsRemaining <= 0) {
@@ -2067,13 +2061,13 @@ export default function IntakeWizard() {
         {/* Step 0: Incident Details (previously Step 1) */}
         {step === 0 && (
           <Card className="p-6 border-border">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Incident Details</h3>
+            <h3 className="text-lg font-semibold text-black mb-4">Incident Details</h3>
             
             {/* Attorney Display (read-only, selected in ClientConsent or loaded from session) */}
             {(selectedAttorneyId || attorneyCode) && (
               <div className="mb-6 p-4 bg-muted/30 rounded-lg border border-border">
                 <h4 className="text-sm font-semibold mb-2">Attorney</h4>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-black">
                   {selectedAttorneyId && Array.isArray(availableAttorneys) && availableAttorneys.length > 0
                     ? (() => {
                         const found = availableAttorneys.find(a => a.attorney_id === selectedAttorneyId);
@@ -2133,7 +2127,7 @@ export default function IntakeWizard() {
                 <Info className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
                 <div>
                   <h4 className="font-semibold text-sm mb-1">Tell Us What Happened</h4>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-black">
                     Describe the incident in your own words. Include important details like what happened, where, and any immediate effects you experienced.
                   </p>
                 </div>
@@ -2190,7 +2184,7 @@ export default function IntakeWizard() {
 
             {/* Pre-Injury Section */}
             <div className="border-4 border-primary/30 rounded-lg p-6 space-y-6 bg-card/50">
-              <h3 className="text-xl font-bold text-foreground border-b-2 border-primary pb-2">
+              <h3 className="text-xl font-bold text-black border-b-2 border-primary pb-2">
                 PRE-INJURY / CHRONIC CONDITIONS
               </h3>
               
@@ -2216,7 +2210,7 @@ export default function IntakeWizard() {
 
             {/* Post-Injury Section */}
             <div className="border-4 border-destructive/30 rounded-lg p-6 space-y-6 bg-card/50">
-              <h3 className="text-xl font-bold text-foreground border-b-2 border-destructive pb-2">
+              <h3 className="text-xl font-bold text-black border-b-2 border-destructive pb-2">
                 POST-INJURY / ACCIDENT-RELATED
               </h3>
               
@@ -2266,7 +2260,7 @@ export default function IntakeWizard() {
           <div className="space-y-8">
             {/* Mental Health Screening Section */}
             <Card className="p-6 border-border">
-              <h3 className="text-lg font-semibold text-foreground mb-4">
+              <h3 className="text-lg font-semibold text-black mb-4">
                 Mental Health & Well-Being Check-In
               </h3>
               
@@ -2365,7 +2359,7 @@ export default function IntakeWizard() {
 
             {/* Pre-Accident BH Section */}
             <div className="border-4 border-primary/30 rounded-lg p-6 space-y-6 bg-card/50">
-              <h3 className="text-xl font-bold text-foreground border-b-2 border-primary pb-2">
+              <h3 className="text-xl font-bold text-black border-b-2 border-primary pb-2">
                 PRE-ACCIDENT BEHAVIORAL HEALTH
               </h3>
               
@@ -2392,7 +2386,7 @@ export default function IntakeWizard() {
 
             {/* Post-Accident BH Section */}
             <div className="border-4 border-destructive/30 rounded-lg p-6 space-y-6 bg-card/50">
-              <h3 className="text-xl font-bold text-foreground border-b-2 border-destructive pb-2">
+              <h3 className="text-xl font-bold text-black border-b-2 border-destructive pb-2">
                 POST-ACCIDENT BEHAVIORAL HEALTH
               </h3>
               
@@ -2436,7 +2430,7 @@ export default function IntakeWizard() {
         {/* Step 3: 4Ps & SDOH (previously Step 4) */}
         {step === 3 && (
           <Card className="p-6 border-border">
-            <h3 className="text-lg font-semibold text-foreground mb-4 text-center">
+            <h3 className="text-lg font-semibold text-black mb-4 text-center">
               Optional 4Ps & SDOH
             </h3>
             
@@ -2446,33 +2440,33 @@ export default function IntakeWizard() {
                 <Info className="h-4 w-4" />
                 How to Score the 4Ps & SDOH
               </h4>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-black">
                 Each category measures <strong>distress or impairment</strong>, not wellness. How to Use this scale to rate your impairment:
               </p>
               <div className="space-y-2 text-sm">
                 <div className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-2 items-start">
                   <span className="font-semibold">1</span>
-                  <span className="text-muted-foreground">Extremely difficult - Can't do normal daily things without help</span>
+                  <span className="text-black">Extremely difficult - Can't do normal daily things without help</span>
 
                   <span className="font-semibold">2</span>
-                  <span className="text-muted-foreground">Really hard most days - Struggle with regular tasks and activities</span>
+                  <span className="text-black">Really hard most days - Struggle with regular tasks and activities</span>
 
                   <span className="font-semibold">3</span>
-                  <span className="text-muted-foreground">Pretty difficult at times - Have to push through to get things done</span>
+                  <span className="text-black">Pretty difficult at times - Have to push through to get things done</span>
 
                   <span className="font-semibold">4</span>
-                  <span className="text-muted-foreground">A little tricky sometimes - Mostly able to do what I need to</span>
+                  <span className="text-black">A little tricky sometimes - Mostly able to do what I need to</span>
 
                   <span className="font-semibold">5</span>
-                  <span className="text-muted-foreground">Doing just fine - No problems with my daily activities</span>
+                  <span className="text-black">Doing just fine - No problems with my daily activities</span>
                 </div>
               </div>
             </div>
 
             {/* Context (helps your RN Care Manager tailor your plan) — drives overlay defaults */}
             <Card className="p-6 border-border mb-6">
-              <h4 className="font-semibold text-foreground mb-1">Context (helps your RN Care Manager tailor your plan)</h4>
-              <p className="text-sm text-muted-foreground mb-4">Optional. These answers help us consider factors that may impact your care and recovery.</p>
+              <h4 className="font-semibold text-black mb-1">Context (helps your RN Care Manager tailor your plan)</h4>
+              <p className="text-sm text-black mb-4">Optional. These answers help us consider factors that may impact your care and recovery.</p>
               <div className="grid gap-6 sm:grid-cols-1">
                 <div>
                   <Label className="mb-2 block text-sm font-medium">Age range</Label>
@@ -2510,7 +2504,7 @@ export default function IntakeWizard() {
                 <div className="flex items-center justify-between rounded-lg border p-4">
                   <div>
                     <Label className="text-sm font-medium">Do you have caregiving responsibilities for a child or dependent?</Label>
-                    <p className="text-xs text-muted-foreground mt-1">This helps us consider recovery impact on family responsibilities.</p>
+                    <p className="text-xs text-black mt-1">This helps us consider recovery impact on family responsibilities.</p>
                   </div>
                   <Switch
                     checked={overlayContextFlags?.has_dependents ?? false}
@@ -2556,7 +2550,7 @@ export default function IntakeWizard() {
                           </Label>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <HelpCircle className="w-4 h-4 text-muted-foreground cursor-help" />
+                              <HelpCircle className="w-4 h-4 text-black cursor-help" />
                             </TooltipTrigger>
                             <TooltipContent className="max-w-xs">
                               <p className="text-sm">{tooltips[k]}</p>
@@ -2573,7 +2567,7 @@ export default function IntakeWizard() {
                           step={1}
                           className="w-full"
                         />
-                        <p className="text-xs text-muted-foreground mt-2 italic">
+                        <p className="text-xs text-black mt-2 italic">
                           {scoreLabels[num4p]}
                         </p>
                       </div>
@@ -2585,8 +2579,8 @@ export default function IntakeWizard() {
 
             {/* SDOH Domains with 1-5 Scale */}
             <div className="space-y-6">
-              <h4 className="font-semibold text-foreground">Social Determinants of Health (SDOH)</h4>
-              <p className="text-sm text-muted-foreground italic p-3 bg-muted/30 rounded-md border border-border/50">
+              <h4 className="font-semibold text-black">Social Drivers of Health (SDOH)</h4>
+              <p className="text-sm text-black italic p-3 bg-muted/30 rounded-md border border-border/50">
                 Answers to these questions are strictly voluntary and are only used to help determine if we can help provide access and information to resources you may be eligible for and benefit from.
               </p>
               
@@ -2619,7 +2613,7 @@ export default function IntakeWizard() {
                     step={1}
                     className="w-full"
                   />
-                  <p className="text-xs text-muted-foreground italic">
+                  <p className="text-xs text-black italic">
                     {scoreLabels[numSdoh]}
                   </p>
                 </div>
@@ -2649,7 +2643,7 @@ export default function IntakeWizard() {
                   <option value="$75,000 - $99,999">$75,000 - $99,999</option>
                   <option value="$100,000+">$100,000+</option>
                 </select>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-black">
                   This helps us identify resources you may be eligible for
                 </p>
               </div>
@@ -2679,7 +2673,7 @@ export default function IntakeWizard() {
         {/* Step 4: Review & Submit */}
         {step === 4 && (
           <Card className="p-6 border-border">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Review & Submit</h3>
+            <h3 className="text-lg font-semibold text-black mb-4">Review & Submit</h3>
             {submitSuccess && (
               <div className="space-y-4">
                 {/* Restored top-of-page info block: INT#, status/summary */}
@@ -2747,7 +2741,7 @@ export default function IntakeWizard() {
               const label = UNABLE_TO_REACH_LABELS[s] ?? s;
               return (
                 <Alert className="mb-6 bg-muted/50 border-border">
-                  <Info className="h-4 w-4 text-muted-foreground" />
+                  <Info className="h-4 w-4 text-black" />
                   <AlertDescription>{formatUnableToReachBanner(label)}</AlertDescription>
                 </Alert>
               );
@@ -2781,11 +2775,11 @@ export default function IntakeWizard() {
 
             {/* Snapshot Summary */}
             <div className="mt-6 p-6 bg-gradient-to-br from-primary/5 to-primary/10 rounded-lg border-2 border-primary/20">
-              <h4 className="text-xl font-bold mb-6 text-foreground">Assessment Snapshot</h4>
+              <h4 className="text-xl font-bold mb-6 text-black">Assessment Snapshot</h4>
 
               {/* 4Ps Section */}
               <div className="mb-6">
-                <h5 className="text-sm font-extrabold mb-3 text-foreground">4Ps of Wellness</h5>
+                <h5 className="text-sm font-extrabold mb-3 text-black">4Ps of Wellness</h5>
                 <div className="flex flex-wrap gap-2">
                   {[
                     { label: 'Physical', value: fourPs.physical },
@@ -2809,7 +2803,7 @@ export default function IntakeWizard() {
 
               {/* SDOH Section */}
               <div className="mb-6">
-                <h5 className="text-sm font-extrabold mb-3 text-foreground">Social Determinants of Health</h5>
+                <h5 className="text-sm font-extrabold mb-3 text-black">Social Drivers of Health</h5>
                 <div className="flex flex-wrap gap-2">
                   {[
                     { label: 'Housing', value: sdoh.housing },
@@ -2840,7 +2834,7 @@ export default function IntakeWizard() {
               {/* Clinical Context (if any) */}
               {((clinicalContext?.age_ranges?.length ?? 0) > 0 || overlayContextFlags?.is_student || overlayContextFlags?.has_dependents) && (
                 <div className="mb-6">
-                  <h5 className="text-sm font-extrabold mb-3 text-foreground">Context</h5>
+                  <h5 className="text-sm font-extrabold mb-3 text-black">Context</h5>
                   <div className="flex flex-wrap gap-2">
                     {(clinicalContext?.age_ranges || []).map((a) => (
                       <span key={a} className="rounded-full px-3 py-1 border border-primary/30 bg-primary/5 text-sm">Age: {a}</span>
@@ -2853,7 +2847,7 @@ export default function IntakeWizard() {
 
               {/* Case Health Meter */}
               <div className="mb-2">
-                <h5 className="text-sm font-extrabold mb-3 text-foreground">Overall Health Indicator (1–5)</h5>
+                <h5 className="text-sm font-extrabold mb-3 text-black">Overall Health Indicator (1–5)</h5>
                 <div className="flex items-center gap-4">
                   <div className="flex-1 relative h-3 rounded-full bg-muted overflow-hidden">
                     <div 
@@ -2879,7 +2873,7 @@ export default function IntakeWizard() {
                       }}
                     />
                   </div>
-                  <div className="text-2xl font-black min-w-[64px] text-right text-foreground">
+                  <div className="text-2xl font-black min-w-[64px] text-right text-black">
                     {(() => {
                       const allValues = [
                         fourPs.physical, fourPs.psychological, fourPs.psychosocial, fourPs.professional,
@@ -2898,7 +2892,7 @@ export default function IntakeWizard() {
                     })()}
                   </div>
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">
+                <p className="text-xs text-black mt-2">
                   5 Stable · 4 Mild · 3 Moderate · 1–2 Critical
                 </p>
               </div>
@@ -2906,39 +2900,39 @@ export default function IntakeWizard() {
 
             {/* Case Summary - Final Review */}
             <div className="mt-8 p-6 bg-gradient-to-br from-secondary/10 to-secondary/5 rounded-lg border-2 border-border">
-              <h4 className="text-lg font-bold mb-4 text-foreground">Case Summary</h4>
+              <h4 className="text-lg font-bold mb-4 text-black">Case Summary</h4>
               <div className="space-y-3 text-sm">
                 <div className="flex py-2 border-b border-border">
                   <span className="font-medium w-40">RCMS ID:</span>
-                  <span className="select-none text-muted-foreground" title="PHI block">
+                  <span className="select-none text-black" title="PHI block">
                     {client.rcmsId || 'Generating...'}
                   </span>
                 </div>
                 <div className="flex py-2 border-b border-border">
                   <span className="font-medium w-40">Attorney:</span>
-                  <span className="text-muted-foreground">
+                  <span className="text-black">
                     {attorneyDisplayName !== null ? attorneyDisplayName : (attorneyName || "—")}
                   </span>
                 </div>
                 <div className="flex py-2 border-b border-border">
                   <span className="font-medium w-40">Incident:</span>
-                  <span className="text-muted-foreground">
+                  <span className="text-black">
                     {intake.incidentType} on {fmtDate(intake.incidentDate)}
                   </span>
                 </div>
                 <div className="flex py-2 border-b border-border">
                   <span className="font-medium w-40">Initial treatment:</span>
-                  <span className="text-muted-foreground">{intake.initialTreatment}</span>
+                  <span className="text-black">{intake.initialTreatment}</span>
                 </div>
                 <div className="flex py-2 border-b border-border">
                   <span className="font-medium w-40">Injuries:</span>
-                  <span className="text-muted-foreground">
+                  <span className="text-black">
                     {intake.injuries.join(", ") || "—"}
                   </span>
                 </div>
                 <div className="flex py-2 border-b border-border">
                   <span className="font-medium w-40">Assessment Score:</span>
-                  <span className="text-muted-foreground font-semibold">
+                  <span className="text-black font-semibold">
                     {(() => {
                       const allValues = [
                         fourPs.physical, fourPs.psychological, fourPs.psychosocial, fourPs.professional,
@@ -2964,7 +2958,7 @@ export default function IntakeWizard() {
                 </div>
                 <div className="flex py-2 border-b border-border">
                   <span className="font-medium w-40">Consent:</span>
-                  <span className="text-muted-foreground">
+                  <span className="text-black">
                     {consent.signed ? "Signed" : "Not signed"}
                     {consent.signed && consent.signedAt && ` @ ${fmtDate(consent.signedAt)}`}
                   </span>
@@ -2973,8 +2967,8 @@ export default function IntakeWizard() {
 
               {/* What happens next — approved copy */}
               <div className="mt-6 p-4 rounded-lg border-2 border-border bg-card space-y-3">
-                <h4 className="font-semibold text-foreground">What happens next</h4>
-                <div className="text-sm text-muted-foreground space-y-3">
+                <h4 className="font-semibold text-black">What happens next</h4>
+                <div className="text-sm text-black space-y-3">
                   <p>Your intake has been submitted successfully.</p>
                   <p>Here&apos;s what happens next:</p>
                   <ul className="list-disc pl-5 space-y-1">
@@ -2982,12 +2976,12 @@ export default function IntakeWizard() {
                     <li>A registered nurse care manager may contact you by phone or email to ask follow-up questions and begin developing your care plan.</li>
                     <li>Please respond as promptly as possible if contacted, as delays can create gaps in care coordination.</li>
                   </ul>
-                  <p className="font-semibold pt-1 text-foreground">Checking your case status:</p>
+                  <p className="font-semibold pt-1 text-black">Checking your case status:</p>
                   <ul className="list-disc pl-5 space-y-1">
                     <li>You can check the status of your case at any time using the INT# you received.</li>
                     <li>From your portal, you may also view updates and send messages to your attorney.</li>
                   </ul>
-                  <p className="font-semibold pt-1 text-foreground">Important:</p>
+                  <p className="font-semibold pt-1 text-black">Important:</p>
                   <p>This platform supports care coordination and case review. It does not provide medical advice. If you have urgent medical concerns, contact emergency services or your healthcare provider.</p>
                 </div>
               </div>
@@ -3013,8 +3007,8 @@ export default function IntakeWizard() {
               <div className="flex gap-3">
                 <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                 <div>
-                  <h5 className="font-semibold text-sm text-foreground mb-1">Need to Update Information Later?</h5>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
+                  <h5 className="font-semibold text-sm text-black mb-1">Need to Update Information Later?</h5>
+                  <p className="text-sm text-black leading-relaxed">
                     You can update your medications, treatments, allergies, and wellness check-ins anytime through your Client Portal. Your baseline assessment will remain unchanged, but you'll be able to track your progress over time.
                   </p>
                 </div>
@@ -3026,8 +3020,8 @@ export default function IntakeWizard() {
               <div className="flex gap-3">
                 <Shield className="w-5 h-5 text-secondary-foreground flex-shrink-0 mt-0.5" />
                 <div>
-                  <h5 className="font-semibold text-sm text-foreground mb-1">Your Privacy is Protected</h5>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
+                  <h5 className="font-semibold text-sm text-black mb-1">Your Privacy is Protected</h5>
+                  <p className="text-sm text-black leading-relaxed">
                     All information you provide is securely encrypted and HIPAA-compliant. Your personal health information is protected and will only be shared with your authorized care team members.
                   </p>
                 </div>
@@ -3082,6 +3076,9 @@ export default function IntakeWizard() {
               <Button variant="secondary" onClick={() => setStep(3)}>
                 Back
               </Button>
+              <Button variant="outline" onClick={() => setStep(0)}>
+                Back to beginning
+              </Button>
             </div>
           </>
             )}
@@ -3111,14 +3108,14 @@ export default function IntakeWizard() {
 
             {/* Pre-submit incomplete-sections warning (client-only) */}
             <Dialog open={incompleteWarningOpen} onOpenChange={(open) => !open && setIncompleteWarningOpen(false)}>
-              <DialogContent className="sm:max-w-md">
+              <DialogContent className="sm:max-w-md text-black">
                 <DialogHeader>
-                  <DialogTitle>Before you submit</DialogTitle>
-                  <DialogDescription>
+                  <DialogTitle className="text-black">Before you submit</DialogTitle>
+                  <DialogDescription className="text-black">
                     Some sections are incomplete. You can submit now, or go back and add details.
                   </DialogDescription>
                 </DialogHeader>
-                <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1 my-2">
+                <ul className="list-disc pl-5 text-sm text-black space-y-1 my-2">
                   {incompleteSectionsList.map((s) => (
                     <li key={s.stepIndex}>{s.label}</li>
                   ))}

@@ -139,7 +139,7 @@ export function MedsConditionsSection({
           value={values.meds}
           onChange={(e) => setValues((v) => ({ ...v, meds: e.target.value }))}
         />
-        <p className="text-xs text-muted-foreground mt-1">
+        <p className="text-xs text-black mt-1">
           If none, type <em>&quot;None&quot;</em>. Include dose/strength if known.
         </p>
       </label>

@@ -203,7 +203,7 @@ export default function IntakeIdentity() {
               <h1 className="text-2xl font-bold text-foreground mb-2">
                 Basic Contact Information
               </h1>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-black">
                 We need basic contact information so we can save your intake.
               </p>
             </div>
@@ -358,7 +358,7 @@ export default function IntakeIdentity() {
                       onChange={(e) => setTempPin(e.target.value.replace(/\D/g, ""))}
                       placeholder="6 digits"
                     />
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-black">
                       Use this with your Intake ID to resume or check status. 6 digits only.
                     </p>
                   </div>

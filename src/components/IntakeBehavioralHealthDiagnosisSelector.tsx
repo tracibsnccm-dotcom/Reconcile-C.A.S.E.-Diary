@@ -122,7 +122,7 @@ export function IntakeBehavioralHealthDiagnosisSelector({
             <Info className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
             <div>
               <h4 className="font-semibold text-sm mb-1">Behavioral Health History</h4>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-black">
                 Select all behavioral health conditions that apply. This helps your care team provide appropriate mental health support.
               </p>
             </div>
@@ -133,7 +133,7 @@ export function IntakeBehavioralHealthDiagnosisSelector({
           {!showOnlyPost && (
             <div>
               {!showOnlyPre && (
-                <h4 className="font-semibold text-base mb-4 text-foreground border-b pb-2">
+                <h4 className="font-semibold text-base mb-4 text-black border-b pb-2">
                   Chronic / Pre-Accident
                 </h4>
               )}
@@ -192,7 +192,7 @@ export function IntakeBehavioralHealthDiagnosisSelector({
           {!showOnlyPre && (
             <div>
               {!showOnlyPost && (
-                <h4 className="font-semibold text-base mb-4 text-foreground border-b pb-2">
+                <h4 className="font-semibold text-base mb-4 text-black border-b pb-2">
                   Post-Accident / New or Worsened
                 </h4>
               )}
@@ -254,7 +254,7 @@ export function IntakeBehavioralHealthDiagnosisSelector({
                 <Label htmlFor="bh-additional-conditions" className="font-semibold">
                   Additional Behavioral Health Conditions or Notes
                 </Label>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-black">
                   {additionalNotes.length} / 1000
                 </span>
               </div>

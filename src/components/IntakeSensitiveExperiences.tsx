@@ -524,7 +524,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
       <Card className="p-6">
         <div className="flex items-center justify-center gap-3 py-8">
           <Loader2 className="h-5 w-5 animate-spin text-primary" />
-          <p className="text-muted-foreground">Loading previous selections...</p>
+          <p className="text-black">Loading previous selections...</p>
         </div>
       </Card>
     );
@@ -536,9 +536,9 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
       <Card className="p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Heart className="h-5 w-5 text-muted-foreground" />
+            <Heart className="h-5 w-5 text-black" />
             <div>
-              <h3 className="text-lg font-semibold text-muted-foreground">Sensitive or Personal Experiences</h3>
+              <h3 className="text-lg font-semibold text-black">Sensitive or Personal Experiences</h3>
               <Badge variant="secondary" className="mt-1">Section Skipped</Badge>
             </div>
           </div>
@@ -560,7 +560,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger>
-                  <Lock className="h-4 w-4 text-muted-foreground" />
+                  <Lock className="h-4 w-4 text-black" />
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>Your responses are private. We only share with your permission.</p>
@@ -593,7 +593,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
               </Button>
             )}
             {isSaving && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 text-sm text-black">
                 <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
                 <span>Saving...</span>
               </div>
@@ -628,7 +628,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
                 {editHistory.slice(0, 5).map((item, i) => (
                   <div key={i} className="flex justify-between">
                     <span>{item.itemCode.replace(/_/g, ' ')}</span>
-                    <span className="text-muted-foreground">
+                    <span className="text-black">
                       {item.auditEvent} - {new Date(item.updatedAt).toLocaleString()}
                     </span>
                   </div>
@@ -647,7 +647,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
               Your answers help your RN Care Manager connect you with appropriate resources and support.
             </p>
             {!caseId && (
-              <p className="text-xs mt-2 text-muted-foreground italic">
+              <p className="text-xs mt-2 text-black italic">
                 Your selections will be saved when you submit your intake form.
               </p>
             )}
@@ -987,7 +987,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
             <Label className="text-sm font-medium">
               Optional: If you experienced something not listed above or want to provide more details, please describe it here.
             </Label>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-black">
               (You may leave this blank if you prefer.)
             </p>
             <Textarea
@@ -1009,7 +1009,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
               <p id="details-error" className="text-xs text-destructive">
                 {validationError || ''}
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-black">
                 {(data.additionalDetails || '').length}/250 characters
               </p>
             </div>
@@ -1039,7 +1039,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
                 </Button>
               )}
             </div>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-black">
               Please indicate your consent for sharing this information. <strong>Both choices are required to proceed.</strong>
             </p>
             
@@ -1136,9 +1136,9 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
         )}
       </Card>
       
-      {/* Skip Confirmation Dialog */}
+      {/* Skip Confirmation Dialog - very light overlay so screen doesn't go dark */}
       <AlertDialog open={showSkipDialog} onOpenChange={setShowSkipDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent overlayClassName="bg-black/15">
           <AlertDialogHeader>
             <AlertDialogTitle>Skip this section?</AlertDialogTitle>
             <AlertDialogDescription>

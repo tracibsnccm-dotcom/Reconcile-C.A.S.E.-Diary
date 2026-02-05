@@ -27,12 +27,12 @@ export function LabeledSelect({
     <div className={cn("space-y-2", className)}>
       <Label htmlFor={label.toLowerCase().replace(/\s+/g, "-")}>{label}</Label>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger id={label.toLowerCase().replace(/\s+/g, "-")} className="bg-background border-border">
-          <SelectValue />
+        <SelectTrigger id={label.toLowerCase().replace(/\s+/g, "-")} className="bg-white border-border text-black">
+          <SelectValue className="text-black" />
         </SelectTrigger>
-        <SelectContent className="z-[60] bg-popover border-border shadow-lg">
+        <SelectContent className="z-[60] bg-white border-border text-black shadow-lg [&>*]:bg-white [&>*]:text-black">
           {options.map((option) => (
-            <SelectItem key={option} value={option}>
+            <SelectItem key={option} value={option} className="bg-white text-black focus:bg-gray-100 focus:text-black">
               {option}
             </SelectItem>
           ))}

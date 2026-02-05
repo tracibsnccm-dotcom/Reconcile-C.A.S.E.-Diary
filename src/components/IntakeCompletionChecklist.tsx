@@ -31,7 +31,7 @@ export function IntakeCompletionChecklist({
   return (
     <Card className="p-6 bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-bold text-foreground">Intake Completion Status</h3>
+        <h3 className="text-lg font-bold text-black">Intake Completion Status</h3>
         <Badge 
           variant={allComplete ? "default" : "secondary"}
           className={allComplete ? "bg-green-600 text-white" : ""}
@@ -49,12 +49,12 @@ export function IntakeCompletionChecklist({
             <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center ${
               item.completed 
                 ? "bg-green-600 text-white" 
-                : "bg-gray-200 text-gray-400"
+                : "bg-gray-200 text-black"
             }`}>
               {item.completed && <Check className="w-4 h-4" />}
             </div>
             <span className={`text-sm font-medium ${
-              item.completed ? "text-foreground" : "text-muted-foreground"
+              item.completed ? "text-black" : "text-black"
             }`}>
               {item.label}
             </span>

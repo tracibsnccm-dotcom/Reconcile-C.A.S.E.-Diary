@@ -28,19 +28,19 @@ export const AssessmentSnapshotExplainer = ({
         </div>
       </div>
 
-      <p className="text-muted-foreground leading-relaxed mb-4">
+      <p className="text-black leading-relaxed mb-4">
         Each update captures how you're doing across your physical, emotional, social, and professional life. Over time, it forms a clear,
         date-stamped timeline of your progress and ongoing needs.
       </p>
 
       <ul className="space-y-3 mb-4 ml-5">
-        <li className="text-muted-foreground">
+        <li className="text-black">
           <strong className="text-foreground">Care Coordination:</strong> Your RN Care Manager watches for patterns and steps in with the right support.
         </li>
-        <li className="text-muted-foreground">
+        <li className="text-black">
           <strong className="text-foreground">Legal Advocacy:</strong> Your attorney uses your Snapshot as credible, time-stamped evidence to advocate for an advantageous settlement.
         </li>
-        <li className="text-muted-foreground">
+        <li className="text-black">
           <strong className="text-foreground">You Stay in Control:</strong> You decide what to share — answer only what you're comfortable with.
         </li>
       </ul>

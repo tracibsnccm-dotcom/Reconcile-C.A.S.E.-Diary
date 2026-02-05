@@ -26,7 +26,7 @@ export function LabeledTextarea({
       <div className="flex items-center justify-between">
         <Label htmlFor={label.toLowerCase().replace(/\s+/g, "-")}>{label}</Label>
         {maxLength && (
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-black">
             {value.length} / {maxLength}
           </span>
         )}

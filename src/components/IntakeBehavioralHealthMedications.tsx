@@ -67,7 +67,7 @@ export function IntakeBehavioralHealthMedications({
             <Info className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
             <div>
               <h4 className="font-semibold text-sm mb-1">Behavioral Health Medications</h4>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-black">
                 List any medications for mental health conditions, both before and after the incident.
               </p>
             </div>
@@ -79,7 +79,7 @@ export function IntakeBehavioralHealthMedications({
           {!showOnlyPost && (
             <div>
               {!showOnlyPre && (
-                <h4 className="font-semibold text-base mb-4 text-foreground border-b pb-2">
+                <h4 className="font-semibold text-base mb-4 text-black border-b pb-2">
                   Pre-Accident Mental Health Medications
                 </h4>
               )}
@@ -137,7 +137,7 @@ export function IntakeBehavioralHealthMedications({
               ))}
 
               {preMedications.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">
+                <p className="text-sm text-black text-center py-4">
                   No pre-accident mental health medications added yet.
                 </p>
               )}
@@ -159,7 +159,7 @@ export function IntakeBehavioralHealthMedications({
           {!showOnlyPre && (
             <div>
               {!showOnlyPost && (
-                <h4 className="font-semibold text-base mb-4 text-foreground border-b pb-2">
+                <h4 className="font-semibold text-base mb-4 text-black border-b pb-2">
                   Post-Accident Mental Health Medications
                 </h4>
               )}
@@ -217,7 +217,7 @@ export function IntakeBehavioralHealthMedications({
               ))}
 
               {postMedications.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">
+                <p className="text-sm text-black text-center py-4">
                   No post-accident mental health medications added yet.
                 </p>
               )}

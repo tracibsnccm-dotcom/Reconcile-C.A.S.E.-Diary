@@ -372,13 +372,13 @@ export function IntakeMedicationRecord({
             <AlertTriangle className="w-5 h-5 text-destructive" />
             Medication Allergies & Sensitivities
           </CardTitle>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-black">
             List any known medication allergies or sensitivities (CRITICAL for safe care)
           </p>
         </CardHeader>
         <CardContent className="space-y-3">
           {allergies.length === 0 && (
-            <p className="text-sm text-muted-foreground italic">
+            <p className="text-sm text-black italic">
               No allergies added yet. Click "Add Allergy" to add one, or skip if none known.
             </p>
           )}
@@ -472,13 +472,13 @@ export function IntakeMedicationRecord({
             <Pill className="w-5 h-5 text-primary" />
             Pre-Injury Medications
           </CardTitle>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-black">
             List all medications you were taking BEFORE your injury/illness occurred
           </p>
         </CardHeader>
         <CardContent className="space-y-3">
           {preInjuryMeds.length === 0 && (
-            <p className="text-sm text-muted-foreground italic">
+            <p className="text-sm text-black italic">
               No pre-injury medications added yet. Click "Add Medication" to add one.
             </p>
           )}
@@ -509,13 +509,13 @@ export function IntakeMedicationRecord({
             <Pill className="w-5 h-5 text-primary" />
             Post-Injury Medications
           </CardTitle>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-black">
             List all NEW medications started AFTER your injury/illness occurred
           </p>
         </CardHeader>
         <CardContent className="space-y-3">
           {postInjuryMeds.length === 0 && (
-            <p className="text-sm text-muted-foreground italic">
+            <p className="text-sm text-black italic">
               No post-injury medications added yet. Click "Add Medication" to add one.
             </p>
           )}
