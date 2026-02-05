@@ -628,9 +628,9 @@ export default function ClientConsent() {
                         <SelectTrigger>
                           <SelectValue placeholder="Choose your attorney..." />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="bg-white">
                           {availableAttorneys.map(attorney => (
-                            <SelectItem key={attorney.attorney_id} value={attorney.attorney_id}>
+                            <SelectItem key={attorney.attorney_id} value={attorney.attorney_id} className="text-gray-900">
                               {attorney.attorney_name}{attorney.attorney_code ? ` (${attorney.attorney_code})` : ''}
                             </SelectItem>
                           ))}
