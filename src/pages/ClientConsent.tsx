@@ -1111,11 +1111,20 @@ export default function ClientConsent() {
 
           <div className="mt-6 flex flex-col gap-3">
             {step >= 1 && step <= 5 && (
-              <div className="flex justify-end">
-                <Button onClick={handleSaveAndExit} disabled={isSaving || savingExit || countdownExpired} variant="outline" className="min-w-[140px]">
-                  {savingExit ? "Saving…" : "Save & Exit"}
-                </Button>
-              </div>
+              <>
+                <div className="flex justify-between items-center">
+                  <Button
+                    variant="outline"
+                    onClick={() => step === 1 ? navigate("/intake-identity") : setStep((step - 1) as ConsentStep)}
+                    disabled={isSaving || savingExit}
+                  >
+                    {step === 1 ? "← Back to Identity" : "← Back"}
+                  </Button>
+                  <Button onClick={handleSaveAndExit} disabled={isSaving || savingExit || countdownExpired} variant="outline" className="min-w-[140px]">
+                    {savingExit ? "Saving…" : "Save & Exit"}
+                  </Button>
+                </div>
+              </>
             )}
             {step === 0 && (
               <div className="flex justify-end">

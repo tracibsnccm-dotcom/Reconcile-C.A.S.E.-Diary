@@ -2144,6 +2144,14 @@ export default function IntakeWizard() {
             <CaraGate onAskCara={() => setShowCaraModal(true)} />
             
             <div className="mb-8">
+              <div className="flex flex-wrap items-center gap-3 mb-4">
+                <Button variant="ghost" size="sm" className="text-black -ml-2" onClick={() => navigate("/intake-identity")}>
+                  ← Edit Identity Info
+                </Button>
+                <Button variant="ghost" size="sm" className="text-black" onClick={() => navigate("/client-consent")}>
+                  ← Back to Consents
+                </Button>
+              </div>
               <div className="flex items-start justify-between">
                 <div>
                   <h1 className="text-3xl font-bold text-black">
@@ -2404,19 +2412,6 @@ export default function IntakeWizard() {
                     ? `Attorney Code: ${attorneyCode}`
                     : attorneyName || 'Not selected'}
                 </p>
-              </div>
-            )}
-
-            {/* Show Intake ID right after attorney */}
-            {client.rcmsId && (
-              <div className="mb-6 p-4 bg-blue-50 rounded-lg border-2 border-blue-300">
-                <h4 className="text-lg font-semibold text-blue-900 mb-2">📝 Your Intake ID</h4>
-                <p className="text-3xl font-mono font-bold text-blue-900 mb-3">{client.rcmsId}</p>
-                <div className="bg-amber-50 border border-amber-300 rounded p-3">
-                  <p className="text-sm text-amber-900 font-medium">
-                    ⚠️ IMPORTANT: Write this number down or save it in a safe place. You will need it to check the status of your case.
-                  </p>
-                </div>
               </div>
             )}
 

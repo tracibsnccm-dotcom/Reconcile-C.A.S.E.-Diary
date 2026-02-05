@@ -50,6 +50,7 @@ export default function IntakeIdentity() {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [showSuccessCard, setShowSuccessCard] = useState(false);
+  const [showIntakeConfirmation, setShowIntakeConfirmation] = useState(false);
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
 
   // Fetch attorneys on mount
@@ -160,7 +161,7 @@ export default function IntakeIdentity() {
   };
 
   const handleContinue = async () => {
-    if (intakeSessionCreated) {
+    if (intakeSessionCreated && !showIntakeConfirmation) {
       navigate("/client-consent");
       return;
     }
@@ -212,7 +213,7 @@ export default function IntakeIdentity() {
       setCreatedIntakeSessionId(session.id);
       setCreatedAt(session.createdAt);
       setIntakeSessionCreated(true);
-      setShowSuccessCard(true);
+      setShowIntakeConfirmation(true);
 
       sessionStorage.setItem("rcms_intake_session_id", session.id);
       sessionStorage.setItem("rcms_intake_id", session.intakeId);
@@ -240,6 +241,41 @@ export default function IntakeIdentity() {
       setIsSaving(false);
     }
   };
+
+  // INT# confirmation screen — show immediately after session creation, before consents
+  if (showIntakeConfirmation && intakeId) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-secondary via-secondary-light to-primary py-8 px-4">
+        <div className="max-w-2xl mx-auto">
+          <Card className="p-6 md:p-8">
+            <div className="text-center space-y-6 py-8">
+              <div className="text-green-600 text-6xl">✓</div>
+              <h2 className="text-2xl font-bold text-black">Your Intake Has Been Started</h2>
+
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6 max-w-md mx-auto">
+                <p className="text-sm text-blue-800 mb-2">Your Intake ID</p>
+                <p className="text-3xl font-mono font-bold text-blue-900">{intakeId}</p>
+              </div>
+
+              <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4 max-w-md mx-auto">
+                <p className="font-semibold text-yellow-800">⚠️ Write this down!</p>
+                <p className="text-sm text-yellow-700 mt-1">
+                  You&apos;ll need your Intake ID and the PIN you created to resume or check your status.
+                </p>
+                <p className="text-sm text-yellow-700 mt-1">
+                  You can leave at any time and come back later using these credentials.
+                </p>
+              </div>
+
+              <Button onClick={() => navigate("/client-consent")} className="mt-4">
+                Continue to Consents →
+              </Button>
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-secondary via-secondary-light to-primary py-8 px-4">
