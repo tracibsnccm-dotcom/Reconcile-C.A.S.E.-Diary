@@ -1,6 +1,6 @@
 // src/pages/ClientConsent.tsx
-// Updated flow: Attorney Selection (0) -> [IntakeIdentity page] -> Consents (1-5)
-// Identity step is now handled by separate IntakeIdentity page
+// Flow: IntakeIdentity (attorney + client info) -> ClientConsent (steps 1-5 consents only)
+// Attorney selection lives on IntakeIdentity; this page starts at step 1 (first consent).
 
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -135,13 +135,8 @@ export default function ClientConsent() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   
-  // Check if coming from IntakeIdentity - if intake session exists, start at consent step 1
-  // Otherwise, start at attorney selection step 0
-  const hasIntakeSession = sessionStorage.getItem("rcms_intake_id");
-  const [step, setStep] = useState<ConsentStep>(() => {
-    // If intake session exists, start at step 1 (consents), otherwise step 0 (attorney)
-    return hasIntakeSession ? 1 : 0;
-  });
+  // Attorney selection is now on IntakeIdentity; always start at first consent step (1).
+  const [step, setStep] = useState<ConsentStep>(1);
   
   const [sessionId] = useState<string>(() => {
     // Try to get existing session ID from sessionStorage, or generate new one
@@ -562,7 +557,7 @@ export default function ClientConsent() {
     }
   };
 
-  const progress = step === 0 ? 0 : ((step) / 6) * 100; // 0% for attorney, 16.67% per consent step
+  const progress = (step / 5) * 100; // Steps 1–5 (consents only); 20% per step
 
   // Show decline message if user declined Service Agreement
   if (showDeclineMessage) {
@@ -607,7 +602,7 @@ export default function ClientConsent() {
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-lg font-semibold text-gray-900">
-              {step === 0 ? "Step 1 of 3 (Attorney Selection)" : `Step ${step + 1} of 6 (Consents)`}
+              Step {step} of 5 (Consents)
             </h2>
             <span className="text-sm text-gray-900">{Math.round(progress)}% Complete</span>
           </div>

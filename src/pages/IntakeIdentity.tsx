@@ -327,8 +327,56 @@ export default function IntakeIdentity() {
               </Card>
             )}
 
+            {/* SECTION 1 — ATTORNEY (at the top, with border below) */}
+            <div className="space-y-4 pb-6 mb-6 border-b-2 border-gray-300">
+              <h3 className="text-lg font-semibold text-black">Who is your attorney?</h3>
+
+              <div className="space-y-2">
+                <Label htmlFor="attorney-select">
+                  Select Your Attorney <span className="text-destructive">*</span>
+                </Label>
+                <Select
+                  value={selectedAttorneyId}
+                  onValueChange={(val) => {
+                    setSelectedAttorneyId(val);
+                    setAttorneyCode("");
+                  }}
+                  disabled={intakeSessionCreated}
+                >
+                  <SelectTrigger
+                    id="attorney-select"
+                    className={showFieldError("attorney") ? "border-destructive border-2" : ""}
+                  >
+                    <SelectValue placeholder="Choose your attorney..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {attorneys.map((a: { attorney_id: string; attorney_name?: string }) => (
+                      <SelectItem key={a.attorney_id} value={a.attorney_id}>
+                        {a.attorney_name || a.attorney_id}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="text-center text-sm text-gray-600">— OR —</div>
+
+              <div className="space-y-2">
+                <Label htmlFor="attorney-code">Enter Your Attorney&apos;s Code</Label>
+                <Input
+                  id="attorney-code"
+                  value={attorneyCode}
+                  onChange={(e) => setAttorneyCode(e.target.value)}
+                  placeholder="e.g. ABC123"
+                  disabled={intakeSessionCreated}
+                />
+              </div>
+            </div>
+
+            {/* SECTION 2 — CLIENT INFO (below the border) */}
             <div className="space-y-4">
-              {/* First Name */}
+              <h3 className="text-lg font-semibold text-black">Your Information</h3>
+
               <div className="space-y-2">
                 <Label htmlFor="first-name">
                   First Name <span className="text-destructive">*</span>
@@ -344,7 +392,6 @@ export default function IntakeIdentity() {
                 />
               </div>
 
-              {/* Last Name */}
               <div className="space-y-2">
                 <Label htmlFor="last-name">
                   Last Name <span className="text-destructive">*</span>
@@ -360,47 +407,6 @@ export default function IntakeIdentity() {
                 />
               </div>
 
-              {/* Attorney */}
-              <div className="space-y-2">
-                <Label>
-                  Attorney <span className="text-destructive">*</span>
-                </Label>
-                <Select
-                  value={selectedAttorneyId}
-                  onValueChange={(val) => {
-                    setSelectedAttorneyId(val);
-                    setAttorneyCode("");
-                  }}
-                  disabled={intakeSessionCreated}
-                >
-                  <SelectTrigger
-                    className={showFieldError("attorney") ? "border-destructive border-2" : ""}
-                  >
-                    <SelectValue placeholder="Choose your attorney..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {attorneys.map((a: { attorney_id: string; attorney_name?: string }) => (
-                      <SelectItem key={a.attorney_id} value={a.attorney_id}>
-                        {a.attorney_name || a.attorney_id}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <div className="space-y-1">
-                  <Label htmlFor="attorney-code" className="text-sm font-normal text-black">
-                    Or enter your attorney&apos;s code
-                  </Label>
-                  <Input
-                    id="attorney-code"
-                    value={attorneyCode}
-                    onChange={(e) => setAttorneyCode(e.target.value)}
-                    placeholder="e.g. ABC123"
-                    disabled={intakeSessionCreated}
-                  />
-                </div>
-              </div>
-
-              {/* Date of Injury */}
               <div className="space-y-2">
                 <Label htmlFor="date-of-injury">
                   Date of Injury <span className="text-destructive">*</span>

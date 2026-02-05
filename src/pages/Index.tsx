@@ -24,7 +24,7 @@ export default function Index() {
         {CASE_BRAND.tagline}
       </p>
       <div style={{ display: "flex", gap: "24px", flexWrap: "wrap", justifyContent: "center" }}>
-        <Link to="/intake" style={{
+        <Link to="/intake-identity" style={{
           padding: "20px 40px",
           backgroundColor: "#fb923c",
           color: "white",
