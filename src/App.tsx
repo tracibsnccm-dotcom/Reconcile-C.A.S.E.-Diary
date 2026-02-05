@@ -9,7 +9,9 @@ import ClientPortal from "@/pages/ClientPortal";
 import AttorneyDashboard from "@/pages/AttorneyDashboard";
 import AttorneyPendingIntakes from "@/pages/AttorneyPendingIntakes";
 import { AttestationReview } from "@/components/attorney/AttestationReview";
-import { IntakeWizard } from "@/components/intake/IntakeWizard";
+import IntakeWizard from "@/pages/IntakeWizard";
+import ClientConsent from "@/pages/ClientConsent";
+import IntakeIdentity from "@/pages/IntakeIdentity";
 import ResumeIntake from "@/pages/ResumeIntake";
 
 function App() {
@@ -23,6 +25,9 @@ function App() {
           <Route path="/client" element={<ClientPortal />} />
           <Route path="/client-portal" element={<ClientPortal />} />
           <Route path="/intake" element={<IntakeWizard />} />
+          <Route path="/client-intake" element={<IntakeWizard />} />
+          <Route path="/client-consent" element={<ClientConsent />} />
+          <Route path="/intake-identity" element={<IntakeIdentity />} />
           <Route path="/intake/resume" element={<ResumeIntake />} />
           <Route path="/attorney" element={<Navigate to="/attorney/dashboard" replace />} />
           <Route path="/attorney/dashboard" element={<AttorneyDashboard />} />

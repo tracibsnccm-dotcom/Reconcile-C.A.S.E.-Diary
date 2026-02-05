@@ -1,4 +1,4 @@
-// IntakeCountdownBanner — 7-day countdown for client intake. (Ported from C.A.R.E.)
+// IntakeCountdownBanner — 7-day countdown for client intake. Shown on ClientConsent, IntakeWizard, optionally ResumeIntake.
 
 import { useState, useEffect } from "react";
 import { INTAKE_WINDOW_DAYS, INTAKE_WINDOW_EXPIRED, COUNTDOWN_ACTIVE_SUFFIX } from "@/config/clientMessaging";
@@ -6,6 +6,7 @@ import { INTAKE_WINDOW_DAYS, INTAKE_WINDOW_EXPIRED, COUNTDOWN_ACTIVE_SUFFIX } fr
 const SEVEN_DAYS_MS = INTAKE_WINDOW_DAYS * 24 * 60 * 60 * 1000;
 
 export interface IntakeCountdownBannerProps {
+  /** Called when expired state is known. Parent can disable Continue when true. */
   onExpired?: (expired: boolean) => void;
 }
 
@@ -64,6 +65,7 @@ export function IntakeCountdownBanner({ onExpired }: IntakeCountdownBannerProps)
     return () => clearInterval(interval);
   }, [onExpired]);
 
+  // Hide countdown once intake is submitted or converted
   const intakeStatus = sessionStorage.getItem("rcms_intake_status");
   if (intakeStatus === "submitted_pending_attorney" || intakeStatus === "submitted" || intakeStatus === "converted") {
     return null;
@@ -71,7 +73,7 @@ export function IntakeCountdownBanner({ onExpired }: IntakeCountdownBannerProps)
 
   if (status === "loading") {
     return (
-      <div className="bg-slate-800/50 border-b border-slate-700 px-4 py-2 text-sm text-slate-400">
+      <div className="bg-muted/50 border-b border-border px-4 py-2 text-sm text-muted-foreground">
         {text}
       </div>
     );
@@ -79,14 +81,14 @@ export function IntakeCountdownBanner({ onExpired }: IntakeCountdownBannerProps)
 
   if (status === "expired") {
     return (
-      <div className="bg-red-900/20 border-b border-red-700/30 px-4 py-2 text-sm font-medium text-red-400">
+      <div className="bg-destructive/10 border-b border-destructive/20 px-4 py-2 text-sm font-medium text-destructive">
         {text}
       </div>
     );
   }
 
   return (
-    <div className="bg-slate-800 border-b border-slate-700 px-4 py-2 text-sm text-slate-200">
+    <div className="bg-blue-900 border-b border-blue-800 px-4 py-2 text-sm text-white">
       {text}
     </div>
   );

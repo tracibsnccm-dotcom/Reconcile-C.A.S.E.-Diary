@@ -1,5 +1,7 @@
 /* src/index.css */
 
+@import "./styles/case-theme.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

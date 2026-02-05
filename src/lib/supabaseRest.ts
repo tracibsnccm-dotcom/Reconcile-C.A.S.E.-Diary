@@ -37,3 +37,28 @@ export async function supabaseUpdate(table: string, filter: string, body: Record
   }
   return { error: null };
 }
+
+export async function supabaseInsert<T = any>(
+  table: string,
+  data: object
+): Promise<{ data: T | null; error: { message: string } | null }> {
+  if (!supabase) throw new Error("Supabase not configured");
+  const url = `${(supabase as any).supabaseUrl}/rest/v1/${table}`;
+  const token = (await supabase.auth.getSession()).data.session?.access_token ?? (supabase as any).supabaseKey;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      apikey: (supabase as any).supabaseKey,
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      Prefer: "return=representation",
+    },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: response.statusText }));
+    return { data: null, error: { message: error?.message || response.statusText } };
+  }
+  const result = await response.json();
+  return { data: result, error: null };
+}

@@ -10,6 +10,8 @@ export default {
         'case-navy': '#1e3a8a',
         'case-orange': '#fb923c',
         'case-dark': '#1a1a2e',
+        primary: '#1e3a8a',
+        secondary: '#f1f5f9',
       },
     },
   },

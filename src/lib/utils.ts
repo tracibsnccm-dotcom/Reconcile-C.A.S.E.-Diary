@@ -1,3 +1,6 @@
-// Utility functions placeholder - will hold cn() and other utils
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
 
-export {};
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
