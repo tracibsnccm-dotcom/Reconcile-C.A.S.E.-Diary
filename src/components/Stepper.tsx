@@ -10,43 +10,106 @@ interface StepperProps {
 export function Stepper({ step, setStep, labels }: StepperProps) {
   return (
     <div className="w-full py-4">
-      <div className="flex items-center justify-between">
-        {labels.map((label, idx) => (
-          <div key={idx} className="flex items-center flex-1 last:flex-none">
-            <button
-              onClick={() => setStep(idx)}
-              className={cn(
-                "flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all",
-                idx === step
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : idx < step
-                  ? "bg-success text-success-foreground border-success"
-                  : "bg-muted text-black border-border"
-              )}
-              aria-label={`Step ${idx + 1}: ${label}`}
-              aria-current={idx === step ? "step" : undefined}
-            >
-              {idx < step ? <Check className="w-5 h-5" /> : idx + 1}
-            </button>
-            <span
-              className={cn(
-                "ml-2 text-sm font-medium hidden md:inline",
-                "text-black"
-              )}
-            >
-              {label}
-            </span>
-            {idx < labels.length - 1 && (
-              <div
-                className={cn(
-                  "h-0.5 flex-1 mx-2",
-                  idx < step ? "bg-success" : "bg-border"
-                )}
+      {/* Desktop: two-row grid (4 cols), centered, wider boxes */}
+      <div className="hidden sm:flex flex-col items-center gap-4">
+        {/* Row 1: Demographics, Incident/Injury, Post-Injury, Pre-Injury */}
+        <div className="flex flex-wrap justify-center gap-3">
+          {labels.slice(0, 4).map((label, idx) => (
+            <StepBox
+              key={idx}
+              idx={idx}
+              label={label}
+              step={step}
+              setStep={setStep}
+            />
+          ))}
+        </div>
+        {/* Row 2: Mental Health, 4Ps, SDOH, Review */}
+        <div className="flex flex-wrap justify-center gap-3">
+          {labels.slice(4, 8).map((label, i) => {
+            const idx = i + 4;
+            return (
+              <StepBox
+                key={idx}
+                idx={idx}
+                label={label}
+                step={step}
+                setStep={setStep}
               />
-            )}
-          </div>
-        ))}
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Mobile: simplified progress indicator + stacked/compact step list */}
+      <div className="sm:hidden space-y-3">
+        <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1" role="status" aria-live="polite">
+          <span className="text-base font-medium text-black">
+            Step {step + 1} of {labels.length}
+          </span>
+          <span className="text-base text-muted-foreground">
+            — {labels[step]}
+          </span>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {labels.map((label, idx) => (
+            <StepBox
+              key={idx}
+              idx={idx}
+              label={label}
+              step={step}
+              setStep={setStep}
+              compact
+            />
+          ))}
+        </div>
       </div>
     </div>
+  );
+}
+
+interface StepBoxProps {
+  idx: number;
+  label: string;
+  step: number;
+  setStep: (step: number) => void;
+  compact?: boolean;
+}
+
+function StepBox({ idx, label, step, setStep, compact }: StepBoxProps) {
+  const isActive = idx === step;
+  const isComplete = idx < step;
+
+  return (
+    <button
+      type="button"
+      onClick={() => setStep(idx)}
+      className={cn(
+        "flex items-center gap-2 rounded-lg border-2 transition-all text-left",
+        "min-w-[120px] px-4 py-2",
+        "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
+        compact ? "min-w-0 w-full" : "w-[180px]",
+        isActive &&
+          "bg-primary text-primary-foreground border-primary shadow-md",
+        isComplete && !isActive && "bg-success/10 text-black border-success",
+        !isActive && !isComplete && "bg-muted/50 text-black border-border hover:border-primary/50"
+      )}
+      aria-label={`Step ${idx + 1}: ${label}`}
+      aria-current={isActive ? "step" : undefined}
+    >
+      <span
+        className={cn(
+          "flex shrink-0 items-center justify-center w-8 h-8 rounded-full border-2 text-base font-semibold",
+          isActive && "bg-primary-foreground text-primary border-primary-foreground",
+          isComplete && !isActive && "bg-success text-success-foreground border-success",
+          !isActive && !isComplete && "bg-muted border-border"
+        )}
+      >
+        {isComplete ? <Check className="w-5 h-5" aria-hidden="true" /> : idx + 1}
+      </span>
+      <span className="font-medium text-base line-clamp-2 break-words">
+        {label}
+      </span>
+    </button>
   );
 }
