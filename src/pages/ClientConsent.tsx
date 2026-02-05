@@ -239,7 +239,9 @@ export default function ClientConsent() {
   // Step 3: Obtain Records
   const [obtainRecordsAuthorized, setObtainRecordsAuthorized] = useState(false);
   const [obtainRecordsSignature, setObtainRecordsSignature] = useState("");
-  const [injuryDate, setInjuryDate] = useState("");
+  const [injuryDate, setInjuryDate] = useState(() => {
+    return sessionStorage.getItem("rcms_date_of_injury") || "";
+  });
 
   // Step 4: Healthcare Coordination
   const [healthcareCoordAuthorized, setHealthcareCoordAuthorized] = useState(false);
