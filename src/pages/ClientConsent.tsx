@@ -67,8 +67,11 @@ async function saveConsentStep(sessionId: string, step: number, data: any) {
   } else if (dbStep === 3) {
     // Legal Disclosure (UI step 2)
     updates.legal_disclosure_signed_at = new Date().toISOString();
-    updates.legal_disclosure_signature = data.signature;
-    updates.legal_disclosure_attorney_name = data.attorneyName;
+    updates.legal_disclosure_signature = data.signature ?? "";
+    updates.legal_disclosure_attorney_name = data.attorneyName ?? null;
+    if (data.declined === true) {
+      (updates as any).legal_disclosure_declined = true;
+    }
   } else if (dbStep === 4) {
     // Obtain Records (UI step 3)
     updates.obtain_records_signed_at = new Date().toISOString();
@@ -129,6 +132,81 @@ function getCurrentDate(): string {
   return `${year}-${month}-${day}`;
 }
 
+// Clear all client PII and intake-related data from sessionStorage (after consent 1 or 2 decline)
+function clearClientDataFromSession(): void {
+  const keysToRemove = [
+    "rcms_client_first_name",
+    "rcms_client_last_name",
+    "rcms_client_email",
+    "rcms_intake_session_id",
+    "rcms_intake_id",
+    "rcms_resume_token",
+    "rcms_intake_created_at",
+    "rcms_date_of_injury",
+    "rcms_date_approximate",
+    "rcms_consent_session_id",
+    "rcms_consents_completed",
+    "rcms_current_attorney_id",
+    "rcms_attorney_code",
+    "rcms_attorney_name",
+    "rcms_intake_form_data",
+    "rcms_consent_step",
+    "rcms_intake_step",
+    "rcms_declined_consents",
+    "rcms_given_consents",
+  ];
+  keysToRemove.forEach((key) => sessionStorage.removeItem(key));
+}
+
+// Notify attorney and store aggregate count when consent 1 or 2 is declined (no PII stored except client_name in notification)
+async function notifyAttorneyOnDecline(
+  attorneyId: string | null,
+  clientName: string,
+  declinedStep: 1 | 2
+): Promise<void> {
+  const consentLabel =
+    declinedStep === 1
+      ? "RCMS care management services"
+      : "to authorize PHI sharing with your office";
+  const message = `${clientName} has declined ${consentLabel} during the intake process. The client has been advised to contact your office directly.\n\nImportant:\n- RCMS does not store this information — please keep for your records if this is an item you track.\n- If the client decides to accept services at a later date, A NEW INTAKE MUST BE COMPLETED.`;
+
+  const payload = {
+    attorney_id: attorneyId,
+    client_name: clientName,
+    declined_consent: declinedStep,
+    message,
+  };
+  if (supabase) {
+    const { error } = await supabase.rpc("notify_attorney_consent_decline", {
+      p_attorney_id: attorneyId,
+      p_notification_type: "client_declined_consent",
+      p_client_name: clientName,
+      p_declined_consent: declinedStep,
+      p_message: message,
+    });
+    if (error) {
+      console.log("ATTORNEY NOTIFICATION:", payload);
+    }
+  } else {
+    console.log("ATTORNEY NOTIFICATION:", payload);
+  }
+
+  const monthYear = new Date().toISOString().slice(0, 7);
+  const aggPayload = { attorney_id: attorneyId, consent_type: declinedStep, month_year: monthYear };
+  if (supabase) {
+    const { error: aggError } = await supabase.rpc("increment_consent_decline_stats", {
+      p_attorney_id: attorneyId,
+      p_consent_type: declinedStep,
+      p_month_year: monthYear,
+    });
+    if (aggError) {
+      console.log("AGGREGATE DECLINE:", aggPayload);
+    }
+  } else {
+    console.log("AGGREGATE DECLINE:", aggPayload);
+  }
+}
+
 type ConsentStep = 0 | 1 | 2 | 3 | 4 | 5; // Step 0: Attorney, Steps 1-5: Consents
 
 export default function ClientConsent() {
@@ -180,7 +258,10 @@ export default function ClientConsent() {
   const [savingExit, setSavingExit] = useState(false);
   const [countdownExpired, setCountdownExpired] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [declinedConsent, setDeclinedConsent] = useState<number | null>(null);
   const [showDeclineMessage, setShowDeclineMessage] = useState(false);
+  const [declinedConsents, setDeclinedConsents] = useState<number[]>([]);
+  const [givenConsents, setGivenConsents] = useState<number[]>([]);
 
   // Attorney selection state (from get_attorney_directory RPC)
   const [availableAttorneys, setAvailableAttorneys] = useState<{attorney_id: string, attorney_name: string, attorney_code?: string | null}[]>([]);
@@ -232,6 +313,20 @@ export default function ClientConsent() {
         }
       }
     } catch (_) { /* ignore */ }
+    const givenRaw = sessionStorage.getItem("rcms_given_consents");
+    if (givenRaw) {
+      try {
+        const arr = JSON.parse(givenRaw);
+        if (Array.isArray(arr)) setGivenConsents(arr);
+      } catch (_) { /* ignore */ }
+    }
+    const declinedRaw = sessionStorage.getItem("rcms_declined_consents");
+    if (declinedRaw) {
+      try {
+        const arr = JSON.parse(declinedRaw);
+        if (Array.isArray(arr)) setDeclinedConsents(arr);
+      } catch (_) { /* ignore */ }
+    }
   }, []);
 
   // Load available attorneys on mount via get_attorney_directory RPC
@@ -315,85 +410,70 @@ export default function ClientConsent() {
   }, [step, attorneyName, availableAttorneys]);
 
 
-  const handleDecline = async () => {
-    setIsSaving(true);
-    setError(null);
-    try {
-      // Save decline status (UI step 1 = DB step 2 = Service Agreement)
-      await saveConsentStep(sessionId, 1, {
-        signature: "",
-        declined: true,
-      });
-      setShowDeclineMessage(true);
-      // Redirect to home after 3 seconds
-      setTimeout(() => {
-        navigate("/");
-      }, 3000);
-    } catch (err: any) {
-      setError(err.message || "Failed to save. Please try again.");
-      setIsSaving(false);
-    }
-  };
+  const buildConsentsPayload = () => ({
+    serviceAgreement: { accepted: serviceAgreementAccepted, signature: serviceAgreementSignature },
+    legalDisclosure: { authorized: legalDisclosureAuthorized, attorneyName, signature: legalDisclosureSignature },
+    obtainRecords: { authorized: obtainRecordsAuthorized, injuryDate, signature: obtainRecordsSignature },
+    healthcareCoord: { authorized: healthcareCoordAuthorized, pcp, specialist, therapy, signature: healthcareCoordSignature },
+    hipaa: { acknowledged: hipaaAcknowledged, signature: hipaaSignature },
+  });
 
-  const handleSaveAndExit = async () => {
-    const sid = sessionStorage.getItem("rcms_intake_session_id");
-    if (!sid) {
-      toast.error("No intake session. Please start from the beginning.");
+  const handleConsent = async (consented: boolean) => {
+    setError(null);
+    if (step < 1 || step > 5) return;
+
+    // --- I Do Not Consent: steps 1 or 2 → stop intake, notify attorney, clear PII
+    if (!consented && (step === 1 || step === 2)) {
+      setIsSaving(true);
+      try {
+        const attorneyId = sessionStorage.getItem("rcms_current_attorney_id");
+        const first = sessionStorage.getItem("rcms_client_first_name")?.trim() || "";
+        const last = sessionStorage.getItem("rcms_client_last_name")?.trim() || "";
+        const clientName = [first, last].filter(Boolean).join(" ") || "Client";
+
+        await saveConsentStep(sessionId, step, {
+          signature: "",
+          declined: true,
+          ...(step === 2 && { attorneyName: "" }),
+        });
+        await notifyAttorneyOnDecline(attorneyId, clientName, step as 1 | 2);
+        clearClientDataFromSession();
+        setDeclinedConsent(step);
+        setShowDeclineMessage(true);
+      } catch (err: any) {
+        setError(err.message || "Failed to save. Please try again.");
+      } finally {
+        setIsSaving(false);
+      }
       return;
     }
-    const consents = {
-      serviceAgreement: { accepted: serviceAgreementAccepted, signature: serviceAgreementSignature },
-      legalDisclosure: { authorized: legalDisclosureAuthorized, attorneyName, signature: legalDisclosureSignature },
-      obtainRecords: { authorized: obtainRecordsAuthorized, injuryDate, signature: obtainRecordsSignature },
-      healthcareCoord: { authorized: healthcareCoordAuthorized, pcp, specialist, therapy, signature: healthcareCoordSignature },
-      hipaa: { acknowledged: hipaaAcknowledged, signature: hipaaSignature },
-    };
-    const existing = JSON.parse(sessionStorage.getItem("rcms_intake_form_data") || "{}");
-    const merged = { ...existing, consentStep: step, consents };
-    setSavingExit(true);
-    setError(null);
-    try {
-      await updateIntakeSession(sid, { formData: { consentStep: step, consents } });
-      sessionStorage.setItem("rcms_intake_form_data", JSON.stringify(merged));
-      sessionStorage.setItem("rcms_consent_step", String(step));
-      sessionStorage.setItem("rcms_intake_step", "0");
-      toast.success(SAVE_AND_EXIT_TOAST);
-      navigate("/");
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to save. Please try again.");
-    } finally {
-      setSavingExit(false);
-    }
-  };
 
-  const handleContinue = async () => {
-    setError(null);
-
-    // Validate current step
-    if (step === 0) {
-      // Attorney Selection - require dropdown selection OR validated attorney code
-      const effectiveAttorneyId = selectedAttorneyId || validatedAttorneyId;
-      if (!effectiveAttorneyId) {
-        if (attorneyCode.trim()) {
-          setError("The attorney code you entered was not found. Please check the code or select your attorney from the dropdown.");
-        } else {
-          setError("Please select your attorney or enter a valid attorney code to continue.");
+    // --- I Do Not Consent: steps 3, 4, 5 → proceed with flag
+    if (!consented && (step === 3 || step === 4 || step === 5)) {
+      const nextDeclined = [...declinedConsents, step];
+      setDeclinedConsents(nextDeclined);
+      sessionStorage.setItem("rcms_declined_consents", JSON.stringify(nextDeclined));
+      if (step === 5) {
+        const sid = sessionStorage.getItem("rcms_intake_session_id");
+        const consents = buildConsentsPayload();
+        if (sid) {
+          try {
+            await updateIntakeSession(sid, { formData: { consentStep: 5, consents, consentsComplete: true } });
+          } catch (_) {}
         }
-        return;
+        sessionStorage.removeItem("rcms_intake_submitted");
+        sessionStorage.setItem("rcms_consents_completed", "true");
+        const attorneyParam = sessionStorage.getItem("rcms_current_attorney_id") || "";
+        const codeParam = sessionStorage.getItem("rcms_attorney_code") || "";
+        navigate(`/client-intake?attorney_id=${encodeURIComponent(attorneyParam)}&attorney_code=${encodeURIComponent(codeParam)}`);
+      } else {
+        setStep((step + 1) as ConsentStep);
       }
-      // Store attorney selection in sessionStorage (use effective attorney_id)
-      const codeToStore = selectedAttorneyId ? attorneyCode : attorneyCode.trim();
-      sessionStorage.setItem("rcms_current_attorney_id", effectiveAttorneyId);
-      sessionStorage.setItem("rcms_attorney_code", codeToStore);
-      // Store attorney name for carry-over throughout intake
-      const selectedAtty = availableAttorneys.find(a => a.attorney_id === effectiveAttorneyId);
-      if (selectedAtty) {
-        sessionStorage.setItem("rcms_attorney_name", selectedAtty.attorney_name || "");
-      }
-      // Navigate to IntakeIdentity page with attorney info
-      navigate(`/intake-identity?attorney_id=${encodeURIComponent(effectiveAttorneyId)}&attorney_code=${encodeURIComponent(codeToStore)}`);
-    } else if (step === 1) {
-      // Service Agreement (UI step 1 = DB step 2)
+      return;
+    }
+
+    // --- I Consent: validate, save, track given, advance
+    if (step === 1) {
       if (!serviceAgreementAccepted) {
         setError("Please confirm that you have read and agree to the Service Agreement.");
         return;
@@ -402,25 +482,7 @@ export default function ClientConsent() {
         setError("Please enter your full legal name (first and last name) as your signature.");
         return;
       }
-      setIsSaving(true);
-      try {
-        await saveConsentStep(sessionId, 1, {
-          signature: serviceAgreementSignature,
-          declined: false,
-        });
-        const sid = sessionStorage.getItem("rcms_intake_session_id");
-        if (sid) {
-          const consents = { serviceAgreement: { accepted: serviceAgreementAccepted, signature: serviceAgreementSignature }, legalDisclosure: { authorized: legalDisclosureAuthorized, attorneyName, signature: legalDisclosureSignature }, obtainRecords: { authorized: obtainRecordsAuthorized, injuryDate, signature: obtainRecordsSignature }, healthcareCoord: { authorized: healthcareCoordAuthorized, pcp, specialist, therapy, signature: healthcareCoordSignature }, hipaa: { acknowledged: hipaaAcknowledged, signature: hipaaSignature } };
-          await updateIntakeSession(sid, { formData: { consentStep: 2, consents } });
-        }
-        setStep(2);
-      } catch (err: any) {
-        setError(err.message || "Failed to save. Please try again.");
-      } finally {
-        setIsSaving(false);
-      }
     } else if (step === 2) {
-      // Legal Disclosure (UI step 2 = DB step 3)
       if (!attorneyName.trim()) {
         setError("Please enter your attorney or firm name.");
         return;
@@ -433,25 +495,7 @@ export default function ClientConsent() {
         setError("Please enter your full legal name (first and last name) as your signature.");
         return;
       }
-      setIsSaving(true);
-      try {
-        await saveConsentStep(sessionId, 2, {
-          signature: legalDisclosureSignature,
-          attorneyName: attorneyName.trim(),
-        });
-        const sid = sessionStorage.getItem("rcms_intake_session_id");
-        if (sid) {
-          const consents = { serviceAgreement: { accepted: serviceAgreementAccepted, signature: serviceAgreementSignature }, legalDisclosure: { authorized: legalDisclosureAuthorized, attorneyName, signature: legalDisclosureSignature }, obtainRecords: { authorized: obtainRecordsAuthorized, injuryDate, signature: obtainRecordsSignature }, healthcareCoord: { authorized: healthcareCoordAuthorized, pcp, specialist, therapy, signature: healthcareCoordSignature }, hipaa: { acknowledged: hipaaAcknowledged, signature: hipaaSignature } };
-          await updateIntakeSession(sid, { formData: { consentStep: 3, consents } });
-        }
-        setStep(3);
-      } catch (err: any) {
-        setError(err.message || "Failed to save. Please try again.");
-      } finally {
-        setIsSaving(false);
-      }
     } else if (step === 3) {
-      // Obtain Records (UI step 3 = DB step 4)
       if (!injuryDate) {
         setError("Please enter the date of injury/incident.");
         return;
@@ -464,25 +508,7 @@ export default function ClientConsent() {
         setError("Please enter your full legal name (first and last name) as your signature.");
         return;
       }
-      setIsSaving(true);
-      try {
-        await saveConsentStep(sessionId, 3, {
-          signature: obtainRecordsSignature,
-          injuryDate,
-        });
-        const sid = sessionStorage.getItem("rcms_intake_session_id");
-        if (sid) {
-          const consents = { serviceAgreement: { accepted: serviceAgreementAccepted, signature: serviceAgreementSignature }, legalDisclosure: { authorized: legalDisclosureAuthorized, attorneyName, signature: legalDisclosureSignature }, obtainRecords: { authorized: obtainRecordsAuthorized, injuryDate, signature: obtainRecordsSignature }, healthcareCoord: { authorized: healthcareCoordAuthorized, pcp, specialist, therapy, signature: healthcareCoordSignature }, hipaa: { acknowledged: hipaaAcknowledged, signature: hipaaSignature } };
-          await updateIntakeSession(sid, { formData: { consentStep: 4, consents } });
-        }
-        setStep(4);
-      } catch (err: any) {
-        setError(err.message || "Failed to save. Please try again.");
-      } finally {
-        setIsSaving(false);
-      }
     } else if (step === 4) {
-      // Healthcare Coordination (UI step 4 = DB step 5)
       if (!healthcareCoordAuthorized) {
         setError("Please authorize RCMS to share information with your healthcare providers.");
         return;
@@ -491,27 +517,7 @@ export default function ClientConsent() {
         setError("Please enter your full legal name (first and last name) as your signature.");
         return;
       }
-      setIsSaving(true);
-      try {
-        await saveConsentStep(sessionId, 4, {
-          signature: healthcareCoordSignature,
-          pcp: pcp.trim() || null,
-          specialist: specialist.trim() || null,
-          therapy: therapy.trim() || null,
-        });
-        const sid = sessionStorage.getItem("rcms_intake_session_id");
-        if (sid) {
-          const consents = { serviceAgreement: { accepted: serviceAgreementAccepted, signature: serviceAgreementSignature }, legalDisclosure: { authorized: legalDisclosureAuthorized, attorneyName, signature: legalDisclosureSignature }, obtainRecords: { authorized: obtainRecordsAuthorized, injuryDate, signature: obtainRecordsSignature }, healthcareCoord: { authorized: healthcareCoordAuthorized, pcp, specialist, therapy, signature: healthcareCoordSignature }, hipaa: { acknowledged: hipaaAcknowledged, signature: hipaaSignature } };
-          await updateIntakeSession(sid, { formData: { consentStep: 5, consents } });
-        }
-        setStep(5);
-      } catch (err: any) {
-        setError(err.message || "Failed to save. Please try again.");
-      } finally {
-        setIsSaving(false);
-      }
     } else if (step === 5) {
-      // HIPAA Privacy Notice (UI step 5 = DB step 6)
       if (!hipaaAcknowledged) {
         setError("Please acknowledge that you have received and reviewed the Notice of Privacy Practices.");
         return;
@@ -520,61 +526,147 @@ export default function ClientConsent() {
         setError("Please enter your full legal name (first and last name) as your signature.");
         return;
       }
-      setIsSaving(true);
-      try {
-        await saveConsentStep(sessionId, 5, {
-          signature: hipaaSignature,
+    }
+
+    setIsSaving(true);
+    try {
+      const nextGiven = [...givenConsents, step];
+      setGivenConsents(nextGiven);
+      sessionStorage.setItem("rcms_given_consents", JSON.stringify(nextGiven));
+
+      if (step === 1) {
+        await saveConsentStep(sessionId, 1, { signature: serviceAgreementSignature, declined: false });
+        const sid = sessionStorage.getItem("rcms_intake_session_id");
+        if (sid) await updateIntakeSession(sid, { formData: { consentStep: 2, consents: buildConsentsPayload() } });
+        setStep(2);
+      } else if (step === 2) {
+        await saveConsentStep(sessionId, 2, { signature: legalDisclosureSignature, attorneyName: attorneyName.trim() });
+        const sid = sessionStorage.getItem("rcms_intake_session_id");
+        if (sid) await updateIntakeSession(sid, { formData: { consentStep: 3, consents: buildConsentsPayload() } });
+        setStep(3);
+      } else if (step === 3) {
+        await saveConsentStep(sessionId, 3, { signature: obtainRecordsSignature, injuryDate });
+        const sid = sessionStorage.getItem("rcms_intake_session_id");
+        if (sid) await updateIntakeSession(sid, { formData: { consentStep: 4, consents: buildConsentsPayload() } });
+        setStep(4);
+      } else if (step === 4) {
+        await saveConsentStep(sessionId, 4, {
+          signature: healthcareCoordSignature,
+          pcp: pcp.trim() || null,
+          specialist: specialist.trim() || null,
+          therapy: therapy.trim() || null,
         });
         const sid = sessionStorage.getItem("rcms_intake_session_id");
+        if (sid) await updateIntakeSession(sid, { formData: { consentStep: 5, consents: buildConsentsPayload() } });
+        setStep(5);
+      } else if (step === 5) {
+        await saveConsentStep(sessionId, 5, { signature: hipaaSignature });
+        const sid = sessionStorage.getItem("rcms_intake_session_id");
         if (sid) {
-          const consents = { serviceAgreement: { accepted: serviceAgreementAccepted, signature: serviceAgreementSignature }, legalDisclosure: { authorized: legalDisclosureAuthorized, attorneyName, signature: legalDisclosureSignature }, obtainRecords: { authorized: obtainRecordsAuthorized, injuryDate, signature: obtainRecordsSignature }, healthcareCoord: { authorized: healthcareCoordAuthorized, pcp, specialist, therapy, signature: healthcareCoordSignature }, hipaa: { acknowledged: hipaaAcknowledged, signature: hipaaSignature } };
-          await updateIntakeSession(sid, { formData: { consentStep: 5, consents, consentsComplete: true } });
+          await updateIntakeSession(sid, { formData: { consentStep: 5, consents: buildConsentsPayload(), consentsComplete: true } });
         }
-        
-        // Audit: All consents signed (fire and forget - don't block navigation)
         audit({
-          action: 'POLICY_ACK',
-          actorRole: 'client',
-          actorId: 'pre-auth',
+          action: "POLICY_ACK",
+          actorRole: "client",
+          actorId: "pre-auth",
           caseId: undefined,
-          meta: { session_id: sessionId, intake_session_id: intakeSessionId }
-        }).catch(e => console.error('Failed to audit consent signing:', e));
-        
-        // All steps complete - redirect to intake with attorney info in URL params
-        const attorneyParam = selectedAttorneyId || sessionStorage.getItem("rcms_current_attorney_id") || '';
-        const codeParam = attorneyCode || sessionStorage.getItem("rcms_attorney_code") || '';
-        
-        // Clear any previous intake submission flag to prevent reload loop
+          meta: { session_id: sessionId, intake_session_id: intakeSessionId },
+        }).catch((e) => console.error("Failed to audit consent signing:", e));
         sessionStorage.removeItem("rcms_intake_submitted");
-        // Mark consents as completed
         sessionStorage.setItem("rcms_consents_completed", "true");
-        
+        const attorneyParam = selectedAttorneyId || sessionStorage.getItem("rcms_current_attorney_id") || "";
+        const codeParam = attorneyCode || sessionStorage.getItem("rcms_attorney_code") || "";
         navigate(`/client-intake?attorney_id=${encodeURIComponent(attorneyParam)}&attorney_code=${encodeURIComponent(codeParam)}`);
-      } catch (err: any) {
-        setError(err.message || "Failed to save. Please try again.");
-        setIsSaving(false);
       }
+    } catch (err: any) {
+      setError(err.message || "Failed to save. Please try again.");
+    } finally {
+      setIsSaving(false);
     }
+  };
+
+  const handleSaveAndExit = async () => {
+    const sid = sessionStorage.getItem("rcms_intake_session_id");
+    if (!sid) {
+      toast.error("No intake session. Please start from the beginning.");
+      return;
+    }
+    const consents = buildConsentsPayload();
+    const existing = JSON.parse(sessionStorage.getItem("rcms_intake_form_data") || "{}");
+    const merged = {
+      ...existing,
+      consentStep: step,
+      consents,
+      givenConsents,
+      declinedConsents,
+    };
+    setSavingExit(true);
+    setError(null);
+    try {
+      await updateIntakeSession(sid, {
+        formData: { consentStep: step, consents, givenConsents, declinedConsents },
+      });
+      sessionStorage.setItem("rcms_intake_form_data", JSON.stringify(merged));
+      sessionStorage.setItem("rcms_consent_step", String(step));
+      sessionStorage.setItem("rcms_intake_step", "0");
+      sessionStorage.setItem("rcms_given_consents", JSON.stringify(givenConsents));
+      sessionStorage.setItem("rcms_declined_consents", JSON.stringify(declinedConsents));
+      toast.success(SAVE_AND_EXIT_TOAST);
+      navigate("/");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to save. Please try again.");
+    } finally {
+      setSavingExit(false);
+    }
+  };
+
+  const handleContinue = async () => {
+    setError(null);
+    if (step !== 0) return;
+    // Attorney Selection - require dropdown selection OR validated attorney code
+    const effectiveAttorneyId = selectedAttorneyId || validatedAttorneyId;
+    if (!effectiveAttorneyId) {
+      if (attorneyCode.trim()) {
+        setError("The attorney code you entered was not found. Please check the code or select your attorney from the dropdown.");
+      } else {
+        setError("Please select your attorney or enter a valid attorney code to continue.");
+      }
+      return;
+    }
+    const codeToStore = selectedAttorneyId ? attorneyCode : attorneyCode.trim();
+    sessionStorage.setItem("rcms_current_attorney_id", effectiveAttorneyId);
+    sessionStorage.setItem("rcms_attorney_code", codeToStore);
+    const selectedAtty = availableAttorneys.find((a) => a.attorney_id === effectiveAttorneyId);
+    if (selectedAtty) sessionStorage.setItem("rcms_attorney_name", selectedAtty.attorney_name || "");
+    navigate(`/intake-identity?attorney_id=${encodeURIComponent(effectiveAttorneyId)}&attorney_code=${encodeURIComponent(codeToStore)}`);
   };
 
   const progress = (step / 5) * 100; // Steps 1–5 (consents only); 20% per step
 
-  // Show decline message if user declined Service Agreement
-  if (showDeclineMessage) {
+  // Show decline message if user declined consent step 1 or 2 (intake cannot continue)
+  if (showDeclineMessage && declinedConsent !== null) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-secondary via-secondary-light to-primary py-8 px-4 flex items-center justify-center">
         <Card className="p-8 max-w-2xl text-gray-900">
-          <Alert className="mb-4">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="text-gray-900">
-              We're sorry, without agreeing to the Service Agreement, we cannot provide care
-              management services. You remain a client of your attorney, but we cannot assist
-              with your case. Please contact your attorney if you have questions.
-            </AlertDescription>
-          </Alert>
-          <p className="text-sm text-gray-900">
-            Redirecting to home page...
-          </p>
+          <div className="text-center space-y-6 py-8">
+            <div className="text-red-600 text-6xl">⚠️</div>
+            <h2 className="text-2xl font-bold text-black">Intake Cannot Continue</h2>
+            <p className="text-black">
+              You have declined{" "}
+              {declinedConsent === 1
+                ? "RCMS care management services"
+                : "to authorize your attorney to access your health information"}
+              .
+            </p>
+            <p className="text-black">
+              Please contact your attorney or legal representative to discuss your options.
+            </p>
+            <div className="pt-4">
+              <Button onClick={() => (window.location.href = "/")} variant="outline">
+                Return to Home
+              </Button>
+            </div>
+          </div>
         </Card>
       </div>
     );
@@ -776,22 +868,44 @@ export default function ClientConsent() {
             </div>
           )}
 
-          <div className="mt-6 flex justify-end gap-3">
+          <div className="mt-6 flex flex-col gap-3">
             {step >= 1 && step <= 5 && (
-              <Button onClick={handleSaveAndExit} disabled={isSaving || savingExit || countdownExpired} variant="outline" className="min-w-[140px]">
-                {savingExit ? "Saving…" : "Save & Exit"}
-              </Button>
+              <div className="flex justify-end">
+                <Button onClick={handleSaveAndExit} disabled={isSaving || savingExit || countdownExpired} variant="outline" className="min-w-[140px]">
+                  {savingExit ? "Saving…" : "Save & Exit"}
+                </Button>
+              </div>
             )}
-            {step === 1 && (
-              <Button onClick={handleDecline} disabled={isSaving || countdownExpired} variant="outline" className="min-w-[140px]">I Do Not Agree</Button>
+            {step === 0 && (
+              <div className="flex justify-end">
+                <Button
+                  onClick={handleContinue}
+                  disabled={savingExit || countdownExpired || (!selectedAttorneyId && !validatedAttorneyId)}
+                  className="min-w-[140px]"
+                >
+                  Continue
+                </Button>
+              </div>
             )}
-            <Button
-              onClick={handleContinue}
-              disabled={isSaving || savingExit || countdownExpired || (step === 0 && !selectedAttorneyId && !validatedAttorneyId)}
-              className="min-w-[140px]"
-            >
-              {isSaving ? "Saving..." : step === 0 ? "Continue" : step === 1 ? "I Agree - Continue" : step === 5 ? "Complete & Continue to Intake" : "Continue"}
-            </Button>
+            {step >= 1 && step <= 5 && (
+              <div className="flex gap-4 mt-2">
+                <Button
+                  onClick={() => handleConsent(true)}
+                  disabled={isSaving || savingExit || countdownExpired}
+                  className="flex-1 bg-green-700 hover:bg-green-800 text-white"
+                >
+                  I Consent
+                </Button>
+                <Button
+                  onClick={() => handleConsent(false)}
+                  disabled={isSaving || savingExit || countdownExpired}
+                  variant="outline"
+                  className="flex-1 border-red-600 text-red-600 hover:bg-red-50"
+                >
+                  I Do Not Consent
+                </Button>
+              </div>
+            )}
           </div>
         </Card>
       </div>
