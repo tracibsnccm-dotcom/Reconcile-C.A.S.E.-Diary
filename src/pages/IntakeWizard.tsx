@@ -2069,7 +2069,21 @@ export default function IntakeWizard() {
             </div>
             <div className="flex gap-4 mt-6">
               <Button
-                onClick={() => {
+                onClick={async () => {
+                  const intakeSessionId = sessionStorage.getItem("rcms_intake_session_id");
+                  if (intakeSessionId) {
+                    try {
+                      await supabase
+                        .from("rc_client_intake_sessions")
+                        .update({
+                          hipaa_sensitivity_acknowledged: true,
+                          hipaa_sensitivity_acknowledged_at: new Date().toISOString(),
+                        })
+                        .eq("id", intakeSessionId);
+                    } catch (e) {
+                      console.error("Failed to save HIPAA acknowledgment:", e);
+                    }
+                  }
                   sessionStorage.setItem("rcms_hipaa_sensitivity_ack", "true");
                   setHipaaAcknowledged(true);
                 }}
@@ -2216,26 +2230,55 @@ export default function IntakeWizard() {
                 onChange={(v) => setDemographics((d) => ({ ...d, preferredName: v }))}
                 placeholder="Preferred name (optional)"
               />
-              <LabeledSelect
-                label="Gender"
-                value={demographics.gender}
-                onChange={(v) => setDemographics((d) => ({ ...d, gender: v }))}
-                options={["", "Male", "Female", "Non-binary", "Other", "Prefer not to say"]}
-              />
+              <div className="space-y-2">
+                <Label htmlFor="demographics-gender">Gender</Label>
+                <Select value={demographics.gender} onValueChange={(v) => setDemographics((d) => ({ ...d, gender: v }))}>
+                  <SelectTrigger id="demographics-gender" className="bg-white border-border text-black">
+                    <SelectValue placeholder="Select gender (optional)" />
+                  </SelectTrigger>
+                  <SelectContent className="z-[60] bg-white border-border text-black">
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                    <SelectItem value="non-binary">Non-binary</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                    <SelectItem value="prefer_not_to_say">Prefer not to say</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="grid gap-4 sm:grid-cols-2 mb-4">
-              <LabeledSelect
-                label="Pronouns"
-                value={demographics.pronouns}
-                onChange={(v) => setDemographics((d) => ({ ...d, pronouns: v }))}
-                options={["", "He/Him", "She/Her", "They/Them", "Other", "Prefer not to say"]}
-              />
-              <LabeledSelect
-                label="Marital Status"
-                value={demographics.maritalStatus}
-                onChange={(v) => setDemographics((d) => ({ ...d, maritalStatus: v }))}
-                options={["", "Single", "Married", "Divorced", "Widowed", "Separated", "Domestic Partnership", "Prefer not to say"]}
-              />
+              <div className="space-y-2">
+                <Label htmlFor="demographics-pronouns">Pronouns</Label>
+                <Select value={demographics.pronouns} onValueChange={(v) => setDemographics((d) => ({ ...d, pronouns: v }))}>
+                  <SelectTrigger id="demographics-pronouns" className="bg-white border-border text-black">
+                    <SelectValue placeholder="Select pronouns (optional)" />
+                  </SelectTrigger>
+                  <SelectContent className="z-[60] bg-white border-border text-black">
+                    <SelectItem value="he_him">He/Him</SelectItem>
+                    <SelectItem value="she_her">She/Her</SelectItem>
+                    <SelectItem value="they_them">They/Them</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                    <SelectItem value="prefer_not_to_say">Prefer not to say</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="demographics-marital-status">Marital Status</Label>
+                <Select value={demographics.maritalStatus} onValueChange={(v) => setDemographics((d) => ({ ...d, maritalStatus: v }))}>
+                  <SelectTrigger id="demographics-marital-status" className="bg-white border-border text-black">
+                    <SelectValue placeholder="Select marital status (optional)" />
+                  </SelectTrigger>
+                  <SelectContent className="z-[60] bg-white border-border text-black">
+                    <SelectItem value="single">Single</SelectItem>
+                    <SelectItem value="married">Married</SelectItem>
+                    <SelectItem value="divorced">Divorced</SelectItem>
+                    <SelectItem value="widowed">Widowed</SelectItem>
+                    <SelectItem value="separated">Separated</SelectItem>
+                    <SelectItem value="domestic_partnership">Domestic Partnership</SelectItem>
+                    <SelectItem value="prefer_not_to_say">Prefer not to say</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="space-y-4 mb-4">
               <LabeledInput
@@ -2249,12 +2292,19 @@ export default function IntakeWizard() {
                   value={demographics.addressCity}
                   onChange={(v) => setDemographics((d) => ({ ...d, addressCity: v }))}
                 />
-                <LabeledSelect
-                  label="Address — State"
-                  value={demographics.addressState}
-                  onChange={(v) => setDemographics((d) => ({ ...d, addressState: v }))}
-                  options={["", "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"]}
-                />
+                <div className="space-y-2">
+                  <Label htmlFor="demographics-address-state">Address — State</Label>
+                  <Select value={demographics.addressState} onValueChange={(v) => setDemographics((d) => ({ ...d, addressState: v }))}>
+                    <SelectTrigger id="demographics-address-state" className="bg-white border-border text-black">
+                      <SelectValue placeholder="State (optional)" />
+                    </SelectTrigger>
+                    <SelectContent className="z-[60] bg-white border-border text-black">
+                      {["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"].map((code) => (
+                        <SelectItem key={code} value={code}>{code}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <LabeledInput
                   label="Address — ZIP"
                   value={demographics.addressZip}
@@ -2279,13 +2329,24 @@ export default function IntakeWizard() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2 mb-4">
               <div className="space-y-2">
-                <LabeledSelect
-                  label="Preferred Language"
-                  value={demographics.preferredLanguage}
-                  onChange={(v) => setDemographics((d) => ({ ...d, preferredLanguage: v }))}
-                  options={["", "English", "Spanish", "Vietnamese", "Chinese", "Korean", "Tagalog", "Other"]}
-                />
-                {demographics.preferredLanguage === "Other" && (
+                <div className="space-y-2">
+                  <Label htmlFor="demographics-preferred-language">Preferred Language</Label>
+                  <Select value={demographics.preferredLanguage} onValueChange={(v) => setDemographics((d) => ({ ...d, preferredLanguage: v }))}>
+                    <SelectTrigger id="demographics-preferred-language" className="bg-white border-border text-black">
+                      <SelectValue placeholder="Select language (optional)" />
+                    </SelectTrigger>
+                    <SelectContent className="z-[60] bg-white border-border text-black">
+                      <SelectItem value="english">English</SelectItem>
+                      <SelectItem value="spanish">Spanish</SelectItem>
+                      <SelectItem value="vietnamese">Vietnamese</SelectItem>
+                      <SelectItem value="chinese">Chinese</SelectItem>
+                      <SelectItem value="korean">Korean</SelectItem>
+                      <SelectItem value="tagalog">Tagalog</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {demographics.preferredLanguage === "other" && (
                   <LabeledInput
                     label="Please specify"
                     value={demographics.preferredLanguageOther}
