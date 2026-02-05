@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { IntakeAttorney, IntakeFormData } from "./intakeTypes";
 
 const CARD_CLASS =
-  "bg-slate-800 border border-slate-700 rounded-xl p-6 text-left";
+  "bg-slate-800/95 border border-slate-600 rounded-xl shadow-xl shadow-black/30 p-6 sm:p-8 text-left";
 const LABEL_CLASS = "block text-sm font-medium text-slate-300 mb-2";
 const INPUT_CLASS =
   "w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent";
@@ -64,6 +64,7 @@ export function IntakeStepAttorney({
       <p className="text-slate-400 text-sm mb-6">
         Select the attorney who referred you or who will represent you.
       </p>
+      <div className="space-y-5">
       {loading ? (
         <p className="text-slate-400">Loading attorneys...</p>
       ) : error ? (
@@ -89,6 +90,7 @@ export function IntakeStepAttorney({
           </select>
         </div>
       )}
+      </div>
     </div>
   );
 }

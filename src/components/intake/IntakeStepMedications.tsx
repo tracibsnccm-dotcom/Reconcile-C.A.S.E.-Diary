@@ -6,7 +6,7 @@ import type {
 } from "./intakeTypes";
 
 const CARD_CLASS =
-  "bg-slate-800 border border-slate-700 rounded-xl p-6 text-left";
+  "bg-slate-800/95 border border-slate-600 rounded-xl shadow-xl shadow-black/30 p-6 sm:p-8 text-left";
 const LABEL_CLASS = "block text-sm font-medium text-slate-300 mb-2";
 const INPUT_CLASS =
   "w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent";
@@ -72,11 +72,11 @@ export function IntakeStepMedications({
         Add each medication with name, dosage, and frequency. Use PRN for
         as-needed medications and describe what it&apos;s for.
       </p>
-      <div className="space-y-4">
+      <div className="space-y-5">
         {m.rows.map((row) => (
           <div
             key={row.id}
-            className="p-4 rounded-lg bg-slate-700/50 border border-slate-600 space-y-3"
+            className="p-4 rounded-lg bg-slate-700/30 border border-slate-600 space-y-3"
           >
             <div className="flex justify-between items-center">
               <span className="text-slate-400 text-sm">Medication</span>

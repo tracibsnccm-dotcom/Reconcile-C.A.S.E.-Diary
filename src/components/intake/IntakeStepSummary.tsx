@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import type { IntakeFormData } from "./intakeTypes";
 
 const CARD_CLASS =
-  "bg-slate-800 border border-slate-700 rounded-xl p-6 text-left";
+  "bg-slate-800/95 border border-slate-600 rounded-xl shadow-xl shadow-black/30 p-6 sm:p-8 text-left";
 const SECTION_TITLE = "text-sm font-semibold text-orange-500 uppercase tracking-wide mb-2";
 const ROW_CLASS = "text-slate-300 text-sm py-1";
 const ACCIDENT_LABELS: Record<string, string> = {
@@ -39,7 +39,7 @@ export function IntakeStepSummary({
       </p>
       <div className="space-y-6">
         {attorney && (
-          <div>
+          <div className="p-4 rounded-lg bg-slate-700/30 border border-slate-600/50">
             <div className={SECTION_TITLE}>Attorney</div>
             <p className={ROW_CLASS}>{attorney.displayName}</p>
             {attorney.attorneyCode && (
@@ -56,7 +56,7 @@ export function IntakeStepSummary({
           <p className={ROW_CLASS}>{personal.email}</p>
           <p className={ROW_CLASS}>{personal.phone}</p>
         </div>
-        <div>
+        <div className="p-4 rounded-lg bg-slate-700/30 border border-slate-600/50">
           <div className={SECTION_TITLE}>Accident / Injury</div>
           <p className={ROW_CLASS}>Date: {injury.dateOfInjury}</p>
           <p className={ROW_CLASS}>
@@ -79,7 +79,7 @@ export function IntakeStepSummary({
             <p className="text-slate-500 text-sm">None listed</p>
           )}
         </div>
-        <div>
+        <div className="p-4 rounded-lg bg-slate-700/30 border border-slate-600/50">
           <div className={SECTION_TITLE}>Medications</div>
           {medications.rows.length === 0 ? (
             <p className="text-slate-500 text-sm">None listed</p>
@@ -103,7 +103,7 @@ export function IntakeStepSummary({
             {wellness.professional}
           </p>
         </div>
-        <div>
+        <div className="p-4 rounded-lg bg-slate-700/30 border border-slate-600/50">
           <div className={SECTION_TITLE}>SDOH</div>
           <p className={ROW_CLASS}>
             Housing {sdoh.housingStability} · Food {sdoh.foodSecurity} ·

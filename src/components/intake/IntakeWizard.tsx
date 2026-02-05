@@ -21,7 +21,6 @@ import { IntakeStepSummary } from "./IntakeStepSummary";
 const TOTAL_STEPS = STEPS.length;
 const WRAPPER_CLASS =
   "w-full min-h-screen bg-gradient-to-br from-[#0f172a] to-[#1e293b] text-white font-sans";
-const PROGRESS_BAR = "h-2 bg-slate-600 rounded-full overflow-hidden";
 const BTN_BACK =
   "px-5 py-2.5 rounded-lg border border-slate-500 text-slate-300 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors";
 const BTN_NEXT =
@@ -261,7 +260,7 @@ export function IntakeWizard() {
   if (resumeLoading) {
     return (
       <div className={WRAPPER_CLASS}>
-        <div className="max-w-2xl mx-auto px-4 py-12 text-center text-slate-400">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 sm:py-16 text-center text-slate-400">
           Loading…
         </div>
       </div>
@@ -273,8 +272,8 @@ export function IntakeWizard() {
     return (
       <div className={WRAPPER_CLASS}>
         <div ref={topRef} />
-        <div className="max-w-xl mx-auto px-4 py-8 sm:py-12">
-          <div className="bg-slate-800 border border-slate-700 rounded-xl p-8 text-center">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12 flex flex-col items-center">
+          <div className="w-full max-w-xl bg-slate-800/95 border border-slate-600 rounded-xl shadow-xl shadow-black/30 p-8 text-center">
             <h1 className="text-2xl font-bold text-white mb-2">
               Intake submitted
             </h1>
@@ -306,31 +305,50 @@ export function IntakeWizard() {
     );
   }
 
+  const progressPercent = Math.round(((step + 1) / TOTAL_STEPS) * 100);
+
   return (
     <div className={WRAPPER_CLASS}>
       <div ref={topRef} />
-      <div className="max-w-2xl mx-auto px-4 py-8">
-        <p className="text-right mb-4">
-          <Link to="/intake/resume" className="text-orange-500 hover:underline text-sm">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white">
+              Client Intake Wizard
+            </h1>
+            <p className="text-slate-400 mt-1">
+              Complete the intake process step by step
+            </p>
+          </div>
+          <Link
+            to="/intake/resume"
+            className="text-orange-500 hover:text-orange-400 hover:underline text-sm font-medium self-end sm:self-auto"
+          >
             Resume saved intake
           </Link>
-        </p>
-        <div className="mb-6">
-          <p className="text-slate-400 text-sm mb-2">
-            Step {step + 1} of {TOTAL_STEPS}
-          </p>
-          <div className={PROGRESS_BAR}>
+        </div>
+
+        {/* Progress bar — C.A.R.E. style */}
+        <div className="mb-8 rounded-xl border border-slate-600 bg-slate-800/50 p-4 shadow-lg shadow-black/20">
+          <label className="text-sm font-medium text-slate-300">Progress</label>
+          <div className="mt-2 h-2.5 w-full bg-slate-600 rounded-full overflow-hidden">
             <div
-              className="h-full bg-orange-500 transition-all duration-300"
-              style={{ width: `${((step + 1) / TOTAL_STEPS) * 100}%` }}
+              className="h-full bg-orange-500 rounded-full transition-all duration-300"
+              style={{ width: `${Math.max(0, Math.min(100, progressPercent))}%` }}
             />
           </div>
-          <p className="text-slate-300 text-sm mt-2 font-medium">
+          <div className="mt-2 flex justify-between">
+            <span className="text-xs text-slate-400">
+              Step {step + 1} of {TOTAL_STEPS}
+            </span>
+            <span className="text-xs text-slate-400">{progressPercent}% complete</span>
+          </div>
+          <p className="text-slate-200 text-sm mt-1 font-medium">
             {STEPS[step as StepIndex]}
           </p>
         </div>
 
-        <div className="mb-6">
+        <div className="mb-8">
           {step === 0 && (
             <IntakeStepAttorney
               data={formData}
@@ -395,7 +413,7 @@ export function IntakeWizard() {
           )}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-700">
+        <div className="flex flex-wrap items-center justify-between gap-4 pt-6 mt-2 border-t border-slate-600 space-y-3">
           <div className="flex gap-3">
             <button
               type="button"

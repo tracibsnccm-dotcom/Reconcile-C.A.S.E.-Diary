@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import type { IntakeFormData, IntakeConsent } from "./intakeTypes";
 
 const CARD_CLASS =
-  "bg-slate-800 border border-slate-700 rounded-xl p-6 text-left";
+  "bg-slate-800/95 border border-slate-600 rounded-xl shadow-xl shadow-black/30 p-6 sm:p-8 text-left";
 const LABEL_CLASS = "block text-sm font-medium text-slate-300 mb-2";
 const CHECKBOX_CLASS =
   "rounded border-slate-500 text-orange-500 focus:ring-orange-500 bg-slate-700/50";

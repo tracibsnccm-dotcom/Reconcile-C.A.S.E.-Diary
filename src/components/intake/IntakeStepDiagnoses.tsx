@@ -3,7 +3,7 @@ import type { IntakeFormData, IntakeDiagnoses } from "./intakeTypes";
 import { DIAGNOSES_OPTIONS } from "./diagnosesList";
 
 const CARD_CLASS =
-  "bg-slate-800 border border-slate-700 rounded-xl p-6 text-left";
+  "bg-slate-800/95 border border-slate-600 rounded-xl shadow-xl shadow-black/30 p-6 sm:p-8 text-left";
 const LABEL_CLASS = "block text-sm font-medium text-slate-300 mb-2";
 const INPUT_CLASS =
   "w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent";
@@ -36,7 +36,8 @@ export function IntakeStepDiagnoses({
         Select all that apply (alphabetized). Add any unlisted diagnoses in the
         box below.
       </p>
-      <div className="mb-4">
+      <div className="space-y-5">
+      <div>
         <label className={LABEL_CLASS}>Select diagnoses</label>
         <select
           multiple
@@ -69,6 +70,7 @@ export function IntakeStepDiagnoses({
           placeholder="List any other diagnoses not shown above"
           rows={3}
         />
+      </div>
       </div>
     </div>
   );

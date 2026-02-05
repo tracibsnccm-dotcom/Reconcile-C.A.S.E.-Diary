@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import type { IntakeFormData, IntakePersonal } from "./intakeTypes";
 
 const CARD_CLASS =
-  "bg-slate-800 border border-slate-700 rounded-xl p-6 text-left";
+  "bg-slate-800/95 border border-slate-600 rounded-xl shadow-xl shadow-black/30 p-6 sm:p-8 text-left";
 const LABEL_CLASS = "block text-sm font-medium text-slate-300 mb-2";
 const INPUT_CLASS =
   "w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent";
@@ -52,6 +52,7 @@ export function IntakeStepPersonal({
       <p className="text-slate-400 text-sm mb-6">
         Your name, date of birth, and contact information.
       </p>
+      <div className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label className={LABEL_CLASS}>First name *</label>
@@ -74,7 +75,7 @@ export function IntakeStepPersonal({
           />
         </div>
       </div>
-      <div className="mt-4">
+      <div>
         <label className={LABEL_CLASS}>Date of birth *</label>
         <input
           type="date"
@@ -83,7 +84,7 @@ export function IntakeStepPersonal({
           onChange={(e) => onChange({ ...p, dateOfBirth: e.target.value })}
         />
       </div>
-      <div className="mt-4">
+      <div>
         <label className={LABEL_CLASS}>Email *</label>
         <input
           type="email"
@@ -93,7 +94,7 @@ export function IntakeStepPersonal({
           placeholder="email@example.com"
         />
       </div>
-      <div className="mt-4">
+      <div>
         <label className={LABEL_CLASS}>Phone *</label>
         <input
           type="tel"
@@ -102,6 +103,7 @@ export function IntakeStepPersonal({
           onChange={(e) => onChange({ ...p, phone: e.target.value })}
           placeholder="(555) 555-5555"
         />
+      </div>
       </div>
     </div>
   );

@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import type { IntakeFormData, IntakeSDOH } from "./intakeTypes";
 
 const CARD_CLASS =
-  "bg-slate-800 border border-slate-700 rounded-xl p-6 text-left";
+  "bg-slate-800/95 border border-slate-600 rounded-xl shadow-xl shadow-black/30 p-6 sm:p-8 text-left";
 const LABEL_CLASS = "block text-sm font-medium text-slate-300 mb-2";
 const SCALE_LOW = "Significant concern";
 const SCALE_HIGH = "Stable / No concern";
@@ -44,7 +44,7 @@ export function IntakeStepSDOH({
       </p>
       <div className="space-y-6">
         {SDOH_ITEMS.map(({ key, label }) => (
-          <div key={key}>
+          <div key={key} className="p-4 rounded-lg bg-slate-700/30 border border-slate-600/50">
             <label className={LABEL_CLASS}>{label}</label>
             <div className="flex flex-wrap items-center gap-4">
               <input

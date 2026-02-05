@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import type { IntakeFormData, IntakeInjury, AccidentType } from "./intakeTypes";
 
 const CARD_CLASS =
-  "bg-slate-800 border border-slate-700 rounded-xl p-6 text-left";
+  "bg-slate-800/95 border border-slate-600 rounded-xl shadow-xl shadow-black/30 p-6 sm:p-8 text-left";
 const LABEL_CLASS = "block text-sm font-medium text-slate-300 mb-2";
 const INPUT_CLASS =
   "w-full bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent";
@@ -44,7 +44,8 @@ export function IntakeStepInjury({
       <p className="text-slate-400 text-sm mb-6">
         When and how the injury occurred, and a brief description.
       </p>
-      <div className="mb-4">
+      <div className="space-y-5">
+      <div>
         <label className={LABEL_CLASS}>Date of injury *</label>
         <input
           type="date"
@@ -53,7 +54,7 @@ export function IntakeStepInjury({
           onChange={(e) => onChange({ ...i, dateOfInjury: e.target.value })}
         />
       </div>
-      <div className="mb-4">
+      <div>
         <label className={LABEL_CLASS}>Type of accident *</label>
         <select
           className={INPUT_CLASS}
@@ -70,7 +71,7 @@ export function IntakeStepInjury({
         </select>
       </div>
       {i.accidentType === "other" && (
-        <div className="mb-4">
+        <div>
           <label className={LABEL_CLASS}>Please describe *</label>
           <input
             type="text"
@@ -80,9 +81,15 @@ export function IntakeStepInjury({
               onChange({ ...i, accidentTypeOther: e.target.value })
             }
             placeholder="Other type of accident"
-          />
+        />
         </div>
       )}
+      <div className="flex flex-col gap-3 p-4 bg-orange-500/10 rounded-lg border border-orange-500/20">
+        <h4 className="font-semibold text-sm text-orange-200">Tell Us What Happened</h4>
+        <p className="text-slate-400 text-sm">
+          Describe the incident in your own words. Include important details like what happened, where, and any immediate effects you experienced.
+        </p>
+      </div>
       <div>
         <label className={LABEL_CLASS}>Brief description of the incident *</label>
         <textarea
@@ -92,6 +99,7 @@ export function IntakeStepInjury({
           placeholder="What happened?"
           rows={4}
         />
+      </div>
       </div>
     </div>
   );
