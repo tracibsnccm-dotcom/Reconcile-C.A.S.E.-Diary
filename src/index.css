@@ -185,3 +185,16 @@ All colors MUST be HSL.
     scrollbar-width: none;  /* Firefox */
   }
 }
+
+/* CRITICAL: Force all text to pure black for accessibility (sick/injured users) */
+body, body * {
+  color: #000000 !important;
+}
+
+button, a.btn, [role="button"] {
+  color: inherit !important;
+}
+
+button.bg-primary, button.bg-blue-900, button.bg-teal-700, [class*="btn"] {
+  color: #ffffff !important;
+}
