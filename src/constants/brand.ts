@@ -15,3 +15,22 @@ export const CASE_BRAND = {
   parentPlatform: "Reconcile C.A.R.E.",
   parentFullName: "Clinical Assessment & Resource Efficiency",
 } as const;
+
+// C.A.R.E.-compatible brand (intake/portal login)
+export const RCMS = {
+  brandNavy: "#0f2a6a",
+  brandTeal: "#128f8b",
+  brandGold: "#b09837",
+  brandRed: "#e74c3c",
+  clientBlue: "#00695c",
+  attorneyOrange: "#ff7a00",
+  eggplant: "#4b1d3f",
+  bgSoft: "bg-white",
+};
+
+export const btn = {
+  base: "inline-flex items-center justify-center rounded-xl font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2",
+  lg: "px-5 py-3 text-base",
+  md: "px-4 py-2 text-sm",
+  sm: "px-3 py-1.5 text-xs",
+};

@@ -1,11 +1,53 @@
-// ClientLogin — case number + PIN via client-sign-in edge function. (Ported from C.A.R.E., C.A.S.E. theme)
-
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { CASE_BRAND } from "@/constants/brand";
-import { ACCOUNT_LOCKED_SUFFIX } from "@/config/clientMessaging";
+import { useNavigate } from "react-router-dom";
+import { RCMS, btn } from "@/constants/brand";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Lock } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ACCOUNT_LOCKED_SUFFIX } from "@/config/clientMessaging";
+
+// Public fetch functions for unauthenticated requests (no auth token needed)
+async function publicSupabaseGet(table: string, query: string) {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  
+  const response = await fetch(`${supabaseUrl}/rest/v1/${table}?${query}`, {
+    headers: {
+      'apikey': supabaseKey,
+      'Authorization': `Bearer ${supabaseKey}`,
+      'Content-Type': 'application/json',
+    }
+  });
+  
+  if (!response.ok) {
+    return { data: null, error: new Error(`${response.status}`) };
+  }
+  
+  const data = await response.json();
+  return { data, error: null };
+}
+
+async function publicSupabaseUpdate(table: string, filter: string, updates: object) {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  
+  const response = await fetch(`${supabaseUrl}/rest/v1/${table}?${filter}`, {
+    method: 'PATCH',
+    headers: {
+      'apikey': supabaseKey,
+      'Authorization': `Bearer ${supabaseKey}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=minimal'
+    },
+    body: JSON.stringify(updates)
+  });
+  
+  if (!response.ok) {
+    return { error: new Error(`${response.status}`) };
+  }
+  
+  return { error: null };
+}
 
 export default function ClientLogin() {
   const [caseNumber, setCaseNumber] = useState("");
@@ -31,14 +73,17 @@ export default function ClientLogin() {
     }
 
     try {
+      // Call secure Edge Function for authentication
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/client-sign-in`,
         {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            caseNumber: trimmedCaseNumber,
-            pin: trimmedPin,
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            caseNumber: trimmedCaseNumber, 
+            pin: trimmedPin 
           }),
         }
       );
@@ -53,60 +98,59 @@ export default function ClientLogin() {
         } else if (result.attempts_remaining !== undefined) {
           setError(`Invalid PIN. ${result.attempts_remaining} attempts remaining.`);
         } else {
-          setError(result.error || "Login failed");
+          setError(result.error || 'Login failed');
         }
         setLoading(false);
         return;
       }
 
-      sessionStorage.setItem("client_case_id", result.case_id);
-      sessionStorage.setItem("client_case_number", result.case_number);
-      sessionStorage.setItem("client_name", result.client_name || "");
-
-      console.log("ClientLogin: Login successful, redirecting to portal");
-      navigate("/client-portal", { replace: true });
-    } catch (err: unknown) {
-      console.error("Client login error:", err);
-      setError(err instanceof Error ? err.message : "An error occurred during login. Please try again.");
+      // Success - store session info
+      sessionStorage.setItem('client_case_id', result.case_id);
+      sessionStorage.setItem('client_case_number', result.case_number);
+      sessionStorage.setItem('client_name', result.client_name || '');
+      
+      console.log('ClientLogin: Login successful, redirecting to portal');
+      // Redirect to client portal
+      navigate('/client-portal', { replace: true });
+    } catch (err: any) {
+      console.error('Client login error:', err);
+      setError(err.message || 'An error occurred during login. Please try again.');
       setLoading(false);
     }
   }
 
-  const WRAPPER_CLASS = "min-h-screen bg-gradient-to-br from-[#0f172a] to-[#1e293b] text-white font-sans flex items-center justify-center px-6 py-10";
-  const CARD_CLASS = "bg-slate-800 border border-slate-700 rounded-xl p-6 shadow-lg max-w-md w-full";
-
   return (
-    <div className={WRAPPER_CLASS}>
+    <div className="min-h-[80vh] flex items-center justify-center px-6 py-10">
       <div className="w-full max-w-md">
-        <h1 className="text-3xl font-extrabold text-white">
+        <h1 className="text-3xl font-extrabold" style={{color: RCMS.brandNavy}}>
           Client Portal Login
         </h1>
-        <p className="mt-2 text-sm text-slate-400">
-          Enter your case number and PIN to access your {CASE_BRAND.diaryName}.
+        <p className="mt-2 text-sm text-muted-foreground">
+          Enter your case number and PIN to access your portal.
         </p>
 
-        <div className="mt-6 rounded-xl border border-slate-700 bg-slate-800 p-6 shadow-lg">
+        <div className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-sm">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 Case Number
               </label>
               <input
                 type="text"
                 required
                 placeholder="01-260108-01F"
-                className="mt-1 w-full rounded-lg border border-slate-600 bg-slate-700/50 px-3 py-2 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-orange-500 font-mono uppercase"
+                className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 outline-none focus:border-ring font-mono uppercase"
                 value={caseNumber}
                 onChange={(e) => setCaseNumber(e.target.value.toUpperCase())}
                 disabled={loading}
               />
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Format: XX-YYMMDD-XXL (e.g., 01-260108-01F)
               </p>
             </div>
-
+            
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 PIN
               </label>
               <input
@@ -115,31 +159,32 @@ export default function ClientLogin() {
                 placeholder="1234"
                 maxLength={4}
                 pattern="[0-9]{4}"
-                className="mt-1 w-full rounded-lg border border-slate-600 bg-slate-700/50 px-3 py-2 text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-orange-500 font-mono text-center text-lg tracking-widest"
+                className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 outline-none focus:border-ring font-mono text-center text-lg tracking-widest"
                 value={pin}
                 onChange={(e) => {
-                  const value = e.target.value.replace(/\D/g, "").slice(0, 4);
+                  const value = e.target.value.replace(/\D/g, '').slice(0, 4);
                   setPin(value);
                 }}
                 disabled={loading}
               />
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-muted-foreground">
                 4-digit PIN provided by your attorney
               </p>
             </div>
 
             {error && (
-              <Alert variant={lockedUntil ? "destructive" : "default"} className="bg-red-900/20 border-red-700">
+              <Alert variant={lockedUntil ? "destructive" : "default"}>
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
 
             {lockedUntil && (
-              <Alert variant="destructive" className="bg-red-900/20 border-red-700">
+              <Alert variant="destructive">
                 <Lock className="h-4 w-4" />
                 <AlertDescription>
-                  Account locked until {lockedUntil.toLocaleString()}. {ACCOUNT_LOCKED_SUFFIX}
+                  Account locked until {lockedUntil.toLocaleString()}.{" "}
+                  {ACCOUNT_LOCKED_SUFFIX}
                 </AlertDescription>
               </Alert>
             )}
@@ -147,36 +192,31 @@ export default function ClientLogin() {
             <button
               type="submit"
               disabled={loading || !!lockedUntil}
-              className="w-full py-3 rounded-lg bg-orange-500 text-white font-medium hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className={`${btn.base} ${btn.lg} text-white w-full`}
+              style={{ 
+                backgroundColor: loading || lockedUntil ? "#9ca3af" : RCMS.brandNavy,
+                cursor: loading || lockedUntil ? "not-allowed" : "pointer"
+              }}
             >
               {loading ? "Verifying..." : "Access My Portal"}
             </button>
           </form>
 
-          <div className="mt-6 pt-6 border-t border-slate-700 space-y-2">
-            <p className="text-xs text-center text-slate-500">
-              New client?{" "}
-              <Link to="/intake" className="text-orange-500 hover:underline font-medium">
-                Start intake
-              </Link>
-            </p>
-            <p className="text-xs text-center text-slate-500">
-              Resume saved intake?{" "}
-              <Link to="/intake/resume" className="text-orange-500 hover:underline font-medium">
-                Resume intake
-              </Link>
-            </p>
-            <p className="text-xs text-center text-slate-500">
+          <div className="mt-6 pt-6 border-t border-border">
+            <p className="text-xs text-center text-muted-foreground">
               Are you an attorney?{" "}
-              <Link to="/attorney-login" className="text-orange-500 hover:underline font-medium">
+              <Link 
+                to="/attorney-login" 
+                className="text-primary hover:underline font-semibold"
+              >
                 Login here
               </Link>
             </p>
           </div>
         </div>
 
-        <p className="mt-6 text-xs text-slate-500 text-center">
-          By accessing your portal, you agree to {CASE_BRAND.company}&apos;s Minimum Necessary Data Policy and Terms.
+        <p className="mt-6 text-xs text-muted-foreground text-center">
+          By accessing your portal, you agree to RCMS's Minimum Necessary Data Policy and Terms.
         </p>
       </div>
     </div>

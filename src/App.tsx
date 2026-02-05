@@ -20,15 +20,15 @@ function App() {
       <AuthProvider>
         <Routes>
           <Route path="/" element={<Index />} />
-          <Route path="/client-login" element={<ClientLogin />} />
-          <Route path="/attorney-login" element={<AttorneyLogin />} />
-          <Route path="/client" element={<ClientPortal />} />
-          <Route path="/client-portal" element={<ClientPortal />} />
-          <Route path="/intake" element={<IntakeWizard />} />
-          <Route path="/client-intake" element={<IntakeWizard />} />
           <Route path="/client-consent" element={<ClientConsent />} />
           <Route path="/intake-identity" element={<IntakeIdentity />} />
-          <Route path="/intake/resume" element={<ResumeIntake />} />
+          <Route path="/intake" element={<IntakeWizard />} />
+          <Route path="/client-intake" element={<IntakeWizard />} />
+          <Route path="/resume-intake" element={<ResumeIntake />} />
+          <Route path="/client-login" element={<ClientLogin />} />
+          <Route path="/client" element={<ClientPortal />} />
+          <Route path="/client-portal" element={<ClientPortal />} />
+          <Route path="/attorney-login" element={<AttorneyLogin />} />
           <Route path="/attorney" element={<Navigate to="/attorney/dashboard" replace />} />
           <Route path="/attorney/dashboard" element={<AttorneyDashboard />} />
           <Route path="/attorney/pending-intakes" element={<AttorneyPendingIntakes />} />
