@@ -69,9 +69,7 @@ async function saveConsentStep(sessionId: string, step: number, data: any) {
     updates.legal_disclosure_signed_at = new Date().toISOString();
     updates.legal_disclosure_signature = data.signature ?? "";
     updates.legal_disclosure_attorney_name = data.attorneyName ?? null;
-    if (data.declined === true) {
-      (updates as any).legal_disclosure_declined = true;
-    }
+    // Note: legal_disclosure_declined column does not exist in rc_client_consents; add it to the DB if step-2 decline tracking is needed.
   } else if (dbStep === 4) {
     // Obtain Records (UI step 3)
     updates.obtain_records_signed_at = new Date().toISOString();
@@ -787,7 +785,45 @@ export default function ClientConsent() {
                 <div className="prose prose-sm max-w-none text-gray-900">
                   <h3 className="text-base font-bold mb-3 text-gray-900">RECONCILE CARE MANAGEMENT SERVICES (RCMS)</h3>
                   <h4 className="text-sm font-semibold mb-4 text-gray-900">SERVICE AGREEMENT & INFORMED CONSENT FOR CARE MANAGEMENT SERVICES</h4>
-                  <p className="text-gray-900">I voluntarily request and agree to receive care management services from Reconcile Care Management Services (RCMS). I understand that these services are designed to provide support and navigation for my clinically complex situation.</p>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="font-semibold mb-2">1. Voluntary Agreement for Services:</p>
+                      <p className="text-gray-900">I voluntarily request and agree to receive care management services from Reconcile Care Management Services (RCMS). I understand that these services are designed to provide support and navigation for my clinically complex situation. I am not obligated to accept these services and may decline to participate at any time.</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold mb-2">2. Nature of Services – The RCMS C.A.R.E. Model:</p>
+                      <p className="mb-2 text-gray-900">RCMS provides clinical advocacy, resource coordination, and evidence-based support. Services may include:</p>
+                      <ul className="list-disc list-inside space-y-1 ml-4 text-gray-900">
+                        <li>Comprehensive clinical assessment and review of medical records.</li>
+                        <li>Care coordination and communication with my treating healthcare providers.</li>
+                        <li>Identification of barriers to recovery and connection to community resources.</li>
+                        <li>Clinical consultation and analysis for my legal team to support my case.</li>
+                      </ul>
+                      <p className="mt-2 text-gray-900">I understand that RCMS and its staff are Registered Nurses and Care Managers. <strong>THEY DO NOT PROVIDE LEGAL ADVICE.</strong> All legal decisions remain the responsibility of my attorney.</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold mb-2">3. My Responsibilities as a Client:</p>
+                      <p className="mb-2 text-gray-900">I agree to:</p>
+                      <ul className="list-disc list-inside space-y-1 ml-4 text-gray-900">
+                        <li>Provide accurate and complete information about my health and circumstances.</li>
+                        <li>Participate actively in the care management process.</li>
+                        <li>Inform my RCMS Care Manager of significant changes in my health or treatment.</li>
+                        <li>Notify RCMS if I wish to discontinue services.</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="font-semibold mb-2">4. Financial Agreement:</p>
+                      <p className="text-gray-900">I understand that RCMS services are engaged and compensated by my legal representative/law firm under a separate business agreement. I will not receive a bill or be directly charged by RCMS for these services. This financial arrangement does not influence the clinical judgment or advocacy provided by my RCMS Care Manager.</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold mb-2">5. Confidentiality:</p>
+                      <p className="text-gray-900">I understand that my privacy is protected by law and by RCMS policies. I will receive a separate Notice of Privacy Practices that details these protections. I authorize the necessary use and disclosure of my health information through accompanying consent forms.</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold mb-2">6. Right to Discontinue:</p>
+                      <p className="text-gray-900">I may discontinue RCMS services at any time by providing verbal or written notice to my Care Manager and my attorney.</p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -817,10 +853,58 @@ export default function ClientConsent() {
           {/* Steps 2-5: same structure as C.A.R.E. - keeping key UI; full legal text abbreviated */}
           {step === 2 && (
             <div className="space-y-6">
-              <div><h1 className="text-2xl font-bold text-gray-900 mb-2">Authorization to Disclose PHI to Legal Counsel</h1></div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">Authorization to Disclose PHI to Legal Counsel</h1>
+                <p className="text-sm text-gray-900">Please read the following authorization carefully.</p>
+              </div>
+              <div className="border rounded-lg p-4 bg-muted/50 max-h-[500px] overflow-y-auto">
+                <div className="prose prose-sm max-w-none text-gray-900">
+                  <h3 className="text-base font-bold mb-3 text-gray-900">AUTHORIZATION FOR CLINICAL CONSULTATION & DISCLOSURE OF PROTECTED HEALTH INFORMATION TO LEGAL COUNSEL/REPRESENTATIVE</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="font-semibold mb-2">Coordination of Authorizations:</p>
+                      <p className="text-gray-900">This is one of three distinct authorizations for Reconcile Care Management Services (RCMS). Each form serves a separate purpose: collaboration with your legal team, obtaining your records, and coordinating with your healthcare providers. These authorizations are designed to work together. Signing one does not invalidate the others. You may revoke any one authorization without affecting the others.</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold mb-2">RCMS&apos;s Role as a Clinical Business Associate:</p>
+                      <p className="text-gray-900">Reconcile Care Management Services (RCMS) operates as a Business Associate under HIPAA to your legal team. This means we are engaged by your attorneys to provide specialized, clinical support for your case. We do not provide legal advice. Our role is to organize, interpret, and translate complex medical information into clear, actionable insights for your legal team.</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold mb-2">Specific Authorization for Legal Collaboration:</p>
+                      <p className="mb-2 text-gray-900">I specifically authorize and direct my Reconcile Care Management Services (RCMS) Care Manager to discuss, consult on, and disclose my Protected Health Information (PHI) and all pertinent clinical information with my designated legal representative for the purpose of legal case coordination and strategy.</p>
+                      <p className="mb-2 text-gray-900">This includes, but is not limited to:</p>
+                      <ul className="list-disc list-inside space-y-1 ml-4 text-gray-900">
+                        <li>Verbal consultations, strategy discussions, and updates.</li>
+                        <li>Written summaries, assessments, and reports.</li>
+                        <li>Reviews and interpretations of medical records.</li>
+                        <li>Analysis of treatment plans and future care needs.</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="font-semibold mb-2">Nurse&apos;s Fiduciary Duty & Your Rights:</p>
+                      <p className="mb-2 text-gray-900">As Registered Nurses and Care Managers, we have a professional and ethical fiduciary duty to you, our client. This means our primary obligation is to act in your best interest, with loyalty, and to protect your confidential information.</p>
+                      <p className="text-gray-900">You have the absolute right to revoke this authorization, in whole or in part, at any time, for any reason.</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold mb-2">Expiration:</p>
+                      <p className="text-gray-900">This authorization will expire upon the formal closure of my case with RCMS, or one (1) year from the date signed, whichever occurs first.</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold mb-2">Re-Disclosure Notice:</p>
+                      <p className="text-gray-900">I understand that information disclosed to my legal representative may be re-disclosed by them in the course of my legal proceedings and may no longer be protected by federal HIPAA regulations.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
               <div className="space-y-4">
-                <div className="space-y-2"><Label className="text-gray-900">Attorney/Firm Name *</Label><Input id="attorney-name" value={attorneyName} onChange={(e) => setAttorneyName(e.target.value)} placeholder="Enter your attorney or firm name" required className="text-gray-900" /></div>
-                <div className="flex items-start space-x-2"><Checkbox id="legal-disclosure" checked={legalDisclosureAuthorized} onCheckedChange={(c) => setLegalDisclosureAuthorized(c === true)} /><Label htmlFor="legal-disclosure" className="text-sm cursor-pointer text-gray-900">I authorize RCMS to disclose my PHI to my legal representative as described above</Label></div>
+                <div className="space-y-2">
+                  <Label htmlFor="attorney-name" className="text-gray-900">Attorney/Firm Name *</Label>
+                  <Input id="attorney-name" value={attorneyName} onChange={(e) => setAttorneyName(e.target.value)} placeholder="Enter your attorney or firm name" required className="text-gray-900" />
+                </div>
+                <div className="flex items-start space-x-2">
+                  <Checkbox id="legal-disclosure" checked={legalDisclosureAuthorized} onCheckedChange={(c) => setLegalDisclosureAuthorized(c === true)} />
+                  <Label htmlFor="legal-disclosure" className="text-sm cursor-pointer text-gray-900">I authorize RCMS to disclose my PHI to my legal representative as described above</Label>
+                </div>
                 <div className="space-y-2"><Label className="text-gray-900">Full Legal Name (Signature)</Label><Input value={legalDisclosureSignature} onChange={(e) => setLegalDisclosureSignature(e.target.value)} placeholder="Enter your full legal name" className="text-gray-900" /></div>
                 <div className="space-y-2"><Label className="text-gray-900">Date</Label><Input type="text" value={currentDate} readOnly className="bg-muted text-gray-900" /></div>
               </div>
@@ -828,7 +912,50 @@ export default function ClientConsent() {
           )}
           {step === 3 && (
             <div className="space-y-6">
-              <div><h1 className="text-2xl font-bold text-gray-900 mb-2">Authorization to Obtain Protected Health Information</h1></div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">Authorization to Obtain Protected Health Information</h1>
+                <p className="text-sm text-gray-900">Please read the following authorization carefully.</p>
+              </div>
+              <div className="border rounded-lg p-4 bg-muted/50 max-h-[500px] overflow-y-auto">
+                <div className="prose prose-sm max-w-none text-gray-900">
+                  <h3 className="text-base font-bold mb-3 text-gray-900">AUTHORIZATION TO OBTAIN PROTECTED HEALTH INFORMATION</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="font-semibold mb-2">Coordination of Authorizations:</p>
+                      <p className="text-gray-900">This is one of three distinct authorizations for Reconcile Care Management Services (RCMS). Each form serves a separate purpose. You may revoke any one authorization without affecting the others.</p>
+                    </div>
+                    <div>
+                      <p className="mb-2 text-gray-900">I hereby authorize any and all physicians, healthcare providers, hospitals, clinics, rehabilitation facilities, insurance companies, employers, and other entities to release and disclose my complete records and Protected Health Information (PHI) to Reconcile Care Management Services (RCMS) and its assigned Care Managers.</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold mb-2">Information to Be Disclosed:</p>
+                      <p className="mb-2 text-gray-900">This authorization covers all records pertaining to my condition, treatment, and related claims, including but not limited to:</p>
+                      <ul className="list-disc list-inside space-y-1 ml-4 text-gray-900">
+                        <li>All medical records, office notes, charts, and diagnoses.</li>
+                        <li>Diagnostic reports (e.g., MRI, X-Ray, CT Scan, EMG).</li>
+                        <li>Billing statements, itemized charges, and payment records.</li>
+                        <li>Therapy records (physical, occupational, speech, cognitive).</li>
+                        <li>Employment records related to job duties, wages, and injury.</li>
+                        <li>Pharmacy records.</li>
+                        <li>Any other documents relevant to the injury/incident.</li>
+                      </ul>
+                      <p className="mt-2 text-gray-900">This authorization specifically excludes &apos;psychotherapy notes&apos; as defined by HIPAA. A separate authorization is required for those notes.</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold mb-2">Purpose:</p>
+                      <p className="text-gray-900">The information is necessary for Reconcile Care Management Services to provide comprehensive care management, assessment, and coordination of services related to my case.</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold mb-2">Important Distinction:</p>
+                      <p className="text-gray-900">You may have already signed a general release with your attorney. This RCMS-specific authorization is required under HIPAA to permit healthcare entities to release your PHI directly to RCMS.</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold mb-2">Expiration:</p>
+                      <p className="text-gray-900">This authorization will expire one (1) year from the date signed, or upon the formal closure of my case with RCMS, whichever occurs first.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
               <div className="space-y-4">
                 <div className="space-y-2"><Label className="text-gray-900">Date of Injury/Incident *</Label><Input type="date" value={injuryDate} onChange={(e) => setInjuryDate(e.target.value)} required max={currentDate} className="text-gray-900" /></div>
                 <div className="flex items-start space-x-2"><Checkbox id="obtain-records" checked={obtainRecordsAuthorized} onCheckedChange={(c) => setObtainRecordsAuthorized(c === true)} /><Label htmlFor="obtain-records" className="text-sm cursor-pointer text-gray-900">I authorize the release of my records to RCMS as described above</Label></div>
@@ -839,7 +966,47 @@ export default function ClientConsent() {
           )}
           {step === 4 && (
             <div className="space-y-6">
-              <div><h1 className="text-2xl font-bold text-gray-900 mb-2">Authorization to Disclose for Healthcare Coordination</h1></div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">Authorization to Disclose for Healthcare Coordination</h1>
+                <p className="text-sm text-gray-900">Please read the following authorization carefully.</p>
+              </div>
+              <div className="border rounded-lg p-4 bg-muted/50 max-h-[500px] overflow-y-auto">
+                <div className="prose prose-sm max-w-none text-gray-900">
+                  <h3 className="text-base font-bold mb-3 text-gray-900">AUTHORIZATION TO DISCLOSE INFORMATION FOR HEALTHCARE COORDINATION</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="font-semibold mb-2">Coordination of Authorizations:</p>
+                      <p className="text-gray-900">This is one of three distinct authorizations for Reconcile Care Management Services (RCMS). You may revoke any one authorization without affecting the others.</p>
+                    </div>
+                    <div>
+                      <p className="mb-2 text-gray-900">I hereby authorize Reconcile Care Management Services (RCMS) and its assigned Care Managers to disclose, release, and discuss the Protected Health Information (PHI) and professional Care Management work product they create, compile, or review in the course of managing my case.</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold mb-2">Information to Be Disclosed:</p>
+                      <ul className="list-disc list-inside space-y-1 ml-4 text-gray-900">
+                        <li>Care Management Assessments, Initial Evaluations, and Clinical Reviews.</li>
+                        <li>Progress Reports, Summaries, and Correspondence.</li>
+                        <li>Reviews and summaries of medical records and other PHI.</li>
+                        <li>Treatment plan and resource recommendations.</li>
+                        <li>Functional capacity evaluations or work status opinions (if performed).</li>
+                        <li>Identification of barriers to recovery and care plan coordination.</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="font-semibold mb-2">Specific Authorized Recipients:</p>
+                      <p className="text-gray-900">This information may be disclosed ONLY to my treating healthcare providers for the purpose of coordinating my care. This includes my current and future treating physicians, therapists, and other healthcare providers.</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold mb-2">Purpose:</p>
+                      <p className="text-gray-900">This authorization allows RCMS to coordinate my healthcare by sharing relevant assessments and recommendations with my treating medical team to support a unified approach to my treatment and recovery.</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold mb-2">Expiration:</p>
+                      <p className="text-gray-900">This authorization will expire upon the formal closure of my case with RCMS, or one (1) year from the date signed, whichever occurs first.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
               <div className="space-y-4">
                 <div className="space-y-2"><Label className="text-gray-900">Primary Care Physician (Optional)</Label><Input value={pcp} onChange={(e) => setPcp(e.target.value)} placeholder="Enter primary care physician name" className="text-gray-900" /></div>
                 <div className="space-y-2"><Label className="text-gray-900">Specialist(s) (Optional)</Label><Input value={specialist} onChange={(e) => setSpecialist(e.target.value)} placeholder="Enter specialist name(s)" className="text-gray-900" /></div>
@@ -852,8 +1019,80 @@ export default function ClientConsent() {
           )}
           {step === 5 && (
             <div className="space-y-6">
-              <div><h1 className="text-2xl font-bold text-gray-900 mb-2">Notice of Privacy Practices</h1></div>
-              <div className="border rounded-lg p-4 bg-muted/50 max-h-[400px] overflow-y-auto"><p className="text-sm text-gray-900">This Notice describes how Protected Health Information (PHI) about you may be used and disclosed. Please review carefully.</p></div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">Notice of Privacy Practices</h1>
+                <p className="text-sm text-gray-900">Please read the following privacy notice carefully.</p>
+              </div>
+              <div className="border rounded-lg p-4 bg-muted/50 max-h-[500px] overflow-y-auto">
+                <div className="prose prose-sm max-w-none text-gray-900">
+                  <h3 className="text-base font-bold mb-2 text-gray-900">NOTICE OF PRIVACY PRACTICES</h3>
+                  <p className="text-sm mb-1 text-gray-900">Reconcile Care Management Services (RCMS)</p>
+                  <p className="text-sm mb-4 text-gray-900">Effective Date: 01/01/2026</p>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="font-semibold mb-2 text-gray-900">THIS NOTICE DESCRIBES HOW PROTECTED HEALTH INFORMATION (PHI) ABOUT YOU MAY BE USED AND DISCLOSED AND HOW YOU CAN GET ACCESS TO THIS INFORMATION. PLEASE REVIEW THE FOLLOWING CAREFULLY.</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold mb-2">Our Commitment to Your Privacy:</p>
+                      <p className="text-gray-900">This Notice describes the privacy practices of Reconcile Care Management Services (RCMS). Our primary goal is to provide you with exceptional care management and advocacy. A critical part of that service is protecting the confidentiality and security of your health information.</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold mb-2">OUR PLEDGE REGARDING YOUR PROTECTED HEALTH INFORMATION (PHI):</p>
+                      <p className="mb-2 text-gray-900">At RCMS, we are committed to protecting the privacy of your health information. We are required by law to:</p>
+                      <ul className="list-disc list-inside space-y-1 ml-4 text-gray-900">
+                        <li>Maintain the privacy of your Protected Health Information (PHI);</li>
+                        <li>Provide you with this Notice of our legal duties and privacy practices;</li>
+                        <li>Abide by the terms of this Notice currently in effect;</li>
+                        <li>Notify you following a breach of your unsecured PHI.</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="font-semibold mb-2">HOW WE MAY USE AND DISCLOSE YOUR PHI:</p>
+                      <div className="ml-4 space-y-3">
+                        <div>
+                          <p className="font-semibold mb-1 text-gray-900">1. For Treatment, Payment, or Healthcare Operations</p>
+                          <ul className="list-disc list-inside space-y-1 ml-4 text-gray-900">
+                            <li><strong>Treatment:</strong> We may use and disclose your PHI to provide, coordinate, or manage your healthcare.</li>
+                            <li><strong>Payment:</strong> We may use and disclose your PHI to obtain payment for services.</li>
+                            <li><strong>Healthcare Operations:</strong> We may use your PHI for quality assessment and business planning.</li>
+                          </ul>
+                        </div>
+                        <div>
+                          <p className="font-semibold mb-1 text-gray-900">2. With Your Written Authorization</p>
+                          <p className="text-gray-900">We will not use or disclose your PHI for purposes not described in this Notice without your written authorization. You may revoke an authorization at any time in writing.</p>
+                        </div>
+                        <div>
+                          <p className="font-semibold mb-1 text-gray-900">3. Without Your Authorization – As Permitted by Law</p>
+                          <p className="text-gray-900">We may use or disclose your PHI when required by law, for public health activities, health oversight, judicial proceedings, law enforcement, to avert serious threats to health or safety, and other purposes permitted by law.</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="font-semibold mb-2">YOUR RIGHTS REGARDING YOUR PHI:</p>
+                      <ul className="list-disc list-inside space-y-1 ml-4 text-gray-900">
+                        <li>Right to Inspect and Copy your PHI</li>
+                        <li>Right to Amend your PHI if incorrect</li>
+                        <li>Right to an Accounting of Disclosures</li>
+                        <li>Right to Request Restrictions on uses</li>
+                        <li>Right to Request Confidential Communications</li>
+                        <li>Right to a Paper Copy of This Notice</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="font-semibold mb-2">COMPLAINTS:</p>
+                      <p className="text-gray-900">If you believe your privacy rights have been violated, you may file a complaint with us or with the Secretary of the U.S. Department of Health and Human Services. You will not be penalized for filing a complaint.</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold mb-2">Questions or Concerns:</p>
+                      <p className="mb-1 text-gray-900">Contact our Privacy Officer:</p>
+                      <p className="mb-1 text-gray-900">Traci Johnson, BSN RN CCM</p>
+                      <p className="mb-1 text-gray-900">251 Clearlake Dr., Grand Prairie, TX 75054</p>
+                      <p className="mb-1 text-gray-900">Phone: 682-556-8472</p>
+                      <p className="text-gray-900">Email: traci.johnson@rcmspllc.com</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
               <div className="space-y-4">
                 <div className="flex items-start space-x-2"><Checkbox id="hipaa-ack" checked={hipaaAcknowledged} onCheckedChange={(c) => setHipaaAcknowledged(c === true)} /><Label htmlFor="hipaa-ack" className="text-sm cursor-pointer text-gray-900">I acknowledge that I have received and reviewed this Notice of Privacy Practices</Label></div>
                 <div className="space-y-2"><Label className="text-gray-900">Full Legal Name (Signature)</Label><Input value={hipaaSignature} onChange={(e) => setHipaaSignature(e.target.value)} placeholder="Enter your full legal name" className="text-gray-900" /></div>
