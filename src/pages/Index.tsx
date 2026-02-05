@@ -23,8 +23,13 @@ export default function Index() {
       <p style={{ fontSize: "16px", color: "rgba(255,255,255,0.9)", marginBottom: "60px" }}>
         {CASE_BRAND.tagline}
       </p>
-      <div style={{ display: "flex", gap: "24px", flexWrap: "wrap", justifyContent: "center" }}>
+
+      {/* PRIMARY SECTION - Client Intake */}
+      <div className="bg-white/10 backdrop-blur rounded-xl p-8 max-w-md mx-auto mb-8">
+        <h2 className="text-2xl font-bold text-white mb-4 text-center">Client Intake</h2>
+
         <Link to="/intake-identity" style={{
+          display: "block",
           padding: "20px 40px",
           backgroundColor: "#fb923c",
           color: "white",
@@ -32,35 +37,66 @@ export default function Index() {
           fontSize: "18px",
           fontWeight: "bold",
           textDecoration: "none",
+          textAlign: "center",
           boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
+          marginBottom: "16px"
         }}>
           Start Your Intake
         </Link>
+
+        <div className="text-center">
+          <p className="text-white/80 text-sm mb-2">Already started but didn't finish?</p>
+          <Link
+            to="/resume-intake"
+            className="text-orange-300 hover:text-orange-200 underline font-medium"
+          >
+            Resume Your Intake
+          </Link>
+        </div>
+      </div>
+
+      {/* SECONDARY SECTION - Portal Buttons */}
+      <div className="flex gap-4 flex-wrap justify-center">
         <Link to="/client-login" style={{
-          padding: "20px 40px",
-          backgroundColor: "white",
-          color: "#1e3a8a",
+          padding: "16px 32px",
+          backgroundColor: "#0d9488",
+          color: "white",
           borderRadius: "12px",
-          fontSize: "18px",
+          fontSize: "16px",
           fontWeight: "bold",
           textDecoration: "none",
           boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
         }}>
-          Client Login
+          Client Portal
         </Link>
+
         <Link to="/attorney-login" style={{
-          padding: "20px 40px",
+          padding: "16px 32px",
           backgroundColor: "#fb923c",
           color: "white",
           borderRadius: "12px",
-          fontSize: "18px",
+          fontSize: "16px",
           fontWeight: "bold",
           textDecoration: "none",
           boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
         }}>
-          Attorney Login
+          Attorney Portal
+        </Link>
+
+        <Link to="/provider-login" style={{
+          padding: "16px 32px",
+          backgroundColor: "#7c3aed",
+          color: "white",
+          borderRadius: "12px",
+          fontSize: "16px",
+          fontWeight: "bold",
+          textDecoration: "none",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
+        }}>
+          Provider Portal
         </Link>
       </div>
+
       <p style={{ marginTop: "60px", color: "rgba(255,255,255,0.7)", fontSize: "12px" }}>
         {CASE_BRAND.copyright} | {CASE_BRAND.company}
       </p>

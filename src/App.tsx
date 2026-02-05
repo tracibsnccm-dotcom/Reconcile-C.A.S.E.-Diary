@@ -13,6 +13,7 @@ import IntakeWizard from "@/pages/IntakeWizard";
 import ClientConsent from "@/pages/ClientConsent";
 import IntakeIdentity from "@/pages/IntakeIdentity";
 import ResumeIntake from "@/pages/ResumeIntake";
+import ProviderLogin from "@/pages/ProviderLogin";
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
           <Route path="/client" element={<ClientPortal />} />
           <Route path="/client-portal" element={<ClientPortal />} />
           <Route path="/attorney-login" element={<AttorneyLogin />} />
+          <Route path="/provider-login" element={<ProviderLogin />} />
           <Route path="/attorney" element={<Navigate to="/attorney/dashboard" replace />} />
           <Route path="/attorney/dashboard" element={<AttorneyDashboard />} />
           <Route path="/attorney/pending-intakes" element={<AttorneyPendingIntakes />} />
