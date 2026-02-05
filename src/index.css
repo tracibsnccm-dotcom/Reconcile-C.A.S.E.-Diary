@@ -1,19 +1,187 @@
-/* src/index.css */
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+:root {
+    /* Base - White workspace for attorney readability */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
+
+    /* Primary - Gold for buttons and key actions */
+    --primary: 44 53% 46%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 44 53% 56%;
+    --primary-dark: 44 53% 36%;
+
+    /* Secondary - Navy for headers/nav */
+    --secondary: 222 78% 24%;
+    --secondary-foreground: 0 0% 100%;
+    --secondary-light: 222 70% 34%;
+
+    /* Accent - Mint for section backgrounds */
+    --accent: 172 44% 85%;
+    --accent-foreground: 0 0% 0%;
+    --accent-light: 172 44% 92%;
+
+    /* Utility colors */
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 44 53% 46%;
+
+    --radius: 0.5rem;
+
+    /* Sidebar - Navy theme */
+    --sidebar-background: 222 78% 24%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 44 53% 46%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 78% 20%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 222 78% 30%;
+    --sidebar-ring: 44 53% 46%;
+
+    /* Status colors */
+    --status-new: 178 76% 32%;
+    --status-active: 142 71% 45%;
+    --status-hold: 38 92% 50%;
+    --status-closed: 0 0% 50%;
+
+    /* Reconcile C.A.R.E. Brand Colors */
+    --rcms-gold: 44 53% 46%;
+    --gold: 44 53% 46%;
+    --rcms-orange: 20 78% 56%;
+    --rcms-navy: 222 78% 24%;
+    --rcms-teal: 178 76% 32%;
+    --rcms-mint: 172 44% 85%;
+    --rcms-pale-gold: 50 73% 92%;
+    --rcms-coral: 0 100% 74%;
+    --rcms-white: 0 0% 100%;
+    --rcms-black: 0 0% 0%;
+    --rcms-purple: 266 70% 40%;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(44 53% 46%), hsl(178 76% 32%));
+    --gradient-hero: linear-gradient(135deg, hsl(222 78% 24%) 0%, hsl(178 76% 32%) 100%);
+    --gradient-navy-teal: linear-gradient(135deg, hsl(222 78% 24%), hsl(178 76% 32%));
+    --gradient-gold-teal: linear-gradient(135deg, hsl(44 53% 46%), hsl(178 76% 32%));
+    
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.05);
+    --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.1);
+    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.1);
+    --shadow-card: 0 2px 8px hsl(0 0% 0% / 0.08);
+
+    /* Transitions */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .dark {
+    --background: 215 25% 10%;
+    --foreground: 210 20% 95%;
+
+    --card: 215 25% 12%;
+    --card-foreground: 210 20% 95%;
+
+    --popover: 215 25% 12%;
+    --popover-foreground: 210 20% 95%;
+
+    --primary: 186 65% 50%;
+    --primary-foreground: 215 25% 10%;
+    --primary-light: 186 60% 60%;
+    --primary-dark: 186 70% 40%;
+
+    --secondary: 215 20% 25%;
+    --secondary-foreground: 210 20% 95%;
+    --secondary-light: 215 18% 35%;
+
+    --accent: 25 85% 60%;
+    --accent-foreground: 215 25% 10%;
+    --accent-light: 25 75% 70%;
+
+    --muted: 215 20% 18%;
+    --muted-foreground: 215 15% 65%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 20% 95%;
+
+    --success: 142 71% 45%;
+    --success-foreground: 210 20% 95%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 215 25% 10%;
+
+    --border: 215 20% 20%;
+    --input: 215 20% 20%;
+    --ring: 186 65% 50%;
+
+    --sidebar-background: 215 25% 8%;
+    --sidebar-foreground: 210 20% 90%;
+    --sidebar-primary: 186 65% 50%;
+    --sidebar-primary-foreground: 215 25% 10%;
+    --sidebar-accent: 215 25% 15%;
+    --sidebar-accent-foreground: 210 20% 95%;
+    --sidebar-border: 215 25% 18%;
+    --sidebar-ring: 186 65% 50%;
+
+    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.2);
+    --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.3);
+    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.3);
+    --shadow-card: 0 2px 8px hsl(0 0% 0% / 0.25);
+  }
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  body {
+    background-color: hsl(var(--background)); color: hsl(var(--foreground));
+  }
+}
+
+@layer utilities {
+  /* Pulse animation for at-risk and critical cases */
+  @keyframes care-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  
+  .animate-care-pulse {
+    animation: care-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Hide scrollbar for IE, Edge and Firefox */
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
 }
