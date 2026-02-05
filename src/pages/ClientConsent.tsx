@@ -297,9 +297,27 @@ export default function ClientConsent() {
     // Restore attorney info if available
     const storedAttorneyId = sessionStorage.getItem("rcms_current_attorney_id");
     const storedAttorneyCode = sessionStorage.getItem("rcms_attorney_code");
+    const storedAttorneyName = sessionStorage.getItem("rcms_attorney_name");
     if (storedAttorneyId) setSelectedAttorneyId(storedAttorneyId);
     if (storedAttorneyCode) setAttorneyCode(storedAttorneyCode);
+    if (storedAttorneyName) setAttorneyName(storedAttorneyName);
   }, [step, navigate]);
+
+  // Auto-populate attorney name on Step 3 of 6 (Legal Disclosure) from attorney selected in Step 1
+  useEffect(() => {
+    if (step !== 2) return;
+    if (attorneyName.trim()) return;
+    const stored = sessionStorage.getItem("rcms_attorney_name");
+    if (stored) {
+      setAttorneyName(stored);
+      return;
+    }
+    const attorneyId = sessionStorage.getItem("rcms_current_attorney_id");
+    if (attorneyId && availableAttorneys.length > 0) {
+      const atty = availableAttorneys.find((a) => a.attorney_id === attorneyId);
+      if (atty?.attorney_name) setAttorneyName(atty.attorney_name);
+    }
+  }, [step, attorneyName, availableAttorneys]);
 
 
   const handleDecline = async () => {
@@ -550,16 +568,16 @@ export default function ClientConsent() {
   if (showDeclineMessage) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-secondary via-secondary-light to-primary py-8 px-4 flex items-center justify-center">
-        <Card className="p-8 max-w-2xl">
+        <Card className="p-8 max-w-2xl text-gray-900">
           <Alert className="mb-4">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
+            <AlertDescription className="text-gray-900">
               We're sorry, without agreeing to the Service Agreement, we cannot provide care
               management services. You remain a client of your attorney, but we cannot assist
               with your case. Please contact your attorney if you have questions.
             </AlertDescription>
           </Alert>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-gray-900">
             Redirecting to home page...
           </p>
         </Card>
@@ -588,33 +606,33 @@ export default function ClientConsent() {
         {/* Progress Indicator */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-lg font-semibold text-foreground">
+            <h2 className="text-lg font-semibold text-gray-900">
               {step === 0 ? "Step 1 of 3 (Attorney Selection)" : `Step ${step + 1} of 6 (Consents)`}
             </h2>
-            <span className="text-sm text-muted-foreground">{Math.round(progress)}% Complete</span>
+            <span className="text-sm text-gray-900">{Math.round(progress)}% Complete</span>
           </div>
           <Progress value={progress} className="h-2" />
         </div>
 
-        <Card className="p-6 md:p-8">
+        <Card className="p-6 md:p-8 text-gray-900">
           {/* Step 0: Attorney Selection */}
           {step === 0 && (
             <div className="space-y-6">
               <div>
-                <h1 className="text-2xl font-bold text-foreground mb-2">
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">
                   Select Your Attorney
                 </h1>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-gray-900">
                   Please select your attorney before proceeding.
                 </p>
               </div>
 
               <div className="space-y-4">
                 <div className="p-4 bg-muted/30 rounded-lg border border-border">
-                  <h4 className="text-sm font-semibold mb-3">Attorney Information</h4>
+                  <h4 className="text-sm font-semibold mb-3 text-gray-900">Attorney Information</h4>
                   <div className="space-y-3">
                     <div>
-                      <Label className="text-sm font-medium">Select Your Attorney</Label>
+                      <Label className="text-sm font-medium text-gray-900">Select Your Attorney</Label>
                       <Select value={selectedAttorneyId} onValueChange={(val) => {
                         setSelectedAttorneyId(val);
                         // Clear attorney code when selecting from dropdown
@@ -640,9 +658,9 @@ export default function ClientConsent() {
                         <p className="text-sm text-destructive mt-2">{attorneyLoadError}</p>
                       )}
                     </div>
-                    <div className="text-center text-sm text-muted-foreground">— OR —</div>
+                    <div className="text-center text-sm text-gray-900">— OR —</div>
                     <div>
-                      <Label htmlFor="attorney-code">Enter Attorney Code</Label>
+                      <Label htmlFor="attorney-code" className="text-gray-900">Enter Attorney Code</Label>
                       <Input
                         id="attorney-code"
                         value={attorneyCode}
@@ -659,8 +677,8 @@ export default function ClientConsent() {
               </div>
               {/* Returning: nested inside same card, smaller secondary */}
               <div className="mt-6 pt-4 border-t border-border">
-                <p className="font-medium mb-1 text-sm">Returning?</p>
-                <p className="text-xs text-muted-foreground mb-2">Resume an unfinished intake or check your status using your Intake ID (INT#) and temporary PIN.</p>
+                <p className="font-medium mb-1 text-sm text-gray-900">Returning?</p>
+                <p className="text-xs text-gray-900 mb-2">Resume an unfinished intake or check your status using your Intake ID (INT#) and temporary PIN.</p>
                 <a href="/resume-intake" className="text-sm font-medium text-primary hover:underline">Resume / Check Status</a>
               </div>
             </div>
@@ -670,19 +688,19 @@ export default function ClientConsent() {
           {step === 1 && (
             <div className="space-y-6">
               <div>
-                <h1 className="text-2xl font-bold text-foreground mb-2">
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">
                   Service Agreement & Informed Consent
                 </h1>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-gray-900">
                   Please read the following service agreement carefully.
                 </p>
               </div>
 
               <div className="border rounded-lg p-4 bg-muted/50 max-h-[500px] overflow-y-auto">
-                <div className="prose prose-sm max-w-none text-foreground">
-                  <h3 className="text-base font-bold mb-3">RECONCILE CARE MANAGEMENT SERVICES (RCMS)</h3>
-                  <h4 className="text-sm font-semibold mb-4">SERVICE AGREEMENT & INFORMED CONSENT FOR CARE MANAGEMENT SERVICES</h4>
-                  <p>I voluntarily request and agree to receive care management services from Reconcile Care Management Services (RCMS). I understand that these services are designed to provide support and navigation for my clinically complex situation.</p>
+                <div className="prose prose-sm max-w-none text-gray-900">
+                  <h3 className="text-base font-bold mb-3 text-gray-900">RECONCILE CARE MANAGEMENT SERVICES (RCMS)</h3>
+                  <h4 className="text-sm font-semibold mb-4 text-gray-900">SERVICE AGREEMENT & INFORMED CONSENT FOR CARE MANAGEMENT SERVICES</h4>
+                  <p className="text-gray-900">I voluntarily request and agree to receive care management services from Reconcile Care Management Services (RCMS). I understand that these services are designed to provide support and navigation for my clinically complex situation.</p>
                 </div>
               </div>
 
@@ -693,17 +711,17 @@ export default function ClientConsent() {
                     checked={serviceAgreementAccepted}
                     onCheckedChange={(checked) => setServiceAgreementAccepted(checked === true)}
                   />
-                  <Label htmlFor="service-agreement" className="text-sm leading-relaxed cursor-pointer">
+                  <Label htmlFor="service-agreement" className="text-sm leading-relaxed cursor-pointer text-gray-900">
                     I have read this Service Agreement, understand and agree to the terms
                   </Label>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="service-signature">Full Legal Name (Signature)</Label>
-                  <Input id="service-signature" value={serviceAgreementSignature} onChange={(e) => setServiceAgreementSignature(e.target.value)} placeholder="Enter your full legal name" />
+                  <Label htmlFor="service-signature" className="text-gray-900">Full Legal Name (Signature)</Label>
+                  <Input id="service-signature" value={serviceAgreementSignature} onChange={(e) => setServiceAgreementSignature(e.target.value)} placeholder="Enter your full legal name" className="text-gray-900" />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="service-date">Date</Label>
-                  <Input id="service-date" type="text" value={currentDate} readOnly className="bg-muted" />
+                  <Label htmlFor="service-date" className="text-gray-900">Date</Label>
+                  <Input id="service-date" type="text" value={currentDate} readOnly className="bg-muted text-gray-900" />
                 </div>
               </div>
             </div>
@@ -712,47 +730,47 @@ export default function ClientConsent() {
           {/* Steps 2-5: same structure as C.A.R.E. - keeping key UI; full legal text abbreviated */}
           {step === 2 && (
             <div className="space-y-6">
-              <div><h1 className="text-2xl font-bold text-foreground mb-2">Authorization to Disclose PHI to Legal Counsel</h1></div>
+              <div><h1 className="text-2xl font-bold text-gray-900 mb-2">Authorization to Disclose PHI to Legal Counsel</h1></div>
               <div className="space-y-4">
-                <div className="space-y-2"><Label>Attorney/Firm Name *</Label><Input id="attorney-name" value={attorneyName} onChange={(e) => setAttorneyName(e.target.value)} placeholder="Enter your attorney or firm name" required /></div>
-                <div className="flex items-start space-x-2"><Checkbox id="legal-disclosure" checked={legalDisclosureAuthorized} onCheckedChange={(c) => setLegalDisclosureAuthorized(c === true)} /><Label htmlFor="legal-disclosure" className="text-sm cursor-pointer">I authorize RCMS to disclose my PHI to my legal representative as described above</Label></div>
-                <div className="space-y-2"><Label>Full Legal Name (Signature)</Label><Input value={legalDisclosureSignature} onChange={(e) => setLegalDisclosureSignature(e.target.value)} placeholder="Enter your full legal name" /></div>
-                <div className="space-y-2"><Label>Date</Label><Input type="text" value={currentDate} readOnly className="bg-muted" /></div>
+                <div className="space-y-2"><Label className="text-gray-900">Attorney/Firm Name *</Label><Input id="attorney-name" value={attorneyName} onChange={(e) => setAttorneyName(e.target.value)} placeholder="Enter your attorney or firm name" required className="text-gray-900" /></div>
+                <div className="flex items-start space-x-2"><Checkbox id="legal-disclosure" checked={legalDisclosureAuthorized} onCheckedChange={(c) => setLegalDisclosureAuthorized(c === true)} /><Label htmlFor="legal-disclosure" className="text-sm cursor-pointer text-gray-900">I authorize RCMS to disclose my PHI to my legal representative as described above</Label></div>
+                <div className="space-y-2"><Label className="text-gray-900">Full Legal Name (Signature)</Label><Input value={legalDisclosureSignature} onChange={(e) => setLegalDisclosureSignature(e.target.value)} placeholder="Enter your full legal name" className="text-gray-900" /></div>
+                <div className="space-y-2"><Label className="text-gray-900">Date</Label><Input type="text" value={currentDate} readOnly className="bg-muted text-gray-900" /></div>
               </div>
             </div>
           )}
           {step === 3 && (
             <div className="space-y-6">
-              <div><h1 className="text-2xl font-bold text-foreground mb-2">Authorization to Obtain Protected Health Information</h1></div>
+              <div><h1 className="text-2xl font-bold text-gray-900 mb-2">Authorization to Obtain Protected Health Information</h1></div>
               <div className="space-y-4">
-                <div className="space-y-2"><Label>Date of Injury/Incident *</Label><Input type="date" value={injuryDate} onChange={(e) => setInjuryDate(e.target.value)} required max={currentDate} /></div>
-                <div className="flex items-start space-x-2"><Checkbox id="obtain-records" checked={obtainRecordsAuthorized} onCheckedChange={(c) => setObtainRecordsAuthorized(c === true)} /><Label htmlFor="obtain-records" className="text-sm cursor-pointer">I authorize the release of my records to RCMS as described above</Label></div>
-                <div className="space-y-2"><Label>Full Legal Name (Signature)</Label><Input value={obtainRecordsSignature} onChange={(e) => setObtainRecordsSignature(e.target.value)} placeholder="Enter your full legal name" /></div>
-                <div className="space-y-2"><Label>Date</Label><Input type="text" value={currentDate} readOnly className="bg-muted" /></div>
+                <div className="space-y-2"><Label className="text-gray-900">Date of Injury/Incident *</Label><Input type="date" value={injuryDate} onChange={(e) => setInjuryDate(e.target.value)} required max={currentDate} className="text-gray-900" /></div>
+                <div className="flex items-start space-x-2"><Checkbox id="obtain-records" checked={obtainRecordsAuthorized} onCheckedChange={(c) => setObtainRecordsAuthorized(c === true)} /><Label htmlFor="obtain-records" className="text-sm cursor-pointer text-gray-900">I authorize the release of my records to RCMS as described above</Label></div>
+                <div className="space-y-2"><Label className="text-gray-900">Full Legal Name (Signature)</Label><Input value={obtainRecordsSignature} onChange={(e) => setObtainRecordsSignature(e.target.value)} placeholder="Enter your full legal name" className="text-gray-900" /></div>
+                <div className="space-y-2"><Label className="text-gray-900">Date</Label><Input type="text" value={currentDate} readOnly className="bg-muted text-gray-900" /></div>
               </div>
             </div>
           )}
           {step === 4 && (
             <div className="space-y-6">
-              <div><h1 className="text-2xl font-bold text-foreground mb-2">Authorization to Disclose for Healthcare Coordination</h1></div>
+              <div><h1 className="text-2xl font-bold text-gray-900 mb-2">Authorization to Disclose for Healthcare Coordination</h1></div>
               <div className="space-y-4">
-                <div className="space-y-2"><Label>Primary Care Physician (Optional)</Label><Input value={pcp} onChange={(e) => setPcp(e.target.value)} placeholder="Enter primary care physician name" /></div>
-                <div className="space-y-2"><Label>Specialist(s) (Optional)</Label><Input value={specialist} onChange={(e) => setSpecialist(e.target.value)} placeholder="Enter specialist name(s)" /></div>
-                <div className="space-y-2"><Label>Therapy Provider(s) (Optional)</Label><Input value={therapy} onChange={(e) => setTherapy(e.target.value)} placeholder="Enter therapy provider name(s)" /></div>
-                <div className="flex items-start space-x-2"><Checkbox id="healthcare-coord" checked={healthcareCoordAuthorized} onCheckedChange={(c) => setHealthcareCoordAuthorized(c === true)} /><Label htmlFor="healthcare-coord" className="text-sm cursor-pointer">I authorize RCMS to share information with my healthcare providers as described above</Label></div>
-                <div className="space-y-2"><Label>Full Legal Name (Signature)</Label><Input value={healthcareCoordSignature} onChange={(e) => setHealthcareCoordSignature(e.target.value)} placeholder="Enter your full legal name" /></div>
-                <div className="space-y-2"><Label>Date</Label><Input type="text" value={currentDate} readOnly className="bg-muted" /></div>
+                <div className="space-y-2"><Label className="text-gray-900">Primary Care Physician (Optional)</Label><Input value={pcp} onChange={(e) => setPcp(e.target.value)} placeholder="Enter primary care physician name" className="text-gray-900" /></div>
+                <div className="space-y-2"><Label className="text-gray-900">Specialist(s) (Optional)</Label><Input value={specialist} onChange={(e) => setSpecialist(e.target.value)} placeholder="Enter specialist name(s)" className="text-gray-900" /></div>
+                <div className="space-y-2"><Label className="text-gray-900">Therapy Provider(s) (Optional)</Label><Input value={therapy} onChange={(e) => setTherapy(e.target.value)} placeholder="Enter therapy provider name(s)" className="text-gray-900" /></div>
+                <div className="flex items-start space-x-2"><Checkbox id="healthcare-coord" checked={healthcareCoordAuthorized} onCheckedChange={(c) => setHealthcareCoordAuthorized(c === true)} /><Label htmlFor="healthcare-coord" className="text-sm cursor-pointer text-gray-900">I authorize RCMS to share information with my healthcare providers as described above</Label></div>
+                <div className="space-y-2"><Label className="text-gray-900">Full Legal Name (Signature)</Label><Input value={healthcareCoordSignature} onChange={(e) => setHealthcareCoordSignature(e.target.value)} placeholder="Enter your full legal name" className="text-gray-900" /></div>
+                <div className="space-y-2"><Label className="text-gray-900">Date</Label><Input type="text" value={currentDate} readOnly className="bg-muted text-gray-900" /></div>
               </div>
             </div>
           )}
           {step === 5 && (
             <div className="space-y-6">
-              <div><h1 className="text-2xl font-bold text-foreground mb-2">Notice of Privacy Practices</h1></div>
-              <div className="border rounded-lg p-4 bg-muted/50 max-h-[400px] overflow-y-auto"><p className="text-sm">This Notice describes how Protected Health Information (PHI) about you may be used and disclosed. Please review carefully.</p></div>
+              <div><h1 className="text-2xl font-bold text-gray-900 mb-2">Notice of Privacy Practices</h1></div>
+              <div className="border rounded-lg p-4 bg-muted/50 max-h-[400px] overflow-y-auto"><p className="text-sm text-gray-900">This Notice describes how Protected Health Information (PHI) about you may be used and disclosed. Please review carefully.</p></div>
               <div className="space-y-4">
-                <div className="flex items-start space-x-2"><Checkbox id="hipaa-ack" checked={hipaaAcknowledged} onCheckedChange={(c) => setHipaaAcknowledged(c === true)} /><Label htmlFor="hipaa-ack" className="text-sm cursor-pointer">I acknowledge that I have received and reviewed this Notice of Privacy Practices</Label></div>
-                <div className="space-y-2"><Label>Full Legal Name (Signature)</Label><Input value={hipaaSignature} onChange={(e) => setHipaaSignature(e.target.value)} placeholder="Enter your full legal name" /></div>
-                <div className="space-y-2"><Label>Date</Label><Input type="text" value={currentDate} readOnly className="bg-muted" /></div>
+                <div className="flex items-start space-x-2"><Checkbox id="hipaa-ack" checked={hipaaAcknowledged} onCheckedChange={(c) => setHipaaAcknowledged(c === true)} /><Label htmlFor="hipaa-ack" className="text-sm cursor-pointer text-gray-900">I acknowledge that I have received and reviewed this Notice of Privacy Practices</Label></div>
+                <div className="space-y-2"><Label className="text-gray-900">Full Legal Name (Signature)</Label><Input value={hipaaSignature} onChange={(e) => setHipaaSignature(e.target.value)} placeholder="Enter your full legal name" className="text-gray-900" /></div>
+                <div className="space-y-2"><Label className="text-gray-900">Date</Label><Input type="text" value={currentDate} readOnly className="bg-muted text-gray-900" /></div>
               </div>
             </div>
           )}
