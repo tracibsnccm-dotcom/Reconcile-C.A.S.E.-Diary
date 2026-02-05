@@ -51,41 +51,44 @@ export async function createIntakeSession(params: CreateIntakeSessionParams): Pr
 
   const emailLower = params.email.trim().toLowerCase();
 
-  let queryUrl = `${supabaseUrl}/rest/v1/rc_client_intake_sessions?email=eq.${emailLower}&select=*`;
-  if (params.attorneyId) {
-    queryUrl += `&attorney_id=eq.${params.attorneyId}`;
-  } else if (params.attorneyCode) {
-    queryUrl += `&attorney_code=eq.${params.attorneyCode}`;
-  }
-  queryUrl += `&order=created_at.desc&limit=1`;
-
-  const existingResponse = await fetch(queryUrl, {
-    headers: {
-      apikey: supabaseKey,
-      Authorization: `Bearer ${supabaseKey}`,
-      "Content-Type": "application/json",
-    },
-  });
-
+  // When email is empty, skip existing-session lookup (client access is INT# + PIN only)
   let existingSession: any = null;
-  if (existingResponse.ok) {
-    const existing = await existingResponse.json();
-    if (Array.isArray(existing) && existing.length > 0) {
-      existingSession = existing[0];
-      const now = new Date();
-      const createdAt = new Date(existingSession.created_at);
-      const expiresAt = new Date(existingSession.expires_at);
-      const hoursSinceCreation = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
-      const isExpired = expiresAt < now;
-      const isSubmitted = ['converted', 'submitted', 'completed'].includes(existingSession.intake_status);
-      const isOlderThan24Hours = hoursSinceCreation > 24;
-      const attorneyMatches =
-        (!params.attorneyId && !params.attorneyCode) ||
-        (params.attorneyId && existingSession.attorney_id === params.attorneyId) ||
-        (params.attorneyCode && existingSession.attorney_code === params.attorneyCode);
+  if (emailLower && (params.attorneyId || params.attorneyCode)) {
+    let queryUrl = `${supabaseUrl}/rest/v1/rc_client_intake_sessions?email=eq.${encodeURIComponent(emailLower)}&select=*`;
+    if (params.attorneyId) {
+      queryUrl += `&attorney_id=eq.${params.attorneyId}`;
+    } else if (params.attorneyCode) {
+      queryUrl += `&attorney_code=eq.${params.attorneyCode}`;
+    }
+    queryUrl += `&order=created_at.desc&limit=1`;
 
-      if (isExpired || isSubmitted || isOlderThan24Hours || !attorneyMatches) {
-        existingSession = null;
+    const existingResponse = await fetch(queryUrl, {
+      headers: {
+        apikey: supabaseKey,
+        Authorization: `Bearer ${supabaseKey}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (existingResponse.ok) {
+      const existing = await existingResponse.json();
+      if (Array.isArray(existing) && existing.length > 0) {
+        existingSession = existing[0];
+        const now = new Date();
+        const createdAt = new Date(existingSession.created_at);
+        const expiresAt = new Date(existingSession.expires_at);
+        const hoursSinceCreation = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+        const isExpired = expiresAt < now;
+        const isSubmitted = ['converted', 'submitted', 'completed'].includes(existingSession.intake_status);
+        const isOlderThan24Hours = hoursSinceCreation > 24;
+        const attorneyMatches =
+          (!params.attorneyId && !params.attorneyCode) ||
+          (params.attorneyId && existingSession.attorney_id === params.attorneyId) ||
+          (params.attorneyCode && existingSession.attorney_code === params.attorneyCode);
+
+        if (isExpired || isSubmitted || isOlderThan24Hours || !attorneyMatches) {
+          existingSession = null;
+        }
       }
     }
   }

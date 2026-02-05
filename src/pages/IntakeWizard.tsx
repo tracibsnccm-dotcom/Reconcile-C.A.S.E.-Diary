@@ -1661,7 +1661,10 @@ export default function IntakeWizard() {
         'rcms_resume_token',
         'rcms_intake_created_at',
         'rcms_date_of_injury',
-        'rcms_consents_completed'
+        'rcms_date_approximate',
+        'rcms_consents_completed',
+        'rcms_current_attorney_id',
+        'rcms_attorney_name',
       ];
       const preserved: Record<string, string> = {};
       for (const key of preserveKeys) {
