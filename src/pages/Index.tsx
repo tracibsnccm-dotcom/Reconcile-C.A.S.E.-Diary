@@ -6,7 +6,7 @@ export default function Index() {
   return (
     <div style={{
       minHeight: "100vh",
-      background: "linear-gradient(135deg, #1e3a8a 0%, #0891b2 100%)",
+      background: "linear-gradient(135deg, #38bdf8 0%, #3b82f6 100%)",
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
@@ -14,19 +14,39 @@ export default function Index() {
       padding: "40px 20px",
       fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
     }}>
-      <h1 style={{ fontSize: "48px", fontWeight: "bold", color: "white", marginBottom: "8px" }}>
-        Reconcile <span style={{ color: "#fb923c" }}>C.A.S.E.</span>
+      <h1 style={{
+        fontSize: "48px",
+        fontWeight: "bold",
+        marginBottom: "8px",
+      }}>
+        <span style={{
+          color: "white",
+          textShadow: "2px 2px 4px rgba(0,0,0,0.15)",
+        }}>Reconcile</span>{" "}
+        <span style={{
+          color: "#fbbf24",
+          textShadow: "2px 2px 4px rgba(0,0,0,0.2)",
+        }}>C.A.S.E.</span>
       </h1>
-      <p style={{ fontSize: "24px", color: "white", fontWeight: 300, marginBottom: "4px" }}>
+      <p style={{
+        fontSize: "24px",
+        color: "#1e3a8a",
+        fontWeight: 300,
+        marginBottom: "4px",
+      }}>
         {CASE_BRAND.fullName}
       </p>
-      <p style={{ fontSize: "16px", color: "rgba(255,255,255,0.9)", marginBottom: "60px" }}>
+      <p style={{
+        fontSize: "16px",
+        color: "#1e40af",
+        marginBottom: "60px",
+      }}>
         {CASE_BRAND.tagline}
       </p>
 
       {/* PRIMARY SECTION - Client Intake */}
-      <div className="bg-white/10 backdrop-blur rounded-xl p-8 max-w-md mx-auto mb-8">
-        <h2 className="text-2xl font-bold text-white mb-4 text-center">Client Intake</h2>
+      <div className="bg-white/20 backdrop-blur rounded-xl p-8 max-w-md mx-auto mb-8">
+        <h2 className="text-2xl font-bold text-blue-900 mb-4 text-center">Client Intake</h2>
 
         <Link to="/intake-identity" style={{
           display: "block",
@@ -45,10 +65,10 @@ export default function Index() {
         </Link>
 
         <div className="text-center">
-          <p className="text-white/80 text-sm mb-2">Already started but didn't finish?</p>
+          <p className="text-blue-800 text-sm mb-2">Already started but didn't finish?</p>
           <Link
             to="/resume-intake"
-            className="text-orange-300 hover:text-orange-200 underline font-medium"
+            className="text-blue-700 hover:text-blue-600 underline font-medium"
           >
             Resume Your Intake
           </Link>
@@ -97,7 +117,7 @@ export default function Index() {
         </Link>
       </div>
 
-      <p style={{ marginTop: "60px", color: "rgba(255,255,255,0.7)", fontSize: "12px" }}>
+      <p style={{ marginTop: "60px", color: "#1e3a8a", opacity: 0.9, fontSize: "12px" }}>
         {CASE_BRAND.copyright} | {CASE_BRAND.company}
       </p>
     </div>
