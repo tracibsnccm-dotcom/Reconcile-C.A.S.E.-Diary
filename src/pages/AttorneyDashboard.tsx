@@ -77,11 +77,12 @@ export default function AttorneyDashboard() {
       const intakeList = Array.isArray(intakes) ? intakes : intakes ? [intakes] : [];
       const caseIds = [...new Set(intakeList.map((i: any) => i.case_id).filter(Boolean))];
 
-      // 3. Get rc_cases for attorney filter (no case_status filter — C.A.R.E. doesn't filter by it)
+      // 3. Get rc_cases for attorney filter — match AttorneyIntakeTracker: is_superseded=false
       const { data: cases } = await supabase
         .from("rc_cases")
-        .select("id, attorney_id")
-        .in("id", caseIds);
+        .select("id, attorney_id, is_superseded")
+        .in("id", caseIds)
+        .eq("is_superseded", false);
 
       const caseList = Array.isArray(cases) ? cases : cases ? [cases] : [];
       const attorneyCaseIds = new Set(
@@ -90,7 +91,22 @@ export default function AttorneyDashboard() {
           .map((c: any) => c.id)
       );
 
-      const filteredByAttorney = intakeList.filter((i: any) => attorneyCaseIds.has(i.case_id));
+      let filteredByAttorney = intakeList.filter((i: any) => attorneyCaseIds.has(i.case_id));
+
+      // 4. Exclude cases with submitted care plans — match AttorneyIntakeTracker
+      const caseIdsWithSubmittedPlan = new Set<string>();
+      if (filteredByAttorney.length > 0) {
+        const ids = filteredByAttorney.map((i: any) => i.case_id).filter(Boolean);
+        const { data: submittedPlans } = await supabase
+          .from("rc_care_plans")
+          .select("case_id")
+          .in("case_id", ids)
+          .eq("status", "submitted");
+        (submittedPlans || []).forEach((p: any) => {
+          if (p?.case_id) caseIdsWithSubmittedPlan.add(p.case_id);
+        });
+      }
+      filteredByAttorney = filteredByAttorney.filter((i: any) => !caseIdsWithSubmittedPlan.has(i.case_id));
       const sessionMap = new Map<string, { resume_token: string; intake_id: string }>();
 
       if (caseIds.length > 0) {
@@ -120,7 +136,7 @@ export default function AttorneyDashboard() {
         };
       });
 
-      console.log("[AttorneyDashboard] Found", filtered.length, "pending intakes (from rc_client_intakes)");
+      console.log("Dashboard count query - attorney_id:", attorneyId, "count:", filtered.length);
       setPendingIntakes(filtered);
       setDebugInfo({
         attorneyId,

@@ -163,11 +163,12 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
         }
       }
       
-      // BUG 5: Filter by attorney_id. rc_cases.attorney_id can be auth_user_id or rc_users.id
+      // Match AttorneyDashboard: rc_cases.attorney_id can be auth_user_id or rc_users.id
       let queryString = 'select=*,rc_cases(id,attorney_id,case_type,case_number,case_status,date_of_injury,assigned_rn_id,rc_clients(first_name,last_name))&intake_status=in.(submitted_pending_attorney,attorney_confirmed,attorney_declined_not_client)&rc_cases.is_superseded=eq.false';
       
-      if (scope === 'mine' && attorneyRcUserId) {
-        queryString += `&rc_cases.attorney_id=eq.${attorneyRcUserId}`;
+      if (scope === 'mine' && (attorneyRcUserId || authUserId)) {
+        const attorneyIds = [...new Set([attorneyRcUserId, authUserId].filter(Boolean))];
+        queryString += `&rc_cases.attorney_id=in.(${attorneyIds.join(',')})`;
       }
       
       // Use REST helper for RLS-protected queries
@@ -184,11 +185,11 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
         throw new Error('Expected array from Supabase query');
       }
 
-        // BUG 5: Filter out intakes where rc_cases.attorney_id doesn't match logged-in attorney
-      const filteredIntakes = scope === 'mine' && attorneyRcUserId
+        // Match AttorneyDashboard: filter by rc_users.id OR auth_user_id
+      const filteredIntakes = scope === 'mine' && (attorneyRcUserId || authUserId)
         ? intakes.filter((intake: any) => {
             const caseData = Array.isArray(intake.rc_cases) ? intake.rc_cases[0] : intake.rc_cases;
-            return caseData && (caseData.attorney_id === attorneyRcUserId || caseData.attorney_id === user?.id);
+            return caseData && (caseData.attorney_id === attorneyRcUserId || caseData.attorney_id === authUserId);
           })
         : intakes;
       
@@ -325,7 +326,8 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
         };
       });
 
-      console.log('loadData: Transformed rows:', transformedRows);
+      const pendingResults = transformedRows.filter(r => r.stage === 'Intake Submitted — Awaiting Attorney Review');
+      console.log("Intake list query - attorney_id:", attorneyRcUserId ?? authUserId, "results:", pendingResults.length);
 
       setRows(transformedRows);
 
