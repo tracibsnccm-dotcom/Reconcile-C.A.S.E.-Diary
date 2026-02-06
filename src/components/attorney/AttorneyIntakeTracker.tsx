@@ -136,6 +136,15 @@ export function AttorneyIntakeTracker({ showHeader = true }: { showHeader?: bool
           },
           intake_json: intake.intake_json,
         });
+        // DEBUG: Log every record to diagnose client name mapping (Jack Quick vs Honey Bunns)
+        console.log("Building intake row:", {
+          intake_id: intake.id,
+          case_id: intake.case_id,
+          client_name_from_intake: intake.intake_json?.identity?.firstName ?? intake.intake_json?.identity?.first_name,
+          client_name_from_case: clientData ? `${clientData.first_name ?? ""} ${clientData.last_name ?? ""}`.trim() || null : null,
+          case_number: caseData?.case_number,
+          session_resume_token: sessionMap.get(intake.case_id)?.resume_token?.slice(0, 8) + "...",
+        });
         const session = sessionMap.get(intake.case_id);
         const stage = getAttorneyCaseStageLabel({
           attorney_attested_at: intake.attorney_attested_at,

@@ -95,18 +95,32 @@ export default function ResumeIntake() {
         const consentsComplete =
           fd.consentsComplete === true ||
           (fd.consentStep === 5 && !!fd.consents?.hipaa?.signature) ||
-          (fd.consentStep === 5 && !!fd.consents?.hipaa?.acknowledged);
+          (fd.consentStep === 5 && !!fd.consents?.hipaa?.acknowledged) ||
+          (fd.consentStep >= 5 && (fd.givenConsents?.includes?.(5) || !!fd.consents?.hipaa));
+
+        const savedStep = Math.min(7, Math.max(0, session.currentStep ?? fd.step ?? 0));
+
+        // DEBUG: Log at decision point to diagnose resume redirect
+        console.log("ResumeIntake (token) - consentsComplete:", consentsComplete);
+        console.log("ResumeIntake (token) - savedStep:", savedStep);
+        console.log("ResumeIntake (token) - full session data:", {
+          formData: fd,
+          consentsComplete_flag: fd.consentsComplete,
+          consentStep: fd.consentStep,
+          hipaa: fd.consents?.hipaa,
+          givenConsents: fd.givenConsents,
+        });
 
         const attorneyParam = session.attorneyId || "";
         const codeParam = session.attorneyCode || "";
 
         if (consentsComplete) {
           // Go directly to /client-intake at saved step — do NOT send to consent
-          const savedStep = Math.min(7, Math.max(0, session.currentStep ?? fd.step ?? 0));
           sessionStorage.setItem("rcms_intake_step", String(savedStep));
           sessionStorage.setItem("rcms_consents_completed", "true");
           navigate(
-            `/client-intake?attorney_id=${encodeURIComponent(attorneyParam)}&attorney_code=${encodeURIComponent(codeParam)}&resume=true`
+            `/client-intake?attorney_id=${encodeURIComponent(attorneyParam)}&attorney_code=${encodeURIComponent(codeParam)}&resume=true`,
+            { state: { resumeStep: savedStep } }
           );
         } else {
           sessionStorage.setItem("rcms_intake_step", "0");
@@ -212,7 +226,21 @@ export default function ResumeIntake() {
       const consentsComplete =
         fd.consentsComplete === true ||
         (fd.consentStep === 5 && !!fd.consents?.hipaa?.signature) ||
-        (fd.consentStep === 5 && !!fd.consents?.hipaa?.acknowledged);
+        (fd.consentStep === 5 && !!fd.consents?.hipaa?.acknowledged) ||
+        (fd.consentStep >= 5 && (fd.givenConsents?.includes?.(5) || !!fd.consents?.hipaa));
+
+      const savedStep = Math.min(7, Math.max(0, session.currentStep ?? fd.step ?? 0));
+
+      // DEBUG: Log at decision point to diagnose resume redirect
+      console.log("ResumeIntake (INT#+PIN) - consentsComplete:", consentsComplete);
+      console.log("ResumeIntake (INT#+PIN) - savedStep:", savedStep);
+      console.log("ResumeIntake (INT#+PIN) - full session data:", {
+        formData: fd,
+        consentsComplete_flag: fd.consentsComplete,
+        consentStep: fd.consentStep,
+        hipaa: fd.consents?.hipaa,
+        givenConsents: fd.givenConsents,
+      });
 
       sessionStorage.setItem("rcms_intake_session_id", session.id);
       sessionStorage.setItem("rcms_intake_id", session.intakeId);
@@ -227,11 +255,11 @@ export default function ResumeIntake() {
 
       if (consentsComplete) {
         // Go directly to /client-intake at saved step — do NOT send to consent
-        const savedStep = Math.min(7, Math.max(0, session.currentStep ?? fd.step ?? 0));
         sessionStorage.setItem("rcms_intake_step", String(savedStep));
         sessionStorage.setItem("rcms_consents_completed", "true");
         navigate(
-          `/client-intake?attorney_id=${encodeURIComponent(attorneyParam)}&attorney_code=${encodeURIComponent(codeParam)}&resume=true`
+          `/client-intake?attorney_id=${encodeURIComponent(attorneyParam)}&attorney_code=${encodeURIComponent(codeParam)}&resume=true`,
+          { state: { resumeStep: savedStep } }
         );
       } else {
         sessionStorage.setItem("rcms_intake_step", "0");

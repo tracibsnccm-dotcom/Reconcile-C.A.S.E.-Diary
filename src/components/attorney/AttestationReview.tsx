@@ -145,7 +145,13 @@ export function AttestationReview() {
         const sess = Array.isArray(sessData) ? sessData[0] : sessData;
         if (sess?.form_data) setFormData((sess.form_data as FormDataFromDb) ?? null);
         const status = sess?.intake_status ?? "submitted_pending_attorney";
-        console.log("Attestation loading - intake_id:", intakeId, "client_name:", nameToDisplay, "status:", status);
+        // DEBUG: Log what's being loaded to diagnose client name mapping
+        console.log("AttestationReview loaded (UUID path):", {
+          url_param: intakeId,
+          loaded_intake: { id: intakeRow.id, case_id: intakeRow.case_id },
+          loaded_client: nameToDisplay,
+          case_id: caseIdFromSession,
+        });
         setLoading(false);
         return;
       }
@@ -164,7 +170,6 @@ export function AttestationReview() {
       }
 
       const status = session.intake_status;
-      console.log("Attestation loading - intake_id:", intakeId, "client_name:", "(loading)", "status:", status);
       if (!["submitted", "submitted_pending_attorney"].includes(status)) {
         setError("Intake not found or already processed.");
         setLoading(false);
@@ -177,7 +182,7 @@ export function AttestationReview() {
 
       // Fetch client name from canonical source (rc_cases + rc_clients) — SAME record as clicked in list
       caseIdFromSession = session.case_id;
-      let nameToDisplay = "";
+      let nameToDisplayResume = "";
       if (caseIdFromSession) {
         try {
           const { data: caseWithClient } = await supabaseGet(
@@ -192,10 +197,10 @@ export function AttestationReview() {
               `id=eq.${clientId}&select=first_name,last_name&limit=1`
             );
             const client = Array.isArray(clientData) ? clientData[0] : clientData;
-            nameToDisplay = [client?.first_name ?? "", client?.last_name ?? ""].filter(Boolean).join(" ").trim();
+            nameToDisplayResume = [client?.first_name ?? "", client?.last_name ?? ""].filter(Boolean).join(" ").trim();
           }
         } catch (_) {}
-        if (!nameToDisplay) {
+        if (!nameToDisplayResume) {
           const { data: intakes } = await supabaseGet(
             "rc_client_intakes",
             `case_id=eq.${caseIdFromSession}&select=intake_json&order=intake_submitted_at.desc&limit=1`
@@ -204,10 +209,18 @@ export function AttestationReview() {
           const identity = intakeRow?.intake_json?.identity ?? intakeRow?.intake_json?.client_identity ?? {};
           const fn = identity.first_name ?? identity.firstName ?? identity.client_first_name ?? "";
           const ln = identity.last_name ?? identity.lastName ?? identity.client_last_name ?? "";
-          nameToDisplay = [fn, ln].filter(Boolean).join(" ").trim() || "Client";
+          nameToDisplayResume = [fn, ln].filter(Boolean).join(" ").trim() || "Client";
         }
-        setClientDisplayName(nameToDisplay);
+        setClientDisplayName(nameToDisplayResume);
       }
+
+      // DEBUG: Log what's being loaded (resume_token path)
+      console.log("AttestationReview loaded (resume_token path):", {
+        url_param: intakeId,
+        loaded_intake: session?.intake_id,
+        loaded_client: nameToDisplayResume,
+        case_id: session?.case_id,
+      });
 
       setLoading(false);
     })();

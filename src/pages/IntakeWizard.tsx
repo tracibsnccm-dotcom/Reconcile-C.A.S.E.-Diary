@@ -3168,21 +3168,16 @@ export default function IntakeWizard() {
 
             {/* Snapshot Summary */}
             <TooltipProvider>
-            <div className="mt-6 p-6 bg-gradient-to-br from-primary/5 to-primary/10 rounded-lg border-2 border-primary/20">
-              <h4 className="text-xl font-bold mb-6 text-black">Assessment Snapshot</h4>
+            <div className="mt-6 space-y-0">
+              <h4 className="text-xl font-bold mb-4 text-black">Assessment Snapshot</h4>
 
-              {/* 4Ps Section */}
-              <div className="mb-6">
-                <h5 className="text-sm font-extrabold mb-3 text-black flex items-center gap-1.5">
-                  4Ps of Wellness — Viability Score: {Math.floor((fourPs.physical + fourPs.psychological + fourPs.psychosocial + fourPs.professional) / 4)}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="w-4 h-4 text-primary cursor-help" aria-label="4Ps explanation" />
-                    </TooltipTrigger>
-                    <TooltipContent><p>Explanation coming soon</p></TooltipContent>
-                  </Tooltip>
-                </h5>
-                <div className="flex flex-wrap gap-2">
+              {/* 4Ps Section — large score, own colored box */}
+              <div className="mt-4 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+                <h3 className="text-xl font-bold text-gray-900">4Ps of Wellness</h3>
+                <p className="text-3xl font-bold text-blue-600 mt-2">
+                  Viability Score: {Math.floor((fourPs.physical + fourPs.psychological + fourPs.psychosocial + fourPs.professional) / 4)}
+                </p>
+                <div className="flex flex-wrap gap-2 mt-3">
                   {[
                     { label: 'Physical', value: fourPs.physical },
                     { label: 'Psychological', value: fourPs.psychological },
@@ -3203,22 +3198,17 @@ export default function IntakeWizard() {
                 </div>
               </div>
 
-              {/* SDOH Section */}
-              <div className="mb-6">
-                <h5 className="text-sm font-extrabold mb-3 text-black flex items-center gap-1.5">
-                  SDOH — Viability Score: {Math.floor(([
+              {/* SDOH Section — large score, own colored box */}
+              <div className="mt-6 p-4 bg-green-50 border-2 border-green-200 rounded-lg">
+                <h3 className="text-xl font-bold text-gray-900">SDOH</h3>
+                <p className="text-3xl font-bold text-green-600 mt-2">
+                  Viability Score: {Math.floor(([
                     sdoh.housing ?? 3, sdoh.food ?? 3, sdoh.transport ?? 3, sdoh.insuranceGap ?? 3,
                     sdoh.financial ?? 3, sdoh.employment ?? 3, sdoh.social_support ?? 3,
                     sdoh.safety ?? 3, sdoh.healthcare_access ?? 3
                   ].reduce((a, b) => a + b, 0) / 9))}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="w-4 h-4 text-primary cursor-help" aria-label="SDOH explanation" />
-                    </TooltipTrigger>
-                    <TooltipContent><p>Explanation coming soon</p></TooltipContent>
-                  </Tooltip>
-                </h5>
-                <div className="flex flex-wrap gap-2">
+                </p>
+                <div className="flex flex-wrap gap-2 mt-3">
                   {[
                     { label: 'Housing', value: sdoh.housing },
                     { label: 'Food', value: sdoh.food },
@@ -3245,9 +3235,47 @@ export default function IntakeWizard() {
                 </div>
               </div>
 
+              {/* Overall Health Indicator — large score, own colored box */}
+              {(() => {
+                const fourPsAvg = (fourPs.physical + fourPs.psychological + fourPs.psychosocial + fourPs.professional) / 4;
+                const sdohVals = [
+                  typeof sdoh.housing === 'number' ? sdoh.housing : 3,
+                  typeof sdoh.food === 'number' ? sdoh.food : 3,
+                  typeof sdoh.transport === 'number' ? sdoh.transport : 3,
+                  typeof sdoh.insuranceGap === 'number' ? sdoh.insuranceGap : 3,
+                  typeof sdoh.financial === 'number' ? sdoh.financial : 3,
+                  typeof sdoh.employment === 'number' ? sdoh.employment : 3,
+                  typeof sdoh.social_support === 'number' ? sdoh.social_support : 3,
+                  typeof sdoh.safety === 'number' ? sdoh.safety : 3,
+                  typeof sdoh.healthcare_access === 'number' ? sdoh.healthcare_access : 3
+                ];
+                const sdohAvg = sdohVals.reduce((a, b) => a + b, 0) / sdohVals.length;
+                const overallScore = Math.floor((fourPsAvg + sdohAvg) / 2);
+                return (
+                  <div className="mt-6 p-4 bg-purple-50 border-2 border-purple-200 rounded-lg">
+                    <h3 className="text-xl font-bold text-gray-900">Overall Health Indicator</h3>
+                    <p className="text-3xl font-bold text-purple-600 mt-2">Score: {overallScore}</p>
+                    <div className="flex items-center gap-4 mt-3">
+                      <div className="flex-1 relative h-3 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className="absolute left-0 top-0 h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${Math.min(100, ((overallScore - 1) / 4) * 100)}%`,
+                            background: 'linear-gradient(90deg, #c62828, #b09837, #18a05f)'
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-black mt-2">
+                      5 Stable · 4 Mild · 3 Moderate · 1–2 Critical
+                    </p>
+                  </div>
+                );
+              })()}
+
               {/* Clinical Context (if any) */}
               {((clinicalContext?.age_ranges?.length ?? 0) > 0 || overlayContextFlags?.is_student || overlayContextFlags?.has_dependents) && (
-                <div className="mb-6">
+                <div className="mt-6 p-4 bg-gray-50 border-2 border-gray-200 rounded-lg">
                   <h5 className="text-sm font-extrabold mb-3 text-black">Context</h5>
                   <div className="flex flex-wrap gap-2">
                     {(clinicalContext?.age_ranges || []).map((a) => (
@@ -3258,66 +3286,6 @@ export default function IntakeWizard() {
                   </div>
                 </div>
               )}
-
-              {/* Case Health Meter */}
-              <div className="mb-2">
-                <h5 className="text-sm font-extrabold mb-3 text-black flex items-center gap-1.5">
-                  Overall Health Indicator (1–5)
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="w-4 h-4 text-primary cursor-help" aria-label="Overall Health explanation" />
-                    </TooltipTrigger>
-                    <TooltipContent><p>Explanation coming soon</p></TooltipContent>
-                  </Tooltip>
-                </h5>
-                <div className="flex items-center gap-4">
-                  <div className="flex-1 relative h-3 rounded-full bg-muted overflow-hidden">
-                    <div 
-                      className="absolute left-0 top-0 h-full rounded-full transition-all duration-500"
-                      style={{ 
-                        width: `${Math.min(100, (((() => {
-                          const fourPsAvg = (fourPs.physical + fourPs.psychological + fourPs.psychosocial + fourPs.professional) / 4;
-                          const sdohVals = [
-                            typeof sdoh.housing === 'number' ? sdoh.housing : 3,
-                            typeof sdoh.food === 'number' ? sdoh.food : 3,
-                            typeof sdoh.transport === 'number' ? sdoh.transport : 3,
-                            typeof sdoh.insuranceGap === 'number' ? sdoh.insuranceGap : 3,
-                            typeof sdoh.financial === 'number' ? sdoh.financial : 3,
-                            typeof sdoh.employment === 'number' ? sdoh.employment : 3,
-                            typeof sdoh.social_support === 'number' ? sdoh.social_support : 3,
-                            typeof sdoh.safety === 'number' ? sdoh.safety : 3,
-                            typeof sdoh.healthcare_access === 'number' ? sdoh.healthcare_access : 3
-                          ];
-                          const sdohAvg = sdohVals.reduce((a, b) => a + b, 0) / sdohVals.length;
-                          return Math.floor((fourPsAvg + sdohAvg) / 2);
-                        })() - 1) / 4) * 100)}%`,
-                        background: 'linear-gradient(90deg, #c62828, #b09837, #18a05f)'
-                      }}
-                    />
-                  </div>
-                  <div className="text-2xl font-black min-w-[64px] text-right text-black">
-                    {(() => {
-                      const fourPsAvg = (fourPs.physical + fourPs.psychological + fourPs.psychosocial + fourPs.professional) / 4;
-                      const sdohVals = [
-                        typeof sdoh.housing === 'number' ? sdoh.housing : 3,
-                        typeof sdoh.food === 'number' ? sdoh.food : 3,
-                        typeof sdoh.transport === 'number' ? sdoh.transport : 3,
-                        typeof sdoh.insuranceGap === 'number' ? sdoh.insuranceGap : 3,
-                        typeof sdoh.financial === 'number' ? sdoh.financial : 3,
-                        typeof sdoh.employment === 'number' ? sdoh.employment : 3,
-                        typeof sdoh.social_support === 'number' ? sdoh.social_support : 3,
-                        typeof sdoh.safety === 'number' ? sdoh.safety : 3,
-                        typeof sdoh.healthcare_access === 'number' ? sdoh.healthcare_access : 3
-                      ];
-                      const sdohAvg = sdohVals.reduce((a, b) => a + b, 0) / sdohVals.length;
-                      return Math.floor((fourPsAvg + sdohAvg) / 2);
-                    })()}
-                  </div>
-                </div>
-                <p className="text-xs text-black mt-2">
-                  5 Stable · 4 Mild · 3 Moderate · 1–2 Critical
-                </p>
-              </div>
             </div>
             </TooltipProvider>
 
