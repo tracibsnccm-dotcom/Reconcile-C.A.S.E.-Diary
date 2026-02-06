@@ -109,7 +109,7 @@ function StepBox({ idx, label, step, setStep, compact }: StepBoxProps) {
       </span>
       <span className={cn(
         "font-medium text-base line-clamp-2 break-normal",
-        isActive && "text-white"
+        isActive && "!text-white"
       )}>
         {label}
       </span>

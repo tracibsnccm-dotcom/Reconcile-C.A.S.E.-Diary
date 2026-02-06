@@ -1,7 +1,8 @@
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Activity } from 'lucide-react';
+import { Activity, Info } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface AssessmentSnapshotExplainerProps {
   onUpdateSnapshot?: () => void;
@@ -23,7 +24,7 @@ export const AssessmentSnapshotExplainer = ({
             Assessment Snapshot — How to Use It
           </h3>
           <p className="text-base font-bold text-foreground mb-3">
-            Your Snapshot is a living record of your recovery. Update it whenever you log in — even small changes matter.
+            Your Snapshot summarizes your daily check-ins. Over time, these snapshots create a complete picture of your recovery journey — showing improvements, setbacks, and patterns that help you and your care team track progress.
           </p>
         </div>
       </div>
@@ -32,6 +33,47 @@ export const AssessmentSnapshotExplainer = ({
         Each update captures how you're doing across your physical, emotional, social, and professional life. Over time, it forms a clear,
         date-stamped timeline of your progress and ongoing needs.
       </p>
+
+      <div className="flex flex-wrap gap-4 mb-4">
+        <TooltipProvider>
+          <span className="flex items-center gap-1.5 text-sm">
+            <strong>4Ps of Wellness</strong>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="w-4 h-4 text-primary cursor-help" aria-label="4Ps explanation" />
+              </TooltipTrigger>
+              <TooltipContent><p>Explanation coming soon</p></TooltipContent>
+            </Tooltip>
+          </span>
+          <span className="flex items-center gap-1.5 text-sm">
+            <strong>SDOH</strong>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="w-4 h-4 text-primary cursor-help" aria-label="SDOH explanation" />
+              </TooltipTrigger>
+              <TooltipContent><p>Explanation coming soon</p></TooltipContent>
+            </Tooltip>
+          </span>
+          <span className="flex items-center gap-1.5 text-sm">
+            <strong>Viability</strong>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="w-4 h-4 text-primary cursor-help" aria-label="Viability explanation" />
+              </TooltipTrigger>
+              <TooltipContent><p>Explanation coming soon</p></TooltipContent>
+            </Tooltip>
+          </span>
+          <span className="flex items-center gap-1.5 text-sm">
+            <strong>Overall Health Indicator</strong>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="w-4 h-4 text-primary cursor-help" aria-label="Overall Health explanation" />
+              </TooltipTrigger>
+              <TooltipContent><p>Explanation coming soon</p></TooltipContent>
+            </Tooltip>
+          </span>
+        </TooltipProvider>
+      </div>
 
       <ul className="space-y-3 mb-4 ml-5">
         <li className="text-black">

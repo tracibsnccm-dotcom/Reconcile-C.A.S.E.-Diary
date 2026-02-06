@@ -3167,12 +3167,75 @@ export default function IntakeWizard() {
             />
 
             {/* Snapshot Summary */}
+            <TooltipProvider>
             <div className="mt-6 p-6 bg-gradient-to-br from-primary/5 to-primary/10 rounded-lg border-2 border-primary/20">
               <h4 className="text-xl font-bold mb-6 text-black">Assessment Snapshot</h4>
 
+              {/* Score Cards / Placeholders */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+                <div className="rounded-lg border-2 border-primary/30 bg-white p-4 shadow-sm">
+                  <p className="text-xs font-semibold text-gray-600 mb-1">4Ps Viability Score</p>
+                  <p className="text-2xl font-black text-primary">
+                    {(() => {
+                      const avg = (fourPs.physical + fourPs.psychological + fourPs.psychosocial + fourPs.professional) / 4;
+                      return `${Math.round(avg * 20)}%`;
+                    })()}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">1–5 scale</p>
+                </div>
+                <div className="rounded-lg border-2 border-primary/30 bg-white p-4 shadow-sm">
+                  <p className="text-xs font-semibold text-gray-600 mb-1">SDOH Viability Score</p>
+                  <p className="text-2xl font-black text-primary">
+                    {(() => {
+                      const vals = [
+                        sdoh.housing ?? 3, sdoh.food ?? 3, sdoh.transport ?? 3, sdoh.insuranceGap ?? 3,
+                        sdoh.financial ?? 3, sdoh.employment ?? 3, sdoh.social_support ?? 3,
+                        sdoh.safety ?? 3, sdoh.healthcare_access ?? 3
+                      ];
+                      const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+                      return `${Math.round(avg * 20)}%`;
+                    })()}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">1–5 scale</p>
+                </div>
+                <div className="rounded-lg border-2 border-primary/30 bg-white p-4 shadow-sm">
+                  <p className="text-xs font-semibold text-gray-600 mb-1">Overall Health (4Ps)</p>
+                  <p className="text-2xl font-black text-primary">
+                    {(() => {
+                      const avg = (fourPs.physical + fourPs.psychological + fourPs.psychosocial + fourPs.professional) / 4;
+                      return Math.round(avg * 10) / 10;
+                    })()}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">1–5 indicator</p>
+                </div>
+                <div className="rounded-lg border-2 border-primary/30 bg-white p-4 shadow-sm">
+                  <p className="text-xs font-semibold text-gray-600 mb-1">Overall Health (SDOH)</p>
+                  <p className="text-2xl font-black text-primary">
+                    {(() => {
+                      const vals = [
+                        sdoh.housing ?? 3, sdoh.food ?? 3, sdoh.transport ?? 3, sdoh.insuranceGap ?? 3,
+                        sdoh.financial ?? 3, sdoh.employment ?? 3, sdoh.social_support ?? 3,
+                        sdoh.safety ?? 3, sdoh.healthcare_access ?? 3
+                      ];
+                      const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+                      return Math.round(avg * 10) / 10;
+                    })()}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">1–5 indicator</p>
+                </div>
+              </div>
+
               {/* 4Ps Section */}
               <div className="mb-6">
-                <h5 className="text-sm font-extrabold mb-3 text-black">4Ps of Wellness</h5>
+                <h5 className="text-sm font-extrabold mb-3 text-black flex items-center gap-1.5">
+                  4Ps of Wellness
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="w-4 h-4 text-primary cursor-help" aria-label="4Ps explanation" />
+                    </TooltipTrigger>
+                    <TooltipContent><p>Explanation coming soon</p></TooltipContent>
+                  </Tooltip>
+                </h5>
                 <div className="flex flex-wrap gap-2">
                   {[
                     { label: 'Physical', value: fourPs.physical },
@@ -3196,7 +3259,15 @@ export default function IntakeWizard() {
 
               {/* SDOH Section */}
               <div className="mb-6">
-                <h5 className="text-sm font-extrabold mb-3 text-black">Social Drivers of Health</h5>
+                <h5 className="text-sm font-extrabold mb-3 text-black flex items-center gap-1.5">
+                  Social Drivers of Health (SDOH)
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="w-4 h-4 text-primary cursor-help" aria-label="SDOH explanation" />
+                    </TooltipTrigger>
+                    <TooltipContent><p>Explanation coming soon</p></TooltipContent>
+                  </Tooltip>
+                </h5>
                 <div className="flex flex-wrap gap-2">
                   {[
                     { label: 'Housing', value: sdoh.housing },
@@ -3240,7 +3311,15 @@ export default function IntakeWizard() {
 
               {/* Case Health Meter */}
               <div className="mb-2">
-                <h5 className="text-sm font-extrabold mb-3 text-black">Overall Health Indicator (1–5)</h5>
+                <h5 className="text-sm font-extrabold mb-3 text-black flex items-center gap-1.5">
+                  Overall Health Indicator (1–5)
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="w-4 h-4 text-primary cursor-help" aria-label="Overall Health explanation" />
+                    </TooltipTrigger>
+                    <TooltipContent><p>Explanation coming soon</p></TooltipContent>
+                  </Tooltip>
+                </h5>
                 <div className="flex items-center gap-4">
                   <div className="flex-1 relative h-3 rounded-full bg-muted overflow-hidden">
                     <div 
@@ -3290,6 +3369,7 @@ export default function IntakeWizard() {
                 </p>
               </div>
             </div>
+            </TooltipProvider>
 
             {/* Case Summary - Final Review: client name at top above RCMS ID */}
             <div className="mt-8 p-6 bg-gradient-to-br from-secondary/10 to-secondary/5 rounded-lg border-2 border-border">

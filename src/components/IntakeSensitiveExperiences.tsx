@@ -710,7 +710,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
                 <Button
                   variant="outline"
                   className={cn(
-                    "w-full justify-between min-h-[48px]",
+                    "w-full justify-between min-h-[48px] bg-white text-gray-900 border-2 border-gray-400",
                     data.substanceUse.length > 0 && "border-primary"
                   )}
                   type="button"
@@ -723,7 +723,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
                   <ChevronDown className="h-4 w-4 opacity-50" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="bottom" className="max-h-[80vh] overflow-y-auto">
+              <SheetContent side="bottom" className="max-h-[80vh] overflow-y-auto bg-white text-gray-900">
                 <SheetHeader>
                   <SheetTitle>Substance Use / Dependency</SheetTitle>
                 </SheetHeader>
@@ -753,7 +753,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
                 <Button
                   variant="outline"
                   className={cn(
-                    "w-full justify-between",
+                    "w-full justify-between bg-white text-gray-900 border-2 border-gray-400",
                     data.substanceUse.length > 0 && "border-primary"
                   )}
                   type="button"
@@ -766,7 +766,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
                   <ChevronDown className="h-4 w-4 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[500px] p-4 max-h-[400px] overflow-y-auto">
+              <PopoverContent className="w-[500px] p-4 max-h-[400px] overflow-y-auto bg-white text-gray-900 border-2 border-gray-400">
                 <div className="space-y-2">
                   {substanceUseOptions.map((option) => (
                     <div key={option} className="flex items-start space-x-2 py-2">
@@ -806,7 +806,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
                 <Button
                   variant="outline"
                   className={cn(
-                    "w-full justify-between min-h-[48px]",
+                    "w-full justify-between min-h-[48px] bg-white text-gray-900 border-2 border-gray-400",
                     data.safetyTrauma.length > 0 && "border-primary"
                   )}
                   type="button"
@@ -819,7 +819,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
                   <ChevronDown className="h-4 w-4 opacity-50" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="bottom" className="max-h-[80vh] overflow-y-auto">
+              <SheetContent side="bottom" className="max-h-[80vh] overflow-y-auto bg-white text-gray-900">
                 <SheetHeader>
                   <SheetTitle>Safety & Trauma History</SheetTitle>
                 </SheetHeader>
@@ -849,7 +849,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
                 <Button
                   variant="outline"
                   className={cn(
-                    "w-full justify-between",
+                    "w-full justify-between bg-white text-gray-900 border-2 border-gray-400",
                     data.safetyTrauma.length > 0 && "border-primary"
                   )}
                   type="button"
@@ -862,7 +862,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
                   <ChevronDown className="h-4 w-4 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[500px] p-4 max-h-[400px] overflow-y-auto">
+              <PopoverContent className="w-[500px] p-4 max-h-[400px] overflow-y-auto bg-white text-gray-900 border-2 border-gray-400">
                 <div className="space-y-2">
                   {safetyTraumaOptions.map((option) => (
                     <div key={option} className="flex items-start space-x-2 py-2">
@@ -902,7 +902,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
                 <Button
                   variant="outline"
                   className={cn(
-                    "w-full justify-between min-h-[48px]",
+                    "w-full justify-between min-h-[48px] bg-white text-gray-900 border-2 border-gray-400",
                     data.stressors.length > 0 && "border-primary"
                   )}
                   type="button"
@@ -915,7 +915,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
                   <ChevronDown className="h-4 w-4 opacity-50" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="bottom" className="max-h-[80vh] overflow-y-auto">
+              <SheetContent side="bottom" className="max-h-[80vh] overflow-y-auto bg-white text-gray-900">
                 <SheetHeader>
                   <SheetTitle>Current Stressors or Barriers</SheetTitle>
                 </SheetHeader>
@@ -945,7 +945,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
                 <Button
                   variant="outline"
                   className={cn(
-                    "w-full justify-between",
+                    "w-full justify-between bg-white text-gray-900 border-2 border-gray-400",
                     data.stressors.length > 0 && "border-primary"
                   )}
                   type="button"
@@ -958,7 +958,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
                   <ChevronDown className="h-4 w-4 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[500px] p-4 max-h-[400px] overflow-y-auto">
+              <PopoverContent className="w-[500px] p-4 max-h-[400px] overflow-y-auto bg-white text-gray-900 border-2 border-gray-400">
                 <div className="space-y-2">
                   {stressorsOptions.map((option) => (
                     <div key={option} className="flex items-start space-x-2 py-2">
