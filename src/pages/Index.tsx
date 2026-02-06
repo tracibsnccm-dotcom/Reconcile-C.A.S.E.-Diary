@@ -7,7 +7,7 @@ export default function Index() {
     <div style={{
       position: "relative",
       minHeight: "100vh",
-      background: "linear-gradient(145deg, #1e3a5f 0%, #2d4a6f 40%, #3d5a7f 70%, #4a6a8f 100%)",
+      background: "linear-gradient(145deg, #3b6a9b 0%, #4a7fb0 40%, #5a90c0 70%, #6aa0cf 100%)",
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
@@ -22,7 +22,7 @@ export default function Index() {
         left: 0,
         right: 0,
         height: "40%",
-        background: "radial-gradient(ellipse at top center, rgba(255,255,255,0.08) 0%, transparent 70%)",
+        background: "radial-gradient(ellipse at top center, rgba(255,255,255,0.12) 0%, transparent 70%)",
         pointerEvents: "none",
       }} />
 
