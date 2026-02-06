@@ -3174,7 +3174,7 @@ export default function IntakeWizard() {
               {/* 4Ps Section — large score, own colored box */}
               <div className="mt-4 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
                 <h3 className="text-xl font-bold text-gray-900">4Ps of Wellness</h3>
-                <p className="text-3xl font-bold text-blue-600 mt-2">
+                <p className="text-lg font-semibold text-blue-600 mt-1">
                   Viability Score: {Math.floor((fourPs.physical + fourPs.psychological + fourPs.psychosocial + fourPs.professional) / 4)}
                 </p>
                 <div className="flex flex-wrap gap-2 mt-3">
@@ -3201,7 +3201,7 @@ export default function IntakeWizard() {
               {/* SDOH Section — large score, own colored box */}
               <div className="mt-6 p-4 bg-green-50 border-2 border-green-200 rounded-lg">
                 <h3 className="text-xl font-bold text-gray-900">SDOH</h3>
-                <p className="text-3xl font-bold text-green-600 mt-2">
+                <p className="text-lg font-semibold text-green-600 mt-1">
                   Viability Score: {Math.floor(([
                     sdoh.housing ?? 3, sdoh.food ?? 3, sdoh.transport ?? 3, sdoh.insuranceGap ?? 3,
                     sdoh.financial ?? 3, sdoh.employment ?? 3, sdoh.social_support ?? 3,
@@ -3254,7 +3254,7 @@ export default function IntakeWizard() {
                 return (
                   <div className="mt-6 p-4 bg-purple-50 border-2 border-purple-200 rounded-lg">
                     <h3 className="text-xl font-bold text-gray-900">Overall Health Indicator</h3>
-                    <p className="text-3xl font-bold text-purple-600 mt-2">Score: {overallScore}</p>
+                    <p className="text-lg font-semibold text-purple-600 mt-1">Score: {overallScore}</p>
                     <div className="flex items-center gap-4 mt-3">
                       <div className="flex-1 relative h-3 rounded-full bg-muted overflow-hidden">
                         <div
