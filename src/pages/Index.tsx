@@ -24,10 +24,13 @@ export default function Index() {
           textShadow: "2px 2px 4px rgba(0,0,0,0.2)",
         }}>Reconcile</span>{" "}
         <span style={{
+          color: "#f97316",
           fontSize: "3.5rem",
-          color: "#fbbf24",
-          textShadow: "3px 3px 6px rgba(0,0,0,0.3)",
-        }}>C.A.S.E.</span>
+          fontWeight: "bold",
+          textShadow: "2px 2px 0px white, 4px 4px 8px rgba(0,0,0,0.2)",
+        }}>
+          C.A.S.E.
+        </span>
       </h1>
       <p style={{
         fontSize: "24px",
@@ -52,7 +55,7 @@ export default function Index() {
         padding: "48px 40px",
         maxWidth: "480px",
         margin: "0 auto 48px auto",
-        boxShadow: "0 20px 60px rgba(0,0,0,0.15), 0 8px 20px rgba(0,0,0,0.1)",
+        boxShadow: "0 25px 80px rgba(0,0,0,0.18), 0 10px 30px rgba(0,0,0,0.12), 0 0 0 1px rgba(255,255,255,0.5)",
       }}>
         <h2 style={{
           fontSize: "1.5rem",
@@ -65,24 +68,24 @@ export default function Index() {
         <Link to="/intake-identity" style={{
           display: "block",
           padding: "24px 48px",
-          backgroundColor: "#fb923c",
+          background: "linear-gradient(180deg, #fdba74 0%, #fb923c 50%, #f97316 100%)",
           color: "white",
           borderRadius: "14px",
           fontSize: "20px",
           fontWeight: "bold",
           textDecoration: "none",
           textAlign: "center",
-          boxShadow: "0 8px 24px rgba(251, 146, 60, 0.4)",
+          boxShadow: "0 8px 24px rgba(251, 146, 60, 0.4), inset 0 1px 0 rgba(255,255,255,0.3)",
           marginBottom: "20px",
           transition: "transform 0.2s, box-shadow 0.2s",
         }}
           onMouseOver={(e) => {
             e.currentTarget.style.transform = "translateY(-2px)";
-            e.currentTarget.style.boxShadow = "0 12px 32px rgba(251, 146, 60, 0.5)";
+            e.currentTarget.style.boxShadow = "0 12px 32px rgba(251, 146, 60, 0.5), inset 0 1px 0 rgba(255,255,255,0.3)";
           }}
           onMouseOut={(e) => {
             e.currentTarget.style.transform = "translateY(0)";
-            e.currentTarget.style.boxShadow = "0 8px 24px rgba(251, 146, 60, 0.4)";
+            e.currentTarget.style.boxShadow = "0 8px 24px rgba(251, 146, 60, 0.4), inset 0 1px 0 rgba(255,255,255,0.3)";
           }}
         >
           Start Your Intake
@@ -102,12 +105,13 @@ export default function Index() {
       {/* SECONDARY SECTION - Portal Buttons */}
       <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", justifyContent: "center" }}>
         <Link to="/client-login" style={{
-          padding: "16px 32px",
+          padding: "20px 40px",
+          fontSize: "18px",
+          fontWeight: "bold",
+          borderRadius: "14px",
           backgroundColor: "#0d9488",
           color: "white",
-          borderRadius: "12px",
-          fontSize: "16px",
-          fontWeight: "bold",
+          border: "1px solid rgba(255,255,255,0.3)",
           textDecoration: "none",
           boxShadow: "0 6px 20px rgba(13, 148, 136, 0.4)",
           transition: "transform 0.2s, box-shadow 0.2s",
@@ -125,12 +129,13 @@ export default function Index() {
         </Link>
 
         <Link to="/attorney-login" style={{
-          padding: "16px 32px",
+          padding: "20px 40px",
+          fontSize: "18px",
+          fontWeight: "bold",
+          borderRadius: "14px",
           backgroundColor: "#fb923c",
           color: "white",
-          borderRadius: "12px",
-          fontSize: "16px",
-          fontWeight: "bold",
+          border: "1px solid rgba(255,255,255,0.3)",
           textDecoration: "none",
           boxShadow: "0 6px 20px rgba(251, 146, 60, 0.4)",
           transition: "transform 0.2s, box-shadow 0.2s",
@@ -148,12 +153,13 @@ export default function Index() {
         </Link>
 
         <Link to="/provider-login" style={{
-          padding: "16px 32px",
+          padding: "20px 40px",
+          fontSize: "18px",
+          fontWeight: "bold",
+          borderRadius: "14px",
           backgroundColor: "#7c3aed",
           color: "white",
-          borderRadius: "12px",
-          fontSize: "16px",
-          fontWeight: "bold",
+          border: "1px solid rgba(255,255,255,0.3)",
           textDecoration: "none",
           boxShadow: "0 6px 20px rgba(124, 58, 237, 0.4)",
           transition: "transform 0.2s, box-shadow 0.2s",
@@ -171,9 +177,23 @@ export default function Index() {
         </Link>
       </div>
 
-      <p style={{ marginTop: "72px", color: "#1e3a8a", opacity: 0.9, fontSize: "12px" }}>
-        {CASE_BRAND.copyright} | {CASE_BRAND.company}
-      </p>
+      <div style={{ marginTop: "72px", textAlign: "center" }}>
+        <p style={{
+          color: "#1e3a8a",
+          opacity: 0.8,
+          fontSize: "14px",
+        }}>
+          © 2026 Reconcile Care Management Services. All rights reserved.
+        </p>
+        <p style={{
+          color: "#1e3a8a",
+          opacity: 0.7,
+          fontSize: "13px",
+          marginTop: "4px",
+        }}>
+          Traci Johnson, BSN RN, CCM
+        </p>
+      </div>
     </div>
   );
 }
