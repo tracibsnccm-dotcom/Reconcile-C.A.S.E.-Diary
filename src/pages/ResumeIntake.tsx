@@ -97,41 +97,28 @@ export default function ResumeIntake() {
         }
 
         const fd = session.formData && typeof session.formData === "object" ? session.formData : {};
-        // Consents complete if explicitly set, or if HIPAA (step 5) was signed
-        const consentsComplete =
-          fd.consentsComplete === true ||
-          (fd.consentStep === 5 && !!fd.consents?.hipaa?.signature) ||
-          (fd.consentStep === 5 && !!fd.consents?.hipaa?.acknowledged) ||
-          (fd.consentStep >= 5 && (fd.givenConsents?.includes?.(5) || !!fd.consents?.hipaa));
+        // Check consentsComplete FIRST, then navigate. Do NOT navigate to consent by default.
+        const consentsComplete = fd.consentsComplete === true || (fd.consentStep ?? 0) >= 5;
+        const savedStep = fd.step ?? fd.currentStep ?? session.currentStep ?? 0;
 
-        const savedStep = Math.min(7, Math.max(0, session.currentStep ?? fd.step ?? 0));
-
-        // DEBUG: Log at decision point to diagnose resume redirect
-        console.log("ResumeIntake (token) - consentsComplete:", consentsComplete);
-        console.log("ResumeIntake (token) - savedStep:", savedStep);
-        console.log("ResumeIntake (token) - full session data:", {
-          formData: fd,
-          consentsComplete_flag: fd.consentsComplete,
-          consentStep: fd.consentStep,
-          hipaa: fd.consents?.hipaa,
-          givenConsents: fd.givenConsents,
-        });
-
-        const attorneyParam = session.attorneyId || "";
-        const codeParam = session.attorneyCode || "";
+        console.log("Navigation decision - consentsComplete:", consentsComplete, "savedStep:", savedStep);
 
         if (consentsComplete) {
-          // Go directly to /client-intake at saved step — do NOT send to consent
+          console.log("Consents complete, going to intake wizard at step:", savedStep);
           sessionStorage.setItem("rcms_intake_step", String(savedStep));
           sessionStorage.setItem("rcms_consents_completed", "true");
+          sessionStorage.setItem("rcms_consent_session_id", session.id);
+          const attorneyParam = session.attorneyId || "";
+          const codeParam = session.attorneyCode || "";
           navigate(
             `/client-intake?attorney_id=${encodeURIComponent(attorneyParam)}&attorney_code=${encodeURIComponent(codeParam)}&resume=true`,
-            { state: { resumeStep: savedStep } }
+            { replace: true, state: { resumeStep: savedStep } }
           );
         } else {
+          console.log("Consents NOT complete, going to consent page");
           sessionStorage.setItem("rcms_intake_step", "0");
           sessionStorage.setItem("rcms_consent_step", String(fd.consentStep ?? 0));
-          navigate(`/client-consent?resume=true`);
+          navigate("/client-consent?resume=true", { replace: true });
         }
       } catch (err) {
         if (!cancelled) {
@@ -233,27 +220,6 @@ export default function ResumeIntake() {
 
       // in_progress: resume to consents or intake wizard based on stored progress
       sessionStorage.setItem("rcms_intake_status", "in_progress");
-      const fd = (session.formData && typeof session.formData === "object") ? session.formData : {};
-      // Consents complete if explicitly set, or if HIPAA (step 5) was signed
-      const consentsComplete =
-        fd.consentsComplete === true ||
-        (fd.consentStep === 5 && !!fd.consents?.hipaa?.signature) ||
-        (fd.consentStep === 5 && !!fd.consents?.hipaa?.acknowledged) ||
-        (fd.consentStep >= 5 && (fd.givenConsents?.includes?.(5) || !!fd.consents?.hipaa));
-
-      const savedStep = Math.min(7, Math.max(0, session.currentStep ?? fd.step ?? 0));
-
-      // DEBUG: Log at decision point to diagnose resume redirect
-      console.log("ResumeIntake (INT#+PIN) - consentsComplete:", consentsComplete);
-      console.log("ResumeIntake (INT#+PIN) - savedStep:", savedStep);
-      console.log("ResumeIntake (INT#+PIN) - full session data:", {
-        formData: fd,
-        consentsComplete_flag: fd.consentsComplete,
-        consentStep: fd.consentStep,
-        hipaa: fd.consents?.hipaa,
-        givenConsents: fd.givenConsents,
-      });
-
       sessionStorage.setItem("rcms_intake_session_id", session.id);
       sessionStorage.setItem("rcms_intake_id", session.intakeId);
       sessionStorage.setItem("rcms_current_attorney_id", session.attorneyId || "");
@@ -262,21 +228,29 @@ export default function ResumeIntake() {
         sessionStorage.setItem("rcms_intake_form_data", JSON.stringify(session.formData));
       }
 
-      const attorneyParam = session.attorneyId || "";
-      const codeParam = session.attorneyCode || "";
+      const fd = (session.formData && typeof session.formData === "object") ? session.formData : {};
+      // Check consentsComplete FIRST, then navigate. Do NOT navigate to consent by default.
+      const consentsComplete = fd.consentsComplete === true || (fd.consentStep ?? 0) >= 5;
+      const savedStep = fd.step ?? fd.currentStep ?? session.currentStep ?? 0;
+
+      console.log("Navigation decision - consentsComplete:", consentsComplete, "savedStep:", savedStep);
 
       if (consentsComplete) {
-        // Go directly to /client-intake at saved step — do NOT send to consent
+        console.log("Consents complete, going to intake wizard at step:", savedStep);
         sessionStorage.setItem("rcms_intake_step", String(savedStep));
         sessionStorage.setItem("rcms_consents_completed", "true");
+        sessionStorage.setItem("rcms_consent_session_id", session.id);
+        const attorneyParam = session.attorneyId || "";
+        const codeParam = session.attorneyCode || "";
         navigate(
           `/client-intake?attorney_id=${encodeURIComponent(attorneyParam)}&attorney_code=${encodeURIComponent(codeParam)}&resume=true`,
-          { state: { resumeStep: savedStep } }
+          { replace: true, state: { resumeStep: savedStep } }
         );
       } else {
+        console.log("Consents NOT complete, going to consent page");
         sessionStorage.setItem("rcms_intake_step", "0");
         sessionStorage.setItem("rcms_consent_step", String(fd.consentStep ?? 0));
-        navigate(`/client-consent?resume=true`);
+        navigate("/client-consent?resume=true", { replace: true });
       }
     } catch (err: any) {
       setError(err?.message || "Something went wrong. Please try again.");
