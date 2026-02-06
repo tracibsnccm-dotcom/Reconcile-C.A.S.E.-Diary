@@ -1,4 +1,4 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { MessageSquare } from "lucide-react";
 
@@ -21,7 +21,7 @@ export function ClientMessaging({ caseId: _caseId }: ClientMessagingProps) {
             <MessageSquare className="w-5 h-5 text-orange-500" />
             Messages
           </CardTitle>
-          <CardDescription>Communicate with your care team</CardDescription>
+          <p className="text-sm text-gray-500">Communicate with your care team</p>
         </CardHeader>
         <CardContent>
           <Alert className="bg-slate-50 border-slate-200">
