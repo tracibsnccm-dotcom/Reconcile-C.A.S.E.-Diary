@@ -732,11 +732,11 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-muted/50">
+        <div className="overflow-x-auto max-w-full min-w-0">
+          <table className="w-full max-w-full table-fixed min-w-0">
+            <thead className="bg-muted/50 text-xs sm:text-sm">
               <tr className="border-b">
-                <th className="p-2 text-left">
+                <th className="p-1.5 w-10 min-w-[2.5rem] text-left">
                   <Checkbox
                     checked={selectedIds.size === filteredRows.length && filteredRows.length > 0}
                     onCheckedChange={(checked) => {
@@ -748,20 +748,20 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
                     }}
                   />
                 </th>
-                <th className="p-2 text-left font-semibold">INT Number</th>
-                <th className="p-2 text-left font-semibold">Case Number</th>
-                <th className="p-2 text-left font-semibold">Client Name</th>
-                <th className="p-2 text-left font-semibold">Date of Injury</th>
-                <th className="p-2 text-left font-semibold">Case Type</th>
-                <th className="p-2 text-left font-semibold">Status</th>
-                <th className="p-2 text-left font-semibold">Stage</th>
-                <th className="p-2 text-left font-semibold">Last Activity</th>
-                <th className="p-2 text-left font-semibold">Time Remaining</th>
-                <th className="p-2 text-left font-semibold">Risk</th>
-                <th className="p-2 text-left font-semibold">Actions</th>
+                <th className="p-1.5 w-24 max-w-[100px] text-left font-semibold">INT Number</th>
+                <th className="p-1.5 w-28 max-w-[120px] text-left font-semibold">Case Number</th>
+                <th className="p-1.5 min-w-0 text-left font-semibold">Client Name</th>
+                <th className="p-1.5 w-24 max-w-[100px] text-left font-semibold">Date of Injury</th>
+                <th className="p-1.5 w-20 max-w-[80px] text-left font-semibold">Case Type</th>
+                <th className="p-1.5 w-24 max-w-[100px] text-left font-semibold">Status</th>
+                <th className="p-1.5 w-32 max-w-[128px] text-left font-semibold">Stage</th>
+                <th className="p-1.5 w-28 max-w-[120px] text-left font-semibold hidden md:table-cell">Last Activity</th>
+                <th className="p-1.5 w-24 max-w-[100px] text-left font-semibold hidden md:table-cell">Time Remaining</th>
+                <th className="p-1.5 w-16 max-w-[64px] text-left font-semibold">Risk</th>
+                <th className="p-1.5 w-32 max-w-[128px] text-left font-semibold">Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="text-xs sm:text-sm">
               {filteredRows.map((row) => {
                 const ttl = calculateTTL(row.expires_iso);
                 const risk = getRiskLevel(row.expires_iso);
@@ -794,7 +794,7 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
 
                 return (
                   <tr key={row.case_id} className="border-b hover:bg-muted/30">
-                    <td className="p-2">
+                    <td className="p-1.5 w-10 min-w-[2.5rem]">
                       <Checkbox
                         checked={isSelected}
                         onCheckedChange={(checked) => {
@@ -808,77 +808,79 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
                         }}
                       />
                     </td>
-                    <td className="p-2">
-                      <div className="font-mono font-bold text-primary">
+                    <td className="p-1.5 w-24 max-w-[100px] overflow-hidden">
+                      <div className="font-mono font-bold text-primary truncate max-w-[100px]" title={row.int_number || undefined}>
                         {row.int_number || '—'}
                       </div>
                       <Button
                         variant="link"
                         onClick={() => handleViewIntake(row.case_id, row.intake_id)}
-                        className="p-0 h-auto text-primary hover:underline text-xs mt-1"
+                        className="p-0 h-auto text-primary hover:underline text-xs mt-0.5"
                       >
                         {row.case_id.slice(0, 8)}...
                       </Button>
                     </td>
-                    <td className="p-2">
+                    <td className="p-1.5 w-28 max-w-[120px] overflow-hidden">
                       {!!row.attorney_attested_at ? (
-                        <span className="font-mono text-sm">{row.case_number || '—'}</span>
+                        <span className="font-mono truncate max-w-[100px] block" title={row.case_number || undefined}>{row.case_number || '—'}</span>
                       ) : (
-                        <Badge variant="secondary">Awaiting assignment</Badge>
+                        <Badge variant="secondary" className="text-xs">Awaiting</Badge>
                       )}
                     </td>
-                    <td className="p-2">
-                      <div className="font-medium">{row.client_name || row.client}</div>
+                    <td className="p-1.5 min-w-0 overflow-hidden">
+                      <div className="font-medium truncate max-w-[120px] sm:max-w-[180px]" title={row.client_name || row.client}>{row.client_name || row.client}</div>
                     </td>
-                    <td className="p-2 text-sm text-muted-foreground">
-                      {row.date_of_injury 
+                    <td className="p-1.5 w-24 max-w-[100px] text-muted-foreground overflow-hidden">
+                      <span className="truncate max-w-[100px] block">{row.date_of_injury 
                         ? new Date(row.date_of_injury).toLocaleDateString()
-                        : 'N/A'}
+                        : 'N/A'}</span>
                     </td>
-                    <td className="p-2 text-sm text-muted-foreground">
-                      {row.case_type || 'N/A'}
+                    <td className="p-1.5 w-20 max-w-[80px] text-muted-foreground overflow-hidden">
+                      <span className="truncate max-w-[80px] block">{row.case_type || 'N/A'}</span>
                     </td>
-                    <td className="p-2">
-                      <Badge variant={statusVariant}>{statusLabel}</Badge>
+                    <td className="p-1.5 w-24 max-w-[100px]">
+                      <Badge variant={statusVariant} className="text-xs whitespace-nowrap">{statusLabel}</Badge>
                     </td>
-                    <td className="p-2">
-                      <Badge variant="outline">{row.stage}</Badge>
+                    <td className="p-1.5 w-32 max-w-[128px] overflow-hidden">
+                      <Badge variant="outline" className="text-xs truncate max-w-[100px] inline-block" title={row.stage}>{row.stage}</Badge>
                     </td>
-                    <td className="p-2 text-sm text-muted-foreground">
-                      {new Date(row.last_activity_iso).toLocaleString()}
+                    <td className={`p-1.5 w-28 max-w-[120px] text-muted-foreground hidden md:table-cell overflow-hidden`}>
+                      <span className="truncate max-w-[100px] block">{new Date(row.last_activity_iso).toLocaleString()}</span>
                     </td>
-                    <td className={`p-2 font-bold ${ttl.className}`}>
+                    <td className={`p-1.5 w-24 max-w-[100px] font-bold hidden md:table-cell ${ttl.className}`}>
                       {shouldShowCountdown ? (
                         ttl.label
                       ) : (
-                        <Badge variant={statusVariant}>{statusLabel}</Badge>
+                        <Badge variant={statusVariant} className="text-xs">{statusLabel}</Badge>
                       )}
                     </td>
-                    <td className="p-2">
-                      {shouldShowCountdown && <Badge variant={risk.variant}>{risk.level}</Badge>}
+                    <td className="p-1.5 w-16 max-w-[64px]">
+                      {shouldShowCountdown && <Badge variant={risk.variant} className="text-xs">{risk.level}</Badge>}
                     </td>
-                    <td className="p-2">
-                      <div className="flex gap-2">
+                    <td className="p-1.5 w-32 max-w-[128px] overflow-hidden">
+                      <div className="flex flex-wrap gap-1">
                         <Button
                           size="sm"
                           variant="outline"
+                          className="text-xs h-7 px-1.5"
                           onClick={() =>
                             isConfirmed && row.intake_id
                               ? navigate(`/attorney/intakes/${row.intake_id}`)
                               : handleViewIntake(row.case_id, row.intake_id)
                           }
                         >
-                          <Eye className="w-4 h-4 mr-1" />
-                          {isConfirmed ? 'View' : 'Review Intake & Proceed'}
+                          <Eye className="w-3 h-3 mr-0.5 shrink-0" />
+                          <span className="truncate">{isConfirmed ? 'View' : 'Review'}</span>
                         </Button>
                         {!isConfirmed && (
                           <>
-                            <Button size="sm" onClick={() => handleNudge(row.case_id)}>
+                            <Button size="sm" className="text-xs h-7 px-1.5" onClick={() => handleNudge(row.case_id)}>
                               Nudge
                             </Button>
                             <Button
                               size="sm"
                               variant="outline"
+                              className="text-xs h-7 px-1.5"
                               onClick={() => handleEscalate(row.case_id)}
                             >
                               Escalate
