@@ -137,7 +137,7 @@ We use your information to:
 
 3. Information Sharing
 We may share your information with:
-- Authorized members of your care team (RN Care Managers, providers, attorneys)
+- Authorized members of your care team (care coordinators, providers, attorneys)
 - Service providers who assist in delivering our services
 - As required by law or in response to legal process
 
@@ -194,7 +194,7 @@ We will not retaliate against you for filing a complaint.`,
 By signing this consent, you authorize Reconcile C.A.R.E. (RCMS) to coordinate your care and share information with members of your authorized care team.
 
 1. Authorization to Coordinate Care
-I authorize RCMS and its RN Care Managers to:
+I authorize RCMS and its care coordinators to:
 - Coordinate my medical care and treatment
 - Communicate with my healthcare providers, attorneys, and authorized representatives
 - Access and share my health information as necessary for care coordination

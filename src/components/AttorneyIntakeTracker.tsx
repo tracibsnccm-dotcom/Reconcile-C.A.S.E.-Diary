@@ -11,7 +11,6 @@ import { HelpCircle, Clock, ArrowLeft, Eye, AlertTriangle, Shield } from 'lucide
 import { toast } from 'sonner';
 import { Link, useNavigate } from 'react-router-dom';
 import { AttorneyAttestationCard } from '@/components/AttorneyAttestationCard';
-import { AttorneyRnAssignmentReadOnly } from '@/components/attorney/AttorneyRnAssignmentReadOnly';
 import { ConsentDocumentViewer } from '@/components/ConsentDocumentViewer';
 import { formatHMS, COMPLIANCE_COPY } from '@/constants/compliance';
 import { getAttorneyCaseStageLabel, ATTORNEY_STAGE_LABELS } from '@/lib/attorneyCaseStageLabels';
@@ -252,7 +251,7 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
         } catch (_) {}
       }
 
-      // ATTORNEY-5: Exclude cases that have a submitted care plan (RN released) — they belong in Active Cases
+      // ATTORNEY-5: Exclude cases that have a submitted care plan — they belong in Active Cases
       const caseIdsWithSubmittedPlan = new Set<string>();
       if (allCaseIds.length > 0) {
         try {
@@ -268,7 +267,7 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
         } catch (_) {}
       }
 
-      // Transform to IntakeRow format for display (exclude cases with submitted care plan — ATTORNEY-5)
+      // Transform to IntakeRow format for display (exclude cases with submitted care plan)
       const transformedRows: IntakeRow[] = (filteredIntakes || [])
         .filter((intake: any) => !caseIdsWithSubmittedPlan.has(intake.case_id))
         .map((intake: any) => {
@@ -390,22 +389,6 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
     }
   };
 
-  const handleEscalate = async (caseId: string) => {
-    if (!confirm('Escalate this intake to RN CM now?')) return;
-
-    try {
-      const { error } = await supabase.functions.invoke('attorney-intake-tracker', {
-        body: { action: 'escalate', case_id: caseId }
-      });
-      if (error) throw error;
-      toast.success('Escalated to RN CM');
-      loadData();
-    } catch (error) {
-      console.error('Escalate error:', error);
-      toast.error('Failed to escalate');
-    }
-  };
-
   const handleBulkNudge = async () => {
     if (selectedIds.size === 0) {
       toast.error('Select at least one client');
@@ -520,7 +503,7 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
               <CardTitle className="text-base">What this means</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-muted-foreground">
-              <p>The client has completed their intake. Please review the information and confirm whether the case should proceed. Once reviewed, the case can be assigned to an RN for initial care planning.</p>
+              <p>The client has completed their intake. Please review the information and confirm whether the case should proceed. Once reviewed, the AI Care Plan Builder will generate the care plan.</p>
               <p className="text-xs italic text-muted-foreground/90">
                 Client view: While under review, the client sees their intake as submitted and awaiting attorney review.
               </p>
@@ -617,11 +600,6 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
 
         {isConfirmed && !isExpired && (
           <>
-            {/* RN Assignment — read-only (attorneys do not assign; RN Supervisor does) */}
-            <AttorneyRnAssignmentReadOnly
-              assignedRnId={caseData?.assigned_rn_id ?? null}
-              updatedAt={caseData?.updated_at ?? undefined}
-            />
             {/* Consent Documents */}
             <ConsentDocumentViewer caseId={selectedCaseId!} showPrintButton={true} />
             
@@ -877,14 +855,6 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
                             <Button size="sm" className="text-xs h-7 px-1.5" onClick={() => handleNudge(row.case_id)}>
                               Nudge
                             </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="text-xs h-7 px-1.5"
-                              onClick={() => handleEscalate(row.case_id)}
-                            >
-                              Escalate
-                            </Button>
                           </>
                         )}
                       </div>
@@ -902,7 +872,7 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
                           <CardTitle className="text-base">What this means</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3 text-sm text-muted-foreground">
-                          <p>The client has completed their intake. Please review the information and confirm whether the case should proceed. Once reviewed, the case can be assigned to an RN for initial care planning.</p>
+                          <p>The client has completed their intake. Please review the information and confirm whether the case should proceed. Once reviewed, the AI Care Plan Builder will generate the care plan.</p>
                           <p className="text-xs italic text-muted-foreground/90">
                             Client view: While under review, the client sees their intake as submitted and awaiting attorney review.
                           </p>
@@ -918,9 +888,7 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
 
         <div className="p-3 border-t bg-muted/20">
           <p className="text-xs text-muted-foreground">
-            Intakes auto-delete after 7 days. "Auto-nudge" sends a reminder every 48h until
-            finished or time expires; prompt escalation to RN CM after two nudges or{' '}
-            <strong>&lt;24h</strong> remaining.
+            Intakes auto-delete after 7 days. Auto-nudge sends a reminder every 48h until finished or time expires.
           </p>
         </div>
       </Card>

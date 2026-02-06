@@ -349,15 +349,17 @@ export function AttestationReview() {
         <div className="max-w-xl mx-auto">
           <div className={CARD_CLASS}>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Client confirmed</h1>
-            <p className="text-gray-700 mb-2">Case Number</p>
-            <p className="text-xl font-mono font-bold text-black mb-4">{confirmed.caseNumber}</p>
-            <p className="text-gray-700 mb-2">PIN</p>
-            <p className="text-xl font-mono font-bold text-black mb-4">{confirmed.pin}</p>
-            <p className="text-gray-600 text-sm mb-6">
-              Share these credentials with your client so they can access their portal.
-            </p>
-            <p className="text-gray-600 text-sm mb-6">
-              Care plan generation will begin automatically.
+            <div className="bg-white border-2 border-gray-200 rounded-lg p-6 mb-6 shadow-sm">
+              <p className="text-gray-700 mb-1 font-medium">Case Number</p>
+              <p className="text-2xl font-mono font-bold text-black mb-4">{confirmed.caseNumber}</p>
+              <p className="text-gray-700 mb-1 font-medium">PIN</p>
+              <p className="text-2xl font-mono font-bold text-black mb-4">{confirmed.pin}</p>
+              <p className="text-gray-600 text-sm mt-4">
+                Share these credentials with your client so they can access their portal.
+              </p>
+            </div>
+            <p className="text-gray-700 font-medium mb-4">
+              The AI Care Plan Builder is now generating the care plan. You will be notified when it&apos;s ready.
             </p>
             <button
               onClick={() => navigate("/attorney/dashboard")}

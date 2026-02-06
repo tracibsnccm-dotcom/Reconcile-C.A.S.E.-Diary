@@ -466,7 +466,7 @@ export const ClientFourPsForm: React.FC = () => {
           </div>
         </div>
         <p style={{ fontSize: '13px', color: '#6b7280', fontStyle: 'italic', marginBottom: '20px' }}>
-          All communications are confidential. Our RN Care Manager can also provide a private consultation: (682) 556-8472.
+          All communications are confidential. For support, call (682) 556-8472.
         </p>
         <button
           type="button"

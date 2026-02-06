@@ -752,7 +752,7 @@ export default function IntakeWizard() {
     5: "Doing just fine - No problems with my daily activities"
   };
 
-  // Auto-create RN tasks for high-severity SDOH
+  // Auto-create tasks for high-severity SDOH
   const handleSDOHChange = async (domain: string, severity: number) => {
     setSdoh((s) => ({ ...(s || {}), [domain]: Math.floor(severity) }));
     
@@ -1436,7 +1436,7 @@ export default function IntakeWizard() {
         const sensitiveFlags = analyzeSensitiveExperiences(sensitiveExperiences);
         
         if (sensitiveFlags.length > 0) {
-          // Create case alerts for RN CM
+          // Create case alerts for care plan workflow
           const alertsData = sensitiveFlags.map(flag => ({
             case_id: newCase.id,
             alert_type: flag.alertType,
@@ -2009,7 +2009,7 @@ export default function IntakeWizard() {
   // Monitor mental health responses for risk flagging
   useEffect(() => {
     if (mentalHealth.selfHarm === 'yes' || mentalHealth.selfHarm === 'unsure') {
-      // Create urgent task for RN follow-up
+      // Create urgent task for follow-up
       const flagRisk = async () => {
         try {
           const { data: { user } } = await supabase.auth.getUser();
@@ -2029,7 +2029,7 @@ export default function IntakeWizard() {
             case_id: createdCaseId || null, // Will be associated when case is created
             alert_type: 'mental_health_crisis',
             severity: 'high',
-            message: 'Client indicated potential self-harm during intake. Immediate RN follow-up required.',
+            message: 'Client indicated potential self-harm during intake. Immediate support assessment needed.',
             created_by: user.id,
             disclosure_scope: 'internal',
             metadata: {
@@ -2042,7 +2042,7 @@ export default function IntakeWizard() {
 
           toast({
             title: "Response Flagged",
-            description: "Your response has been flagged for immediate RN Care Manager attention. If you're in danger, call 911 or 988 now.",
+            description: "If you're in danger, call 911 or 988 (Suicide & Crisis Lifeline) now.",
             variant: "destructive",
           });
         } catch (error) {
@@ -2097,7 +2097,7 @@ export default function IntakeWizard() {
               <p>The following information you provide is HIPAA-sensitive and RCMS takes every possible precaution to keep your information safe.</p>
               <p>By completing the following sections, you give RCMS permission to use this information to create and generate care plans and coordinate care among various providers.</p>
               <p>You are never under any obligation to share information you don&apos;t want anyone to know. Simply because you decline to provide certain information does not mean you are disqualified or excluded from receiving care management services from RCMS.</p>
-              <p className="font-medium">Your care manager will work with the information you choose to provide.</p>
+              <p className="font-medium">Your care plan will be built from the information you choose to provide.</p>
             </div>
             <div className="flex gap-4 mt-6">
               <Button
@@ -2684,9 +2684,7 @@ export default function IntakeWizard() {
                 <Alert variant="destructive" className="mb-6">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    <strong>We've flagged your response for immediate RN Care Manager attention.</strong>
-                    <br />
-                    If you're in danger, please call <strong>911</strong> or <strong>988</strong> (Suicide & Crisis Lifeline) now.
+                    If you&apos;re in danger, call <strong>911</strong> or <strong>988</strong> (Suicide & Crisis Lifeline) now.
                   </AlertDescription>
                 </Alert>
               )}
@@ -2759,7 +2757,7 @@ export default function IntakeWizard() {
                     onCheckedChange={(checked) => setMentalHealth(prev => ({ ...prev, wantHelp: checked as boolean }))}
                   />
                   <Label htmlFor="want-help" className="cursor-pointer">
-                    Would you like RN Care Management to assist with mental health resources?
+                    Would you like assistance connecting with mental health resources?
                   </Label>
                 </div>
               </div>
@@ -2825,9 +2823,9 @@ export default function IntakeWizard() {
               </div>
             </div>
 
-            {/* Context (helps your RN Care Manager tailor your plan) — drives overlay defaults */}
+            {/* Context (helps tailor your care plan) — drives overlay defaults */}
             <Card className="p-6 border-2 border-gray-200 bg-white mb-6">
-              <h4 className="font-semibold text-black mb-1">Context (helps your RN Care Manager tailor your plan)</h4>
+              <h4 className="font-semibold text-black mb-1">Context (helps tailor your care plan)</h4>
               <p className="text-sm text-black mb-4">Optional. These answers help us consider factors that may impact your care and recovery.</p>
               <div className="grid gap-6 sm:grid-cols-1">
                 <div>
@@ -3087,7 +3085,7 @@ export default function IntakeWizard() {
                     <p>Here&apos;s what happens next:</p>
                     <ul className="list-disc pl-5 space-y-1">
                       <li>Your attorney will review the information you provided.</li>
-                      <li>A registered nurse care manager may contact you by phone or email to ask follow-up questions and begin developing your care plan.</li>
+                      <li>The AI Care Plan Builder will generate your care plan based on your intake. You will be notified when it&apos;s ready.</li>
                       <li>Please respond as promptly as possible if contacted, as delays can create gaps in care coordination.</li>
                     </ul>
                     <p className="font-semibold pt-1">Checking your case status:</p>
@@ -3146,7 +3144,7 @@ export default function IntakeWizard() {
             <Alert className="mb-6 bg-destructive/10 border-destructive/30">
               <AlertCircle className="h-5 w-5 text-destructive" />
               <AlertDescription className="text-sm">
-                <strong className="font-bold">In Case of Emergency:</strong> If you are experiencing a medical or mental health crisis, please call <strong>911</strong> or the National Suicide Prevention Lifeline at <strong className="inline-flex items-center gap-1"><Phone className="w-3 h-3" />988</strong> immediately. Do not wait for your RN Care Manager to contact you.
+                <strong className="font-bold">In Case of Emergency:</strong> If you&apos;re in danger, call <strong>911</strong> or <strong>988</strong> (Suicide & Crisis Lifeline) now.
               </AlertDescription>
             </Alert>
 

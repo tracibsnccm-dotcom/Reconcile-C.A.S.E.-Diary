@@ -215,7 +215,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
 
   useEffect(() => {
     if (hasSelections) {
-      setClientMessage("Thank you for sharing. Your RN Care Manager will review and follow up to ensure you have the right support.");
+      setClientMessage("Thank you for sharing. Your care plan will incorporate this to ensure you have the right support.");
     } else {
       setClientMessage("");
     }
@@ -644,7 +644,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
             <p className="font-medium mb-2">Why we ask these questions:</p>
             <p>
               These questions help us understand factors that may affect your health, recovery, and access to care. 
-              Your answers help your RN Care Manager connect you with appropriate resources and support.
+              Your answers help us connect you with appropriate resources and support.
             </p>
             {!caseId && (
               <p className="text-xs mt-2 text-black italic">
@@ -1143,7 +1143,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
             <AlertDialogTitle>Skip this section?</AlertDialogTitle>
             <AlertDialogDescription>
               Any selections you made here will be cleared. Safety-critical items (e.g., self-harm) 
-              that were already flagged will remain active for your RN team to review.
+              that were already flagged will remain active for review.
               <br /><br />
               You can resume this section later if you change your mind.
             </AlertDialogDescription>

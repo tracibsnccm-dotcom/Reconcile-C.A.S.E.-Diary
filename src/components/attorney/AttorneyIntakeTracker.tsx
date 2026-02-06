@@ -200,7 +200,7 @@ export function AttorneyIntakeTracker({ showHeader = true }: { showHeader?: bool
           {showHelp && (
             <div className="absolute right-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-3 max-w-sm z-10 text-gray-900">
               <p className="text-sm text-gray-700">
-                After you confirm, the case proceeds to the AI care plan builder. No RN queue in C.A.S.E.
+                After you confirm, the case proceeds to the AI care plan builder.
               </p>
             </div>
           )}

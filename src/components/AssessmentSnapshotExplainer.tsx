@@ -35,7 +35,7 @@ export const AssessmentSnapshotExplainer = ({
 
       <ul className="space-y-3 mb-4 ml-5">
         <li className="text-black">
-          <strong className="text-foreground">Care Coordination:</strong> Your RN Care Manager watches for patterns and steps in with the right support.
+          <strong className="text-foreground">Care Coordination:</strong> Your care plan and updates help identify patterns and support your recovery.
         </li>
         <li className="text-black">
           <strong className="text-foreground">Legal Advocacy:</strong> Your attorney uses your Snapshot as credible, time-stamped evidence to advocate for an advantageous settlement.

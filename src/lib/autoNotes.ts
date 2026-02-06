@@ -228,7 +228,7 @@ Case Number: ${caseNumber}
 
 Attorney has confirmed client relationship and authorized access to Protected Health Information (PHI) for care management purposes.
 
-Case is now active and ready for RN assignment.`;
+Case is now active and care plan generation will begin.`;
   } else {
     return `ATTORNEY ATTESTATION - DECLINED
 Date/Time: ${now}

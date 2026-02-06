@@ -189,7 +189,7 @@ export interface Case {
   riskLevel?: RiskLevel;
   assignedProviderId?: string;
   status: CaseStatus;
-  /** ATTORNEY-5: True when RN care plan submitted; used for stage label "RN Care Plan Released" */
+  /** ATTORNEY-5: True when care plan submitted; used for stage label "Care Plan Released" */
   carePlanReleased?: boolean;
   designatedAttorneyId?: string;
   checkins?: Checkin[];

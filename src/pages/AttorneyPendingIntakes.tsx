@@ -54,7 +54,7 @@ export default function AttorneyPendingIntakes() {
             <CardTitle className="text-base text-gray-900">What this means</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-gray-700">
-            <p>The client has completed their intake. Please review the information and confirm whether the case should proceed. Once reviewed, the case can be assigned to an RN for initial care planning.</p>
+            <p>The client has completed their intake. Please review the information and confirm whether the case should proceed. Once reviewed, the AI Care Plan Builder will generate the care plan.</p>
             <p className="text-xs italic text-gray-600">
               Client view: While under review, the client sees their intake as submitted and awaiting attorney review.
             </p>

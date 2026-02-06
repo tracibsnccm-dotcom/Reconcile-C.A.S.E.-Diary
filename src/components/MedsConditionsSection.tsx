@@ -7,7 +7,7 @@ import React, { useEffect, useMemo, useState } from "react";
  *  - Allergies (meds/foods)
  *  - Required attestation checkbox
  *
- * Use in both Intake and RN Notes. Set `required=true` to make fields mandatory.
+ * Use in both Intake and Clinical Notes. Set `required=true` to make fields mandatory.
  *
  * Props:
  *  - mode: "intake" | "rnNotes"   (labels tweak)
@@ -69,7 +69,7 @@ export function MedsConditionsSection({
             "I confirm I have listed all medications, OTC medicines, vitamins, supplements, and herbals to the best of my knowledge.",
         }
       : {
-          title: "RN Notes — Conditions, Medications & Allergies",
+          title: "Clinical Notes — Conditions, Medications & Allergies",
           conditions: "Document current treated conditions (client report / chart).",
           meds:
             "Document complete medication list (Rx, OTC, vitamins, supplements, herbals).",

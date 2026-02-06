@@ -434,29 +434,32 @@ export function AttorneyAttestationCard({
         <CardContent className="p-6 space-y-6">
           
           {confirmationData && (
-            <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-6">
-              <h3 className="text-lg font-bold text-blue-900 mb-4">
+            <div className="bg-white border-2 border-gray-200 rounded-lg p-6 shadow-sm">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">
                 🔑 Client Login Credentials
               </h3>
-              <p className="text-sm text-blue-700 mb-4">
+              <p className="text-sm text-gray-700 mb-4">
                 Provide these to your client so they can access their portal:
               </p>
               <div className="grid grid-cols-2 gap-6">
-                <div className="bg-white p-4 rounded border">
-                  <p className="text-xs text-blue-600 uppercase font-medium mb-1">Case Number</p>
-                  <p className="text-2xl font-mono font-bold text-blue-900">
+                <div className="bg-gray-50 p-4 rounded border">
+                  <p className="text-xs text-gray-600 uppercase font-medium mb-1">Case Number</p>
+                  <p className="text-2xl font-mono font-bold text-black">
                     {confirmationData.caseNumber}
                   </p>
                 </div>
-                <div className="bg-white p-4 rounded border">
-                  <p className="text-xs text-blue-600 uppercase font-medium mb-1">PIN</p>
-                  <p className="text-2xl font-mono font-bold text-blue-900">
+                <div className="bg-gray-50 p-4 rounded border">
+                  <p className="text-xs text-gray-600 uppercase font-medium mb-1">PIN</p>
+                  <p className="text-2xl font-mono font-bold text-black">
                     {confirmationData.clientPin}
                   </p>
                 </div>
               </div>
               <p className="text-sm text-amber-700 mt-4 font-medium">
                 ⚠️ The PIN is shown only once. Please record it now.
+              </p>
+              <p className="text-sm text-gray-700 mt-4">
+                The AI Care Plan Builder is now generating the care plan. You will be notified when it&apos;s ready.
               </p>
             </div>
           )}
@@ -574,7 +577,7 @@ export function AttorneyAttestationCard({
               {isSubmitting ? 'Processing...' : 'Review Intake & Proceed'}
             </Button>
             <p className="text-xs text-muted-foreground text-center">
-              This action advances the case to RN assignment.
+              This action advances the case to care plan generation.
             </p>
             
             <Button 
