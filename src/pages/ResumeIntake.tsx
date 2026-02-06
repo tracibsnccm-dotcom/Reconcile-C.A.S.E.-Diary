@@ -93,7 +93,9 @@ export default function ResumeIntake() {
         const fd = session.formData && typeof session.formData === "object" ? session.formData : {};
         const consentsComplete =
           fd.consentsComplete === true ||
-          (fd.consentStep === 5 && fd.consents?.hipaa?.signature);
+          fd.consentStep >= 5 ||
+          (session as { consentsComplete?: boolean }).consentsComplete === true ||
+          sessionStorage.getItem("rcms_consents_completed") === "true";
 
         const attorneyParam = session.attorneyId || "";
         const codeParam = session.attorneyCode || "";
@@ -106,7 +108,7 @@ export default function ResumeIntake() {
           );
         } else {
           sessionStorage.setItem("rcms_intake_step", "0");
-          sessionStorage.setItem("rcms_consent_step", String(fd.consentStep ?? 0));
+          sessionStorage.setItem("rcms_consent_step", String(fd.consentStep ?? 1));
           navigate(`/client-consent?resume=true`);
         }
       } catch (err) {
@@ -206,7 +208,9 @@ export default function ResumeIntake() {
       const fd = (session.formData && typeof session.formData === "object") ? session.formData : {};
       const consentsComplete =
         fd.consentsComplete === true ||
-        (fd.consentStep === 5 && fd.consents?.hipaa?.signature);
+        fd.consentStep >= 5 ||
+        (session as { consentsComplete?: boolean }).consentsComplete === true ||
+        sessionStorage.getItem("rcms_consents_completed") === "true";
 
       sessionStorage.setItem("rcms_intake_session_id", session.id);
       sessionStorage.setItem("rcms_intake_id", session.intakeId);
@@ -227,7 +231,7 @@ export default function ResumeIntake() {
         );
       } else {
         sessionStorage.setItem("rcms_intake_step", "0");
-        sessionStorage.setItem("rcms_consent_step", String(fd.consentStep ?? 0));
+        sessionStorage.setItem("rcms_consent_step", String(fd.consentStep ?? 1));
         navigate(`/client-consent?resume=true`);
       }
     } catch (err: any) {

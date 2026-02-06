@@ -1704,7 +1704,17 @@ export default function IntakeWizard() {
     debounceMs: 3000,
   });
 
-  // Also save to intake session when formData or step changes
+  // Save current step to DB immediately when step changes (so resume returns to correct step)
+  useEffect(() => {
+    const sessionId = sessionStorage.getItem("rcms_intake_session_id");
+    if (!sessionId || showWelcome) return;
+    updateIntakeSession(sessionId, {
+      currentStep: step,
+      formData: { ...formData, step },
+    }).catch((err) => console.error("Failed to save step to intake session:", err));
+  }, [step]);
+
+  // Also save to intake session when formData or step changes (debounced)
   useEffect(() => {
     if (showWelcome) return;
     

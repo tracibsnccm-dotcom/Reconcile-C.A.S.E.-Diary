@@ -458,7 +458,10 @@ export default function ClientConsent() {
         const consents = buildConsentsPayload();
         if (sid) {
           try {
-            await updateIntakeSession(sid, { formData: { consentStep: 5, consents, consentsComplete: true } });
+            const existingFormData = JSON.parse(sessionStorage.getItem("rcms_intake_form_data") || "{}");
+            await updateIntakeSession(sid, {
+              formData: { ...existingFormData, consentStep: 5, consents, consentsComplete: true },
+            });
           } catch (_) {}
         }
         sessionStorage.removeItem("rcms_intake_submitted");
@@ -563,7 +566,10 @@ export default function ClientConsent() {
         await saveConsentStep(sessionId, 5, { signature: hipaaSignature });
         const sid = sessionStorage.getItem("rcms_intake_session_id");
         if (sid) {
-          await updateIntakeSession(sid, { formData: { consentStep: 5, consents: buildConsentsPayload(), consentsComplete: true } });
+          const existingFormData = JSON.parse(sessionStorage.getItem("rcms_intake_form_data") || "{}");
+          await updateIntakeSession(sid, {
+            formData: { ...existingFormData, consentStep: 5, consents: buildConsentsPayload(), consentsComplete: true },
+          });
         }
         audit({
           action: "POLICY_ACK",
