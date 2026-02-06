@@ -19,10 +19,18 @@ export default function AttorneyDashboard() {
   const pendingListRef = useRef<HTMLDivElement>(null);
   const [pendingIntakes, setPendingIntakes] = useState<PendingIntake[]>([]);
   const [loading, setLoading] = useState(true);
+  const [debugInfo, setDebugInfo] = useState<{
+    attorneyId: string | null;
+    sessionsCount: number;
+    casesCount: number;
+    attorneyCaseIdsCount: number;
+    filteredCount: number;
+  } | null>(null);
 
   useEffect(() => {
     if (role !== "attorney" || !user || !supabase) {
       setLoading(false);
+      setDebugInfo(null);
       return;
     }
 
@@ -36,11 +44,14 @@ export default function AttorneyDashboard() {
         .maybeSingle();
 
       if (attorneyErr || !attorneyRow) {
+        console.log("[AttorneyDashboard] attorney query:", { attorneyErr, attorneyRow });
         setLoading(false);
+        setDebugInfo(null);
         return;
       }
 
       const attorneyId = attorneyRow.id;
+      console.log("[AttorneyDashboard] Querying for attorney_id:", attorneyId);
 
       // 2. Query rc_client_intake_sessions where:
       //    - intake_status in ('submitted', 'submitted_pending_attorney')
@@ -54,33 +65,62 @@ export default function AttorneyDashboard() {
           first_name,
           last_name,
           updated_at,
-          form_data
+          form_data,
+          intake_status
         `)
         .in("intake_status", ["submitted", "submitted_pending_attorney"])
         .not("case_id", "is", null);
 
+      console.log("[AttorneyDashboard] rc_client_intake_sessions raw result:", {
+        error,
+        count: sessions?.length ?? 0,
+        sessions: sessions ?? [],
+      });
+
       if (error) {
         setLoading(false);
+        setDebugInfo({
+          attorneyId,
+          sessionsCount: 0,
+          casesCount: 0,
+          attorneyCaseIdsCount: 0,
+          filteredCount: 0,
+        });
         return;
       }
 
       if (!sessions?.length) {
         setPendingIntakes([]);
         setLoading(false);
+        setDebugInfo({
+          attorneyId,
+          sessionsCount: 0,
+          casesCount: 0,
+          attorneyCaseIdsCount: 0,
+          filteredCount: 0,
+        });
         return;
       }
 
       // 3. Filter by cases where attorney_id matches
       const caseIds = Array.from(new Set(sessions.map((s) => s.case_id).filter(Boolean))) as string[];
-      const { data: cases } = await supabase
+      const { data: cases, error: casesError } = await supabase
         .from("rc_cases")
-        .select("id, attorney_id")
+        .select("id, attorney_id, case_status")
         .in("id", caseIds)
         .eq("case_status", "intake_pending");
+
+      console.log("[AttorneyDashboard] rc_cases filter: case_status=intake_pending, caseIds=", caseIds);
+      console.log("[AttorneyDashboard] rc_cases raw result:", {
+        casesError,
+        count: cases?.length ?? 0,
+        cases: cases ?? [],
+      });
 
       const attorneyCaseIds = new Set(
         (cases || []).filter((c) => c.attorney_id === attorneyId).map((c) => c.id)
       );
+      console.log("[AttorneyDashboard] Filter: attorney_id must match", attorneyId, "→ attorneyCaseIds:", Array.from(attorneyCaseIds));
 
       const filtered = sessions
         .filter((s) => s.case_id && attorneyCaseIds.has(s.case_id))
@@ -98,7 +138,15 @@ export default function AttorneyDashboard() {
           };
         });
 
+      console.log("[AttorneyDashboard] Found", filtered.length, "pending intakes (filtered)");
       setPendingIntakes(filtered);
+      setDebugInfo({
+        attorneyId,
+        sessionsCount: sessions.length,
+        casesCount: cases?.length ?? 0,
+        attorneyCaseIdsCount: attorneyCaseIds.size,
+        filteredCount: filtered.length,
+      });
       setLoading(false);
     })();
   }, [user, role, location.pathname]);
@@ -148,6 +196,12 @@ export default function AttorneyDashboard() {
       }}
     >
       <div className="max-w-4xl mx-auto">
+        {debugInfo && (
+          <div className="mb-4 p-3 bg-white/10 rounded-lg text-sm text-white/90 font-mono">
+            <div>Querying for attorney_id: {debugInfo.attorneyId ?? "—"}</div>
+            <div>Found {debugInfo.sessionsCount} sessions (submitted/pending_attorney) → {debugInfo.casesCount} cases (intake_pending) → {debugInfo.attorneyCaseIdsCount} for this attorney → {debugInfo.filteredCount} intakes shown</div>
+          </div>
+        )}
         {pendingCount > 0 && (
           <button
             type="button"
