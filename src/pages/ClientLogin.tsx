@@ -120,7 +120,12 @@ export default function ClientLogin() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-6 py-10 bg-gradient-to-br from-[#3b6a9b] via-[#4a7fb0] to-[#6aa0cf]">
+    <div
+      className="min-h-screen flex items-center justify-center px-6 py-10"
+      style={{
+        background: "linear-gradient(145deg, #3b6a9b 0%, #4a7fb0 40%, #5a90c0 70%, #6aa0cf 100%)",
+      }}
+    >
       <div className="w-full max-w-md">
         <h1 className="text-3xl font-extrabold text-white">
           Client Portal Login
@@ -138,14 +143,14 @@ export default function ClientLogin() {
               <input
                 type="text"
                 required
-                placeholder="01-260108-01F"
+                placeholder="BG04-260205-13P"
                 className="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none focus:ring-2 focus:ring-orange-500 font-mono uppercase"
                 value={caseNumber}
                 onChange={(e) => setCaseNumber(e.target.value.toUpperCase())}
                 disabled={loading}
               />
               <p className="mt-1 text-xs text-gray-600">
-                Format: XX-YYMMDD-XXL (e.g., 01-260108-01F)
+                Permanent case number (e.g., BG04-260205-13P)
               </p>
             </div>
             
@@ -209,7 +214,7 @@ export default function ClientLogin() {
         </div>
 
         <p className="mt-6 text-xs text-white/80 text-center">
-          By accessing your portal, you agree to RCMS's Minimum Necessary Data Policy and Terms.
+          By accessing your portal, you agree to Reconcile C.A.S.E. Minimum Necessary Data Policy and Terms.
         </p>
       </div>
     </div>

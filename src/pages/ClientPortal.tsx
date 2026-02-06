@@ -1,11 +1,11 @@
-// ClientPortal — sessionStorage client_case_id; public fetch for case data. (Ported from C.A.R.E. ClientPortalSimple, C.A.S.E. theme)
+// ClientPortal — sessionStorage client_case_id, client_case_number; get-client-case Edge Function for case data. (Ported from C.A.R.E., C.A.S.E. theme)
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { LogOut, Activity } from "lucide-react";
+import { LogOut, BookOpen, MessageSquare } from "lucide-react";
 import { CASE_BRAND } from "@/constants/brand";
 import { CANNOT_ACCESS_ACCOUNT } from "@/config/clientMessaging";
 
@@ -19,22 +19,18 @@ interface CaseData {
   client_id?: string | null;
 }
 
-async function publicSupabaseGet(table: string, query: string) {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  if (!supabaseUrl || !supabaseKey) {
-    return { data: null, error: new Error("Supabase not configured") };
-  }
-  const response = await fetch(`${supabaseUrl}/rest/v1/${table}?${query}`, {
-    headers: {
-      apikey: supabaseKey,
-      Authorization: `Bearer ${supabaseKey}`,
-      "Content-Type": "application/json",
-    },
+async function fetchClientCase(caseId: string, caseNumber: string): Promise<CaseData> {
+  const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-client-case`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ case_id: caseId, case_number: caseNumber }),
   });
-  if (!response.ok) return { data: null, error: new Error(`${response.status}`) };
-  const data = await response.json();
-  return { data, error: null };
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error || `Request failed (${res.status})`);
+  }
+  return res.json();
 }
 
 export default function ClientPortal() {
@@ -51,7 +47,7 @@ export default function ClientPortal() {
     const storedCaseNumber = sessionStorage.getItem("client_case_number");
     const storedClientName = sessionStorage.getItem("client_name");
 
-    if (!storedCaseId) {
+    if (!storedCaseId || !storedCaseNumber) {
       navigate("/client-login", { replace: true });
       return;
     }
@@ -59,23 +55,14 @@ export default function ClientPortal() {
     setCaseId(storedCaseId);
     setCaseNumber(storedCaseNumber);
     setClientName(storedClientName);
-    loadCaseData(storedCaseId);
+    loadCaseData(storedCaseId, storedCaseNumber);
   }, [navigate]);
 
-  async function loadCaseData(caseId: string) {
+  async function loadCaseData(caseId: string, caseNumber: string) {
     try {
       setLoading(true);
-      const { data, error: fetchError } = await publicSupabaseGet(
-        "rc_cases",
-        `select=id,case_number,case_status,case_type,date_of_injury,created_at,client_id&id=eq.${caseId}&is_superseded=eq.false&limit=1`
-      );
-
-      if (fetchError) throw new Error(fetchError.message);
-
-      const caseRecord = Array.isArray(data) ? data[0] : data;
-      if (!caseRecord) throw new Error(CANNOT_ACCESS_ACCOUNT);
-
-      setCaseData(caseRecord as CaseData);
+      const caseRecord = await fetchClientCase(caseId, caseNumber);
+      setCaseData(caseRecord);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : CANNOT_ACCESS_ACCOUNT);
     } finally {
@@ -90,14 +77,16 @@ export default function ClientPortal() {
     navigate("/client-login", { replace: true });
   }
 
-  const WRAPPER_CLASS = "min-h-screen bg-gradient-to-br from-[#3b6a9b] via-[#4a7fb0] to-[#6aa0cf] text-white font-sans";
+  const WRAPPER_STYLE = {
+    background: "linear-gradient(145deg, #3b6a9b 0%, #4a7fb0 40%, #5a90c0 70%, #6aa0cf 100%)",
+  };
   const CARD_CLASS = "bg-white rounded-lg shadow-lg p-6";
 
   if (loading) {
     return (
-      <div className={`${WRAPPER_CLASS} flex items-center justify-center`}>
-        <div className="text-center text-white">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4" />
+      <div className="min-h-screen flex items-center justify-center text-white font-sans" style={WRAPPER_STYLE}>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4" />
           <p>Loading your portal...</p>
         </div>
       </div>
@@ -106,7 +95,7 @@ export default function ClientPortal() {
 
   if (error) {
     return (
-      <div className={`${WRAPPER_CLASS} flex items-center justify-center p-4`}>
+      <div className="min-h-screen flex items-center justify-center p-4 font-sans" style={WRAPPER_STYLE}>
         <Card className={`${CARD_CLASS} max-w-md w-full`}>
           <Alert variant="destructive" className="bg-red-50 border-red-200">
             <AlertDescription>{error}</AlertDescription>
@@ -120,7 +109,7 @@ export default function ClientPortal() {
   }
 
   return (
-    <div className={WRAPPER_CLASS}>
+    <div className="min-h-screen text-white font-sans" style={WRAPPER_STYLE}>
       <header className="border-b border-white/20 px-4 py-3 bg-white/10">
         <div className="max-w-6xl mx-auto flex justify-between items-center">
           <div>
@@ -170,15 +159,25 @@ export default function ClientPortal() {
         <Card className={CARD_CLASS}>
           <CardHeader>
             <CardTitle className="text-gray-900 flex items-center gap-2">
-              <Activity className="w-5 h-5 text-orange-500" />
-              {CASE_BRAND.diaryName}
+              <BookOpen className="w-5 h-5 text-orange-500" />
+              Diary entries
             </CardTitle>
           </CardHeader>
           <CardContent className="text-gray-700">
-            <p>Your diary entries and care plan will appear here.</p>
-            <p className="text-gray-600 text-sm mt-2">
-              After your attorney confirms your intake, you can log back in to view your care plan and track your recovery.
-            </p>
+            <p className="text-gray-600">Your diary entries will appear here as you add them.</p>
+            <p className="text-gray-500 text-sm mt-2">Use your C.A.S.E. Diary to document your recovery and care plan progress.</p>
+          </CardContent>
+        </Card>
+
+        <Card className={CARD_CLASS}>
+          <CardHeader>
+            <CardTitle className="text-gray-900 flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-orange-500" />
+              Messages
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-gray-700">
+            <p className="text-gray-600">Messages from your care team will appear here.</p>
           </CardContent>
         </Card>
       </main>
