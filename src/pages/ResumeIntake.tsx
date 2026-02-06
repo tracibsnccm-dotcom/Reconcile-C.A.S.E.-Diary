@@ -48,6 +48,12 @@ export default function ResumeIntake() {
         const session = await getIntakeSessionByToken(tokenFromUrl.trim());
         if (cancelled) return;
 
+        console.log("=== RESUME INTAKE DEBUG ===");
+        console.log("Session from database:", session);
+        console.log("formData:", session?.formData);
+        console.log("consentsComplete:", session?.formData?.consentsComplete);
+        console.log("currentStep:", session?.formData?.currentStep);
+
         if (!session) {
           setCanonicalState("EXPIRED_OR_INVALID");
           setLoading(false);
@@ -162,6 +168,12 @@ export default function ResumeIntake() {
     setLoading(true);
     try {
       const session = await getIntakeSessionByIntakeId(normalized);
+      console.log("=== RESUME INTAKE DEBUG ===");
+      console.log("Session from database:", session);
+      console.log("formData:", session?.formData);
+      console.log("consentsComplete:", session?.formData?.consentsComplete);
+      console.log("currentStep:", session?.formData?.currentStep);
+
       if (!session) {
         setError("We couldn't find that Intake ID (INT#). Please check and try again.");
         setLoading(false);

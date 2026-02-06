@@ -145,13 +145,10 @@ export function AttestationReview() {
         const sess = Array.isArray(sessData) ? sessData[0] : sessData;
         if (sess?.form_data) setFormData((sess.form_data as FormDataFromDb) ?? null);
         const status = sess?.intake_status ?? "submitted_pending_attorney";
-        // DEBUG: Log what's being loaded to diagnose client name mapping
-        console.log("AttestationReview loaded (UUID path):", {
-          url_param: intakeId,
-          loaded_intake: { id: intakeRow.id, case_id: intakeRow.case_id },
-          loaded_client: nameToDisplay,
-          case_id: caseIdFromSession,
-        });
+        console.log("=== ATTESTATION REVIEW LOADING ===");
+        console.log("URL param:", intakeId);
+        console.log("Loaded intake:", intakeRow);
+        console.log("Loaded client:", nameToDisplay);
         setLoading(false);
         return;
       }
@@ -214,13 +211,10 @@ export function AttestationReview() {
         setClientDisplayName(nameToDisplayResume);
       }
 
-      // DEBUG: Log what's being loaded (resume_token path)
-      console.log("AttestationReview loaded (resume_token path):", {
-        url_param: intakeId,
-        loaded_intake: session?.intake_id,
-        loaded_client: nameToDisplayResume,
-        case_id: session?.case_id,
-      });
+      console.log("=== ATTESTATION REVIEW LOADING ===");
+      console.log("URL param:", intakeId);
+      console.log("Loaded intake:", session);
+      console.log("Loaded client:", nameToDisplayResume);
 
       setLoading(false);
     })();

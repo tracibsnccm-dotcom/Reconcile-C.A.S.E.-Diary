@@ -1701,10 +1701,20 @@ export default function IntakeWizard() {
   useEffect(() => {
     const sessionId = sessionStorage.getItem("rcms_intake_session_id");
     if (!sessionId || showWelcome) return;
+    console.log("=== SAVING INTAKE DATA ===");
+    console.log("Current step:", step);
+    console.log("Form data being saved:", formData);
     updateIntakeSession(sessionId, {
       currentStep: step,
       formData: { ...formData, step },
-    }).catch((err) => console.error("Failed to save step to intake session:", err));
+    })
+      .then(() => {
+        console.log("Save response: success");
+      })
+      .catch((err) => {
+        console.error("Save error:", err);
+        console.error("Failed to save step to intake session:", err);
+      });
   }, [step]);
 
   // Also save to intake session when formData or step changes (debounced)
@@ -1716,16 +1726,45 @@ export default function IntakeWizard() {
 
     const timer = setTimeout(async () => {
       try {
+        console.log("=== SAVING INTAKE DATA (debounced) ===");
+        console.log("Current step:", step);
+        console.log("Form data being saved:", formData);
         await updateIntakeSession(intakeSessionId, {
           currentStep: step,
           formData: { ...formData, step },
         });
+        console.log("Save response: success");
       } catch (error) {
+        console.error("Save error:", error);
         console.error('Failed to save to intake session:', error);
       }
     }, 3000); // Debounce same as autosave
 
     return () => clearTimeout(timer);
+  }, [formData, step, showWelcome]);
+
+  // Periodic auto-save every 45 seconds (covers all intake sections)
+  useEffect(() => {
+    if (showWelcome) return;
+    const intakeSessionId = sessionStorage.getItem("rcms_intake_session_id");
+    if (!intakeSessionId) return;
+
+    const interval = setInterval(async () => {
+      try {
+        console.log("=== SAVING INTAKE DATA (periodic) ===");
+        console.log("Current step:", step);
+        console.log("Form data being saved:", formData);
+        await updateIntakeSession(intakeSessionId, {
+          currentStep: step,
+          formData: { ...formData, step },
+        });
+        console.log("Save response: success");
+      } catch (error) {
+        console.error("Save error:", error);
+      }
+    }, 45000); // Every 45 seconds
+
+    return () => clearInterval(interval);
   }, [formData, step, showWelcome]);
 
   // Clear old draft if starting fresh intake with new attorney
@@ -1868,15 +1907,20 @@ export default function IntakeWizard() {
       return;
     }
     try {
+      console.log("=== SAVING INTAKE DATA (Save & Exit) ===");
+      console.log("Current step:", step);
+      console.log("Form data being saved:", formData);
       await updateIntakeSession(sessionId, {
         formData: { ...formData, step },
         currentStep: step,
       });
+      console.log("Save response: success");
       sessionStorage.setItem("rcms_intake_form_data", JSON.stringify({ ...formData, step }));
       sessionStorage.setItem("rcms_intake_step", String(step));
       toast({ title: "Saved", description: SAVE_AND_EXIT_RESUME });
       navigate("/");
     } catch (e: any) {
+      console.error("Save error:", e);
       toast({ title: "Failed to save", description: e?.message || "Please try again.", variant: "destructive" });
     }
   };
@@ -3152,8 +3196,7 @@ export default function IntakeWizard() {
             <div className="mb-6">
               <IntakeCompletionChecklist
                 hasPersonalInfo={!!(client.rcmsId && client.dobMasked)}
-                hasIncidentDetails={!!(intake.incidentDate && intake.incidentType && intake.injuries.length > 0)}
-                hasAssessment={fourPs.physical !== 3 || fourPs.psychological !== 3 || fourPs.psychosocial !== 3 || fourPs.professional !== 3}
+                hasIncidentDetails={!!(intake.incidentDate && intake.incidentType && (intake.injuries?.length > 0 || incidentNarrative?.trim()))}
                 hasMedications={preInjuryMeds.length > 0 || postInjuryMeds.length > 0}
                 hasConsent={consent.signed}
               />

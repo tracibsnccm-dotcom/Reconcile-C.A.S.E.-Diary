@@ -457,6 +457,8 @@ export default function ClientConsent() {
         const sid = sessionStorage.getItem("rcms_intake_session_id");
         const consents = buildConsentsPayload();
         if (sid) {
+          console.log("=== SAVING CONSENT COMPLETION ===");
+          console.log("Saving consentsComplete:", true);
           try {
             const existingFormData = JSON.parse(sessionStorage.getItem("rcms_intake_form_data") || "{}");
             await updateIntakeSession(sid, {
@@ -566,6 +568,8 @@ export default function ClientConsent() {
         await saveConsentStep(sessionId, 5, { signature: hipaaSignature });
         const sid = sessionStorage.getItem("rcms_intake_session_id");
         if (sid) {
+          console.log("=== SAVING CONSENT COMPLETION ===");
+          console.log("Saving consentsComplete:", true);
           const existingFormData = JSON.parse(sessionStorage.getItem("rcms_intake_form_data") || "{}");
           await updateIntakeSession(sid, {
             formData: { ...existingFormData, consentStep: 5, consents: buildConsentsPayload(), consentsComplete: true },

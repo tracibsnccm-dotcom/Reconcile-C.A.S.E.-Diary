@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge";
 interface IntakeCompletionChecklistProps {
   hasPersonalInfo: boolean;
   hasIncidentDetails: boolean;
-  hasAssessment: boolean;
   hasMedications: boolean;
   hasConsent: boolean;
 }
@@ -13,14 +12,12 @@ interface IntakeCompletionChecklistProps {
 export function IntakeCompletionChecklist({
   hasPersonalInfo,
   hasIncidentDetails,
-  hasAssessment,
   hasMedications,
   hasConsent,
 }: IntakeCompletionChecklistProps) {
   const items = [
     { label: "Personal Information", completed: hasPersonalInfo },
     { label: "Incident/Injury Overview", completed: hasIncidentDetails },
-    { label: "Assessment Snapshot", completed: hasAssessment },
     { label: "Medications & Treatments", completed: hasMedications },
     { label: "Consent Signed", completed: hasConsent },
   ];
