@@ -90,13 +90,13 @@ export default function ClientPortal() {
     navigate("/client-login", { replace: true });
   }
 
-  const WRAPPER_CLASS = "min-h-screen bg-gradient-to-br from-[#0f172a] to-[#1e293b] text-white font-sans";
-  const CARD_CLASS = "bg-slate-800 border border-slate-700 rounded-xl";
+  const WRAPPER_CLASS = "min-h-screen bg-gradient-to-br from-[#3b6a9b] via-[#4a7fb0] to-[#6aa0cf] text-white font-sans";
+  const CARD_CLASS = "bg-white rounded-lg shadow-lg p-6";
 
   if (loading) {
     return (
       <div className={`${WRAPPER_CLASS} flex items-center justify-center`}>
-        <div className="text-center text-slate-400">
+        <div className="text-center text-white">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4" />
           <p>Loading your portal...</p>
         </div>
@@ -107,8 +107,8 @@ export default function ClientPortal() {
   if (error) {
     return (
       <div className={`${WRAPPER_CLASS} flex items-center justify-center p-4`}>
-        <Card className={`${CARD_CLASS} max-w-md w-full p-6`}>
-          <Alert variant="destructive" className="bg-red-900/20 border-red-700">
+        <Card className={`${CARD_CLASS} max-w-md w-full`}>
+          <Alert variant="destructive" className="bg-red-50 border-red-200">
             <AlertDescription>{error}</AlertDescription>
           </Alert>
           <Button onClick={() => navigate("/client-login")} className="mt-4 bg-orange-500 hover:bg-orange-600 text-white w-full">
@@ -121,18 +121,18 @@ export default function ClientPortal() {
 
   return (
     <div className={WRAPPER_CLASS}>
-      <header className="border-b border-slate-700 px-4 py-3 bg-slate-800/50">
+      <header className="border-b border-white/20 px-4 py-3 bg-white/10">
         <div className="max-w-6xl mx-auto flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold text-orange-500">{CASE_BRAND.diaryName}</h1>
-            <p className="text-slate-400 text-sm">
+            <h1 className="text-2xl font-bold text-white">{CASE_BRAND.diaryName}</h1>
+            <p className="text-white/90 text-sm">
               Welcome{clientName ? `, ${clientName}` : ""} • Case: {caseNumber || "N/A"}
             </p>
           </div>
           <Button
             variant="outline"
             onClick={handleLogout}
-            className="border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white"
+            className="border-white/60 text-white hover:bg-white/20"
           >
             <LogOut className="w-4 h-4 mr-2" />
             Logout
@@ -143,25 +143,25 @@ export default function ClientPortal() {
       <main className="max-w-6xl mx-auto p-4 space-y-6">
         <Card className={CARD_CLASS}>
           <CardHeader>
-            <CardTitle className="text-white">Case Information</CardTitle>
+            <CardTitle className="text-gray-900">Case Information</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3 text-slate-300">
+          <CardContent className="space-y-3 text-gray-900">
             <div>
-              <p className="text-slate-500 text-sm">Case Number</p>
-              <p className="text-orange-500 font-mono">{caseData?.case_number || "N/A"}</p>
+              <p className="text-gray-600 text-sm">Case Number</p>
+              <p className="text-xl font-bold font-mono text-black">{caseData?.case_number || "N/A"}</p>
             </div>
             <div>
-              <p className="text-slate-500 text-sm">Status</p>
-              <p className="capitalize">{caseData?.case_status?.replace(/_/g, " ") || "N/A"}</p>
+              <p className="text-gray-600 text-sm">Status</p>
+              <p className="capitalize font-medium">{caseData?.case_status?.replace(/_/g, " ") || "N/A"}</p>
             </div>
             <div>
-              <p className="text-slate-500 text-sm">Case Type</p>
-              <p>{caseData?.case_type || "N/A"}</p>
+              <p className="text-gray-600 text-sm">Case Type</p>
+              <p className="font-medium">{caseData?.case_type || "N/A"}</p>
             </div>
             {caseData?.date_of_injury && (
               <div>
-                <p className="text-slate-500 text-sm">Date of Injury</p>
-                <p>{new Date(caseData.date_of_injury).toLocaleDateString()}</p>
+                <p className="text-gray-600 text-sm">Date of Injury</p>
+                <p className="font-medium">{new Date(caseData.date_of_injury).toLocaleDateString()}</p>
               </div>
             )}
           </CardContent>
@@ -169,14 +169,14 @@ export default function ClientPortal() {
 
         <Card className={CARD_CLASS}>
           <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
+            <CardTitle className="text-gray-900 flex items-center gap-2">
               <Activity className="w-5 h-5 text-orange-500" />
               {CASE_BRAND.diaryName}
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-slate-400">
+          <CardContent className="text-gray-700">
             <p>Your diary entries and care plan will appear here.</p>
-            <p className="text-slate-500 text-sm mt-2">
+            <p className="text-gray-600 text-sm mt-2">
               After your attorney confirms your intake, you can log back in to view your care plan and track your recovery.
             </p>
           </CardContent>

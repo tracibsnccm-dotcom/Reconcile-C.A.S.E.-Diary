@@ -2056,8 +2056,8 @@ export default function IntakeWizard() {
   // Block render until attorney guard is resolved (hard gate, no partial render)
   if (attorneyGuardOk === null) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center text-black">Verifying your session...</div>
+      <div className="min-h-screen bg-gradient-to-br from-[#3b6a9b] via-[#4a7fb0] to-[#6aa0cf] flex items-center justify-center text-white">
+        <div className="text-center">Verifying your session...</div>
       </div>
     );
   }
@@ -2065,10 +2065,10 @@ export default function IntakeWizard() {
   // Post-submit success: show confirmation and hide countdown (Banner returns null when rcms_intake_status is set)
   if (submitStage === "success") {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gradient-to-br from-[#3b6a9b] via-[#4a7fb0] to-[#6aa0cf] text-white">
         <IntakeCountdownBanner onExpired={setCountdownExpired} />
         <div className="max-w-4xl mx-auto py-8 px-4">
-          <Card className="p-6 border-border">
+          <Card className="bg-white rounded-lg shadow-lg p-6 text-gray-900 border-border">
             <h3 className="text-lg font-semibold text-black mb-4">Intake Submitted</h3>
             <p className="text-black mb-2">Your intake has been submitted and is pending attorney review.</p>
             <p className="text-sm text-black mb-4">You can check your status anytime using Resume / Check Status.</p>
@@ -2088,10 +2088,10 @@ export default function IntakeWizard() {
   // HIPAA sensitivity acknowledgment — must be accepted before any wizard content
   if (!hipaaAcknowledged) {
     return (
-      <div className="min-h-screen bg-gray-50 text-black">
+      <div className="min-h-screen bg-gradient-to-br from-[#3b6a9b] via-[#4a7fb0] to-[#6aa0cf] text-white">
         <IntakeCountdownBanner onExpired={setCountdownExpired} />
         <div className="max-w-2xl mx-auto p-6">
-          <Card className="p-6">
+          <Card className="bg-white rounded-lg shadow-lg p-6 text-gray-900">
             <h2 className="text-xl font-bold text-black mb-4">Before You Continue</h2>
             <div className="space-y-4 text-black">
               <p>The following information you provide is HIPAA-sensitive and RCMS takes every possible precaution to keep your information safe.</p>
@@ -2138,7 +2138,7 @@ export default function IntakeWizard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 text-black">
+    <div className="min-h-screen bg-gradient-to-br from-[#3b6a9b] via-[#4a7fb0] to-[#6aa0cf] text-white">
       <IntakeCountdownBanner onExpired={setCountdownExpired} />
       {!showWelcome && (
         <IntakeSaveBar 
@@ -2177,23 +2177,23 @@ export default function IntakeWizard() {
             
             <div className="mb-8">
               <div className="flex flex-wrap items-center gap-3 mb-4">
-                <Button variant="ghost" size="sm" className="text-black -ml-2" onClick={() => navigate("/intake-identity")}>
+                <Button variant="ghost" size="sm" className="text-white hover:bg-white/20 -ml-2" onClick={() => navigate("/intake-identity")}>
                   ← Edit Identity Info
                 </Button>
-                <Button variant="ghost" size="sm" className="text-black" onClick={() => navigate("/client-consent")}>
+                <Button variant="ghost" size="sm" className="text-white hover:bg-white/20" onClick={() => navigate("/client-consent")}>
                   ← Back to Consents
                 </Button>
               </div>
               <div className="flex items-start justify-between">
                 <div>
-                  <h1 className="text-3xl font-bold text-black">
+                  <h1 className="text-3xl font-bold text-white">
                     Client Self-Assessment: {[sessionStorage.getItem("rcms_client_first_name"), sessionStorage.getItem("rcms_client_last_name")].filter(Boolean).join(" ") || "Client Self-Assessment"}
                   </h1>
-                  <p className="text-black mt-1">Complete the self-assessment step by step</p>
+                  <p className="text-white/90 mt-1">Complete the self-assessment step by step</p>
                 </div>
                 {intakeStartedAt && (
                   <div className="text-right">
-                    <div className="text-sm text-black mb-1">Time Remaining</div>
+                    <div className="text-sm text-white mb-1">Time Remaining</div>
                     <div className={`text-lg font-mono font-bold ${clientWindowExpired ? 'text-destructive' : 'text-primary'}`}>
                       {(() => {
                         if (clientMsRemaining <= 0) {

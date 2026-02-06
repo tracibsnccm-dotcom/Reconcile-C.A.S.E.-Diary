@@ -6,9 +6,9 @@ import { supabaseGet, supabaseUpdate } from "@/lib/supabaseRest";
 import { audit } from "@/lib/supabaseOperations";
 import { toast } from "sonner";
 
-const CARD_CLASS = "bg-slate-800 border border-slate-700 rounded-xl p-6 text-left";
+const CARD_CLASS = "bg-white rounded-lg shadow-lg p-6 text-left text-gray-900";
 const SECTION_TITLE = "text-sm font-semibold text-orange-500 uppercase tracking-wide mb-2";
-const ROW_CLASS = "text-slate-300 text-sm py-1";
+const ROW_CLASS = "text-gray-700 text-sm py-1";
 const ACCIDENT_LABELS: Record<string, string> = {
   auto: "Auto accident",
   slip_fall: "Slip / fall",
@@ -304,9 +304,9 @@ export function AttestationReview() {
 
   if (role !== "attorney" || !user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0f172a] to-[#1e293b] flex items-center justify-center p-4">
-        <div className="bg-slate-800 border border-slate-700 rounded-xl p-8 text-center max-w-md">
-          <p className="text-slate-300 mb-4">Please log in to access this page.</p>
+      <div className="min-h-screen bg-gradient-to-br from-[#3b6a9b] via-[#4a7fb0] to-[#6aa0cf] flex items-center justify-center p-4 text-white">
+        <div className="bg-white rounded-lg shadow-lg p-8 text-center max-w-md text-gray-900">
+          <p className="text-gray-700 mb-4">Please log in to access this page.</p>
           <button
             onClick={() => navigate("/attorney-login")}
             className="px-6 py-2.5 rounded-lg bg-orange-500 text-white font-medium hover:bg-orange-600"
@@ -320,17 +320,17 @@ export function AttestationReview() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0f172a] to-[#1e293b] flex items-center justify-center">
-        <p className="text-slate-400">Loading intake…</p>
+      <div className="min-h-screen bg-gradient-to-br from-[#3b6a9b] via-[#4a7fb0] to-[#6aa0cf] flex items-center justify-center text-white">
+        <p>Loading intake…</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0f172a] to-[#1e293b] flex items-center justify-center p-4">
-        <div className="bg-slate-800 border border-slate-700 rounded-xl p-8 text-center max-w-md">
-          <p className="text-red-400 mb-4">{error}</p>
+      <div className="min-h-screen bg-gradient-to-br from-[#3b6a9b] via-[#4a7fb0] to-[#6aa0cf] flex items-center justify-center p-4 text-white">
+        <div className="bg-white rounded-lg shadow-lg p-8 text-center max-w-md text-gray-900">
+          <p className="text-red-700 mb-4">{error}</p>
           <button
             onClick={() => navigate("/attorney/dashboard")}
             className="px-6 py-2.5 rounded-lg bg-orange-500 text-white font-medium hover:bg-orange-600"
@@ -345,20 +345,18 @@ export function AttestationReview() {
   // Success state after confirm
   if (confirmed) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0f172a] to-[#1e293b] p-6">
+      <div className="min-h-screen bg-gradient-to-br from-[#3b6a9b] via-[#4a7fb0] to-[#6aa0cf] p-6 text-white">
         <div className="max-w-xl mx-auto">
           <div className={CARD_CLASS}>
-            <h1 className="text-2xl font-bold text-white mb-2">Client confirmed</h1>
-            <p className="text-slate-300 mb-4">
-              Case ID: <span className="text-orange-500 font-mono font-semibold">{confirmed.caseNumber}</span>
-            </p>
-            <p className="text-slate-300 mb-4">
-              PIN: <span className="text-orange-500 font-mono font-semibold">{confirmed.pin}</span>
-            </p>
-            <p className="text-slate-400 text-sm mb-6">
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Client confirmed</h1>
+            <p className="text-gray-700 mb-2">Case Number</p>
+            <p className="text-xl font-mono font-bold text-black mb-4">{confirmed.caseNumber}</p>
+            <p className="text-gray-700 mb-2">PIN</p>
+            <p className="text-xl font-mono font-bold text-black mb-4">{confirmed.pin}</p>
+            <p className="text-gray-600 text-sm mb-6">
               Share these credentials with your client so they can access their portal.
             </p>
-            <p className="text-slate-400 text-sm mb-6">
+            <p className="text-gray-600 text-sm mb-6">
               Care plan generation will begin automatically.
             </p>
             <button
@@ -382,21 +380,21 @@ export function AttestationReview() {
   const sdoh = fd.sdoh ?? {};
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0f172a] to-[#1e293b] p-6">
+    <div className="min-h-screen bg-gradient-to-br from-[#3b6a9b] via-[#4a7fb0] to-[#6aa0cf] p-6 text-white">
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <button
             onClick={() => navigate("/attorney/dashboard")}
-            className="text-slate-400 hover:text-white text-sm"
+            className="text-white hover:bg-white/20 text-sm"
           >
             ← Back to Dashboard
           </button>
-          <span className="text-orange-500 font-mono text-sm">{intakeIdDisplay}</span>
+          <span className="text-white font-mono text-sm">{intakeIdDisplay}</span>
         </div>
 
         <div className={CARD_CLASS}>
-          <h1 className="text-xl font-semibold text-white mb-2">Review & Attest</h1>
-          <p className="text-slate-400 text-sm mb-6">
+          <h1 className="text-xl font-semibold text-gray-900 mb-2">Review & Attest</h1>
+          <p className="text-gray-600 text-sm mb-6">
             Review the client intake below. Confirm if this is your client, or decline if not.
           </p>
 
@@ -406,7 +404,7 @@ export function AttestationReview() {
                 <div className={SECTION_TITLE}>Attorney</div>
                 <p className={ROW_CLASS}>{fd.attorney.displayName}</p>
                 {fd.attorney.attorneyCode && (
-                  <p className="text-slate-500 text-xs">{fd.attorney.attorneyCode}</p>
+                  <p className="text-gray-500 text-xs">{fd.attorney.attorneyCode}</p>
                 )}
               </div>
             )}
@@ -439,15 +437,15 @@ export function AttestationReview() {
                 <p className={ROW_CLASS}>Other: {diagnoses.other}</p>
               ) : null}
               {!diagnoses.selected?.length && !diagnoses.other?.trim() && (
-                <p className="text-slate-500 text-sm">None listed</p>
+                <p className="text-gray-500 text-sm">None listed</p>
               )}
             </div>
             <div>
               <div className={SECTION_TITLE}>Medications</div>
               {(medications.rows?.length ?? 0) === 0 ? (
-                <p className="text-slate-500 text-sm">None listed</p>
+                <p className="text-gray-500 text-sm">None listed</p>
               ) : (
-                <ul className="list-disc list-inside text-slate-300 text-sm space-y-1">
+                <ul className="list-disc list-inside text-gray-700 text-sm space-y-1">
                   {medications.rows!.map((r) => (
                     <li key={r.id}>
                       {r.name} {r.dosage && `— ${r.dosage}`}{" "}
@@ -475,7 +473,7 @@ export function AttestationReview() {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-4 mt-8 pt-6 border-t border-slate-700">
+          <div className="flex flex-wrap gap-4 mt-8 pt-6 border-t border-gray-200">
             <button
               onClick={handleConfirm}
               disabled={confirming}
@@ -486,7 +484,7 @@ export function AttestationReview() {
             <button
               onClick={handleDecline}
               disabled={declining}
-              className="px-6 py-2.5 rounded-lg border border-slate-500 text-slate-300 hover:bg-slate-700 disabled:opacity-50"
+              className="px-6 py-2.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 disabled:opacity-50"
             >
               {declining ? "Declining…" : "Decline — This is NOT my client"}
             </button>

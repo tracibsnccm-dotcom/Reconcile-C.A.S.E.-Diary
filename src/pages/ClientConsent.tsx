@@ -652,8 +652,8 @@ export default function ClientConsent() {
   // Show decline message if user declined consent step 1 or 2 (intake cannot continue)
   if (showDeclineMessage && declinedConsent !== null) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-secondary via-secondary-light to-primary py-8 px-4 flex items-center justify-center">
-        <Card className="p-8 max-w-2xl text-gray-900">
+      <div className="min-h-screen bg-gradient-to-br from-[#3b6a9b] via-[#4a7fb0] to-[#6aa0cf] py-8 px-4 flex items-center justify-center text-white">
+        <Card className="bg-white rounded-lg shadow-lg p-8 max-w-2xl text-gray-900">
           <div className="text-center space-y-6 py-8">
             <div className="text-red-600 text-6xl">⚠️</div>
             <h2 className="text-2xl font-bold text-black">Intake Cannot Continue</h2>
@@ -679,7 +679,7 @@ export default function ClientConsent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-secondary via-secondary-light to-primary py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-[#3b6a9b] via-[#4a7fb0] to-[#6aa0cf] py-8 px-4 text-white">
       <IntakeCountdownBanner onExpired={setCountdownExpired} />
       <div className="max-w-4xl mx-auto">
         {searchParams.get("resume") === "true" && (
@@ -699,15 +699,15 @@ export default function ClientConsent() {
         {/* Progress Indicator */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-lg font-semibold text-gray-900">
+            <h2 className="text-lg font-semibold text-white">
               Step {step} of 5 (Consents)
             </h2>
-            <span className="text-sm text-gray-900">{Math.round(progress)}% Complete</span>
+            <span className="text-sm text-white">{Math.round(progress)}% Complete</span>
           </div>
           <Progress value={progress} className="h-2" />
         </div>
 
-        <Card className="p-6 md:p-8 text-gray-900">
+        <Card className="bg-white rounded-lg shadow-lg p-6 md:p-8 text-gray-900">
           {/* Step 0: Attorney Selection */}
           {step === 0 && (
             <div className="space-y-6">

@@ -3,6 +3,7 @@ import { useAuth } from "@/auth/supabaseAuth";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { CASE_BRAND } from "@/constants/brand";
+import { AttorneyLayout } from "@/components/AttorneyLayout";
 
 interface PendingIntake {
   id: string;
@@ -134,14 +135,9 @@ export default function AttorneyDashboard() {
 
   if (role !== "attorney" || !user) {
     return (
-      <div
-        className="min-h-screen flex items-center justify-center p-4"
-        style={{
-          background: "linear-gradient(145deg, #3b6a9b 0%, #4a7fb0 40%, #5a90c0 70%, #6aa0cf 100%)",
-        }}
-      >
-        <div className="bg-white rounded-xl p-8 text-center max-w-md shadow-lg border border-slate-200">
-          <p className="text-slate-700 mb-4">Please log in to access the attorney dashboard.</p>
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-[#3b6a9b] via-[#4a7fb0] to-[#6aa0cf]">
+        <div className="bg-white rounded-xl p-8 text-center max-w-md shadow-lg">
+          <p className="text-gray-700 mb-4">Please log in to access the attorney dashboard.</p>
           <button
             onClick={() => navigate("/attorney-login")}
             className="px-6 py-2.5 rounded-lg bg-orange-500 text-white font-medium hover:bg-orange-600"
@@ -170,13 +166,8 @@ export default function AttorneyDashboard() {
   const pendingCount = pendingIntakes.length;
 
   return (
-    <div
-      className="min-h-screen text-white p-6"
-      style={{
-        background: "linear-gradient(145deg, #3b6a9b 0%, #4a7fb0 40%, #5a90c0 70%, #6aa0cf 100%)",
-      }}
-    >
-      <div className="max-w-4xl mx-auto">
+    <AttorneyLayout>
+      <div className="max-w-4xl mx-auto space-y-6 text-white">
         {debugInfo && (
           <div className="mb-4 p-3 bg-white/10 rounded-lg text-sm text-white/90 font-mono">
             <div>Querying for attorney_id: {debugInfo.attorneyId ?? "—"}</div>
@@ -184,48 +175,21 @@ export default function AttorneyDashboard() {
           </div>
         )}
         {pendingCount > 0 && (
-          <button
-            type="button"
-            onClick={() => pendingListRef.current?.scrollIntoView({ behavior: "smooth" })}
-            className="w-full mb-6 py-3 px-4 rounded-lg text-white font-medium text-center transition-opacity hover:opacity-90"
-            style={{ backgroundColor: "#f97316" }}
+          <Link
+            to="/attorney/pending-intakes"
+            className="block w-full mb-6 py-3 px-4 rounded-lg text-white font-medium text-center bg-orange-500 hover:bg-orange-600 transition-opacity"
           >
-            You have {pendingCount} new client intake{pendingCount !== 1 ? "s" : ""} awaiting your review
-          </button>
+            You have {pendingCount} new client intake{pendingCount !== 1 ? "s" : ""} awaiting your review →
+          </Link>
         )}
-        <div className="flex justify-between items-center mb-8">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-white">Attorney Dashboard</h1>
-            {pendingCount > 0 && (
-              <span
-                className="inline-flex items-center justify-center min-w-[1.5rem] h-6 px-2 rounded-full text-xs font-semibold text-white"
-                style={{ backgroundColor: "#f97316" }}
-              >
-                {pendingCount}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            <p className="text-white/80 text-sm hidden sm:block">{user.email}</p>
-            <button
-              onClick={async () => {
-                await signOut();
-                navigate("/");
-              }}
-              className="px-4 py-2 rounded-lg bg-red-600/80 text-white hover:bg-red-600 text-sm"
-            >
-              Sign Out
-            </button>
-          </div>
-        </div>
 
         <div
           ref={pendingListRef}
-          className="bg-white rounded-xl overflow-hidden shadow-lg border border-slate-200"
+          className="bg-white rounded-xl overflow-hidden shadow-lg text-gray-900"
         >
-          <div className="p-6 border-b border-slate-200">
-            <h2 className="text-lg font-semibold text-slate-900">{CASE_BRAND.platformName}</h2>
-            <p className="text-slate-600 text-sm mt-1">Pending client intakes requiring attestation</p>
+          <div className="p-6 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900">{CASE_BRAND.platformName}</h2>
+            <p className="text-gray-600 text-sm mt-1">Pending client intakes requiring attestation</p>
             <Link
               to="/attorney/pending-intakes"
               className="mt-3 inline-block text-orange-500 hover:text-orange-600 text-sm font-medium"
@@ -236,9 +200,9 @@ export default function AttorneyDashboard() {
 
           <div className="p-6">
             {loading ? (
-              <p className="text-slate-600 text-center py-8">Loading pending intakes…</p>
+              <p className="text-gray-600 text-center py-8">Loading pending intakes…</p>
             ) : pendingIntakes.length === 0 ? (
-              <p className="text-slate-600 text-center py-8">
+              <p className="text-gray-600 text-center py-8">
                 No pending intakes. New client submissions will appear here.
               </p>
             ) : (
@@ -246,21 +210,19 @@ export default function AttorneyDashboard() {
                 {pendingIntakes.map((intake) => (
                   <li
                     key={intake.id}
-                    className="flex flex-wrap items-center justify-between gap-4 p-4 bg-slate-50 rounded-lg border border-slate-200 shadow-sm"
+                    className="flex flex-wrap items-center justify-between gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200"
                   >
                     <div>
-                      <p className="font-medium text-slate-900">{intake.clientName}</p>
+                      <p className="font-medium text-gray-900">{intake.clientName}</p>
                       <p className="text-orange-500 font-mono text-sm mt-0.5">{intake.intakeId}</p>
-                      <p className="text-slate-600 text-xs mt-1">
-                        Submitted {formatDate(intake.submittedAt)}
-                      </p>
+                      <p className="text-gray-600 text-xs mt-1">Submitted {formatDate(intake.submittedAt)}</p>
                     </div>
-                    <button
-                      onClick={() => navigate(`/attorney/review/${intake.id}`)}
+                    <Link
+                      to="/attorney/pending-intakes"
                       className="px-4 py-2 rounded-lg bg-orange-500 text-white font-medium hover:bg-orange-600 shrink-0"
                     >
                       Review & Confirm
-                    </button>
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -268,6 +230,6 @@ export default function AttorneyDashboard() {
           </div>
         </div>
       </div>
-    </div>
+    </AttorneyLayout>
   );
 }

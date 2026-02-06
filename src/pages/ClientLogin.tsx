@@ -120,37 +120,37 @@ export default function ClientLogin() {
   }
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-6 py-10">
+    <div className="min-h-screen flex items-center justify-center px-6 py-10 bg-gradient-to-br from-[#3b6a9b] via-[#4a7fb0] to-[#6aa0cf]">
       <div className="w-full max-w-md">
-        <h1 className="text-3xl font-extrabold" style={{color: RCMS.brandNavy}}>
+        <h1 className="text-3xl font-extrabold text-white">
           Client Portal Login
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="mt-2 text-sm text-white/90">
           Enter your case number and PIN to access your portal.
         </p>
 
-        <div className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-sm">
+        <div className="mt-6 rounded-2xl border border-white/20 bg-white p-6 shadow-lg">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">
+              <label className="block text-sm font-medium text-gray-900 mb-1">
                 Case Number
               </label>
               <input
                 type="text"
                 required
                 placeholder="01-260108-01F"
-                className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 outline-none focus:border-ring font-mono uppercase"
+                className="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none focus:ring-2 focus:ring-orange-500 font-mono uppercase"
                 value={caseNumber}
                 onChange={(e) => setCaseNumber(e.target.value.toUpperCase())}
                 disabled={loading}
               />
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="mt-1 text-xs text-gray-600">
                 Format: XX-YYMMDD-XXL (e.g., 01-260108-01F)
               </p>
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">
+              <label className="block text-sm font-medium text-gray-900 mb-1">
                 PIN
               </label>
               <input
@@ -159,7 +159,7 @@ export default function ClientLogin() {
                 placeholder="1234"
                 maxLength={4}
                 pattern="[0-9]{4}"
-                className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-2 outline-none focus:border-ring font-mono text-center text-lg tracking-widest"
+                className="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none focus:ring-2 focus:ring-orange-500 font-mono text-center text-lg tracking-widest"
                 value={pin}
                 onChange={(e) => {
                   const value = e.target.value.replace(/\D/g, '').slice(0, 4);
@@ -167,7 +167,7 @@ export default function ClientLogin() {
                 }}
                 disabled={loading}
               />
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="mt-1 text-xs text-gray-600">
                 4-digit PIN provided by your attorney
               </p>
             </div>
@@ -192,30 +192,23 @@ export default function ClientLogin() {
             <button
               type="submit"
               disabled={loading || !!lockedUntil}
-              className={`${btn.base} ${btn.lg} text-white w-full`}
-              style={{ 
-                backgroundColor: loading || lockedUntil ? "#9ca3af" : RCMS.brandNavy,
-                cursor: loading || lockedUntil ? "not-allowed" : "pointer"
-              }}
+              className={`${btn.base} ${btn.lg} text-white w-full bg-orange-500 hover:bg-orange-600 disabled:bg-gray-400`}
             >
               {loading ? "Verifying..." : "Access My Portal"}
             </button>
           </form>
 
-          <div className="mt-6 pt-6 border-t border-border">
-            <p className="text-xs text-center text-muted-foreground">
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <p className="text-xs text-center text-gray-600">
               Are you an attorney?{" "}
-              <Link 
-                to="/attorney-login" 
-                className="text-primary hover:underline font-semibold"
-              >
+              <Link to="/attorney-login" className="text-orange-500 hover:underline font-semibold">
                 Login here
               </Link>
             </p>
           </div>
         </div>
 
-        <p className="mt-6 text-xs text-muted-foreground text-center">
+        <p className="mt-6 text-xs text-white/80 text-center">
           By accessing your portal, you agree to RCMS's Minimum Necessary Data Policy and Terms.
         </p>
       </div>

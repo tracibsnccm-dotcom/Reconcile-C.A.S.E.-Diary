@@ -245,16 +245,16 @@ export default function IntakeIdentity() {
   // INT# confirmation screen — show immediately after session creation, before consents
   if (showIntakeConfirmation && intakeId) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-secondary via-secondary-light to-primary py-8 px-4">
+      <div className="min-h-screen bg-gradient-to-br from-[#3b6a9b] via-[#4a7fb0] to-[#6aa0cf] py-8 px-4 text-white">
         <div className="max-w-2xl mx-auto">
-          <Card className="p-6 md:p-8">
+          <Card className="bg-white rounded-lg shadow-lg p-6 md:p-8 text-gray-900">
             <div className="text-center space-y-6 py-8">
               <div className="text-green-600 text-6xl">✓</div>
               <h2 className="text-2xl font-bold text-black">Your Intake Has Been Started</h2>
 
               <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6 max-w-md mx-auto">
-                <p className="text-sm text-blue-800 mb-2">Your Intake ID</p>
-                <p className="text-3xl font-mono font-bold text-blue-900">{intakeId}</p>
+                <p className="text-sm text-gray-700 mb-2">Your Intake ID</p>
+                <p className="text-3xl font-mono font-bold text-black">{intakeId}</p>
               </div>
 
               <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4 max-w-md mx-auto">
@@ -284,9 +284,9 @@ export default function IntakeIdentity() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-secondary via-secondary-light to-primary py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-[#3b6a9b] via-[#4a7fb0] to-[#6aa0cf] py-8 px-4 text-white">
       <div className="max-w-2xl mx-auto">
-        <Card className="p-6 md:p-8">
+        <Card className="bg-white rounded-lg shadow-lg p-6 md:p-8 text-gray-900">
           <div className="space-y-6">
             <div>
               <h1 className="text-2xl font-bold text-foreground mb-2">

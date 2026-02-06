@@ -179,17 +179,16 @@ export function AttorneyIntakeTracker({ showHeader = true }: { showHeader?: bool
     return true;
   });
 
-  const WRAPPER_CLASS = "min-h-screen bg-gradient-to-br from-[#0f172a] to-[#1e293b] text-white font-sans";
-  const CARD_CLASS = "bg-slate-800 border border-slate-700 rounded-xl";
+  const CARD_CLASS = "bg-white rounded-lg shadow-lg";
 
   return (
     <div className="space-y-4">
       {showHeader && (
-        <div className="flex items-center gap-2 p-3 bg-slate-800 border-l-4 border-orange-500 rounded-lg relative">
+        <div className="flex items-center gap-2 p-3 bg-white border-l-4 border-orange-500 rounded-lg shadow-lg relative">
           <Clock className="w-5 h-5 text-orange-500" />
-          <strong className="text-white">Intakes Submitted — Awaiting Attorney Review:</strong>
+          <strong className="text-gray-900">Intakes Submitted — Awaiting Attorney Review:</strong>
           <span className="font-bold text-orange-500">{pendingCount}</span>
-          <span className="text-sm text-slate-400">Client intakes ready for your review.</span>
+          <span className="text-sm text-gray-600">Client intakes ready for your review.</span>
           <button
             type="button"
             className="ml-auto w-5 h-5 rounded-full bg-orange-500 text-white flex items-center justify-center text-xs font-bold hover:bg-orange-600"
@@ -199,8 +198,8 @@ export function AttorneyIntakeTracker({ showHeader = true }: { showHeader?: bool
             <HelpCircle className="w-3 h-3" />
           </button>
           {showHelp && (
-            <div className="absolute right-0 top-full mt-2 bg-slate-800 border border-slate-700 rounded-lg shadow-lg p-3 max-w-sm z-10">
-              <p className="text-sm text-slate-300">
+            <div className="absolute right-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-3 max-w-sm z-10 text-gray-900">
+              <p className="text-sm text-gray-700">
                 After you confirm, the case proceeds to the AI care plan builder. No RN queue in C.A.S.E.
               </p>
             </div>
@@ -209,17 +208,17 @@ export function AttorneyIntakeTracker({ showHeader = true }: { showHeader?: bool
       )}
 
       <Card className={`${CARD_CLASS} p-0 overflow-hidden`}>
-        <div className="flex flex-col md:flex-row justify-end items-start md:items-center gap-3 p-4 border-b border-slate-700 bg-slate-800/50">
+        <div className="flex flex-col md:flex-row justify-end items-start md:items-center gap-3 p-4 border-b border-gray-200 bg-gray-50">
           <Input
             placeholder="Search by client/case…"
             value={searchQuery}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
-            className="w-48 bg-slate-700/50 border-slate-600 text-white placeholder-slate-500"
+            className="w-48 bg-white border-gray-300 text-gray-900 placeholder-gray-500"
           />
           <select
             value={scope}
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setScope(e.target.value as "mine" | "all")}
-            className="w-32 h-10 rounded-md border border-slate-600 bg-slate-700/50 px-3 py-2 text-sm text-white"
+            className="w-32 h-10 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
           >
             <option value="mine">My clients</option>
             <option value="all">All</option>
@@ -227,7 +226,7 @@ export function AttorneyIntakeTracker({ showHeader = true }: { showHeader?: bool
           <select
             value={filter}
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilter(e.target.value as "all" | "lt72" | "lt24")}
-            className="w-32 h-10 rounded-md border border-slate-600 bg-slate-700/50 px-3 py-2 text-sm text-white"
+            className="w-32 h-10 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
           >
             <option value="all">All time</option>
             <option value="lt72">Under 72h</option>
@@ -236,8 +235,8 @@ export function AttorneyIntakeTracker({ showHeader = true }: { showHeader?: bool
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-slate-700/50 text-slate-300 border-b border-slate-700">
+          <table className="w-full text-sm text-left text-gray-900">
+            <thead className="bg-gray-100 text-gray-900 border-b border-gray-200">
               <tr>
                 <th className="p-2">Client</th>
                 <th className="p-2">INT#</th>
@@ -248,23 +247,23 @@ export function AttorneyIntakeTracker({ showHeader = true }: { showHeader?: bool
                 <th className="p-2">Action</th>
               </tr>
             </thead>
-            <tbody className="text-slate-300">
+            <tbody className="text-gray-900">
               {filteredRows.map((row) => {
                 const isConfirmed = !!row.attorney_attested_at;
                 const risk = getRiskLevel(row.expires_iso);
                 const ttl = calculateTTL(row.expires_iso);
                 return (
-                  <tr key={row.intake_id} className="border-b border-slate-700/50 hover:bg-slate-700/30">
-                    <td className="p-2 font-medium text-white">{row.client}</td>
-                    <td className="p-2 font-mono text-slate-400">{row.int_number || "—"}</td>
-                    <td className="p-2 font-mono text-slate-400">{row.case_number || "—"}</td>
+                  <tr key={row.intake_id} className="border-b border-gray-200 hover:bg-gray-50">
+                    <td className="p-2 font-medium text-gray-900">{row.client}</td>
+                    <td className="p-2 font-mono font-semibold text-black">{row.int_number || "—"}</td>
+                    <td className="p-2 font-mono font-semibold text-black">{row.case_number || "—"}</td>
                     <td className="p-2">{row.stage}</td>
                     <td className="p-2">{row.expires_iso ? new Date(row.expires_iso).toLocaleString() : "—"}</td>
                     <td className="p-2">
                       {row.expires_iso && !isConfirmed && (
                           <Badge
                             variant={risk.variant === "destructive" ? "default" : risk.variant === "secondary" ? "outline" : "default"}
-                            className={risk.variant === "destructive" ? "bg-red-900/30 text-red-400 border-red-700" : ""}
+                            className={risk.variant === "destructive" ? "bg-red-100 text-red-800 border-red-300" : ""}
                           >
                             {risk.level}
                           </Badge>

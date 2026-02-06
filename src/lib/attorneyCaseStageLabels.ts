@@ -12,9 +12,9 @@ export type AttorneyCaseStageInput = {
 
 export const ATTORNEY_STAGE_LABELS = {
   NOT_ATTESTED: "Intake Submitted — Awaiting Attorney Review",
-  APPROVED_AWAITING_RN: "Approved — Awaiting Care Plan",
-  ASSIGNED_AWAITING_PLAN: "Awaiting Initial Care Plan",
-  CARE_PLAN_RELEASED: "Care Plan Released",
+  APPROVED_AWAITING_RN: "Approved — Awaiting RN Assignment",
+  ASSIGNED_AWAITING_PLAN: "Assigned to RN — Awaiting Initial Care Plan",
+  CARE_PLAN_RELEASED: "RN Care Plan Released",
   DECLINED: "Declined",
   EXPIRED: "Expired",
 } as const;
