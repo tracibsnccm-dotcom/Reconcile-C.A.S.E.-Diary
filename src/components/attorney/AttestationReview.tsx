@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/auth/supabaseAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { supabaseGet, supabaseUpdate } from "@/lib/supabaseRest";
+import { audit } from "@/lib/supabaseOperations";
 import { toast } from "sonner";
 
 const CARD_CLASS = "bg-slate-800 border border-slate-700 rounded-xl p-6 text-left";
@@ -58,21 +60,14 @@ interface FormDataFromDb {
   consent?: { informationAccurate?: boolean; agreeToTerms?: boolean };
 }
 
-function generateCaseNumber(
-  intakeId: string,
-  attorneyCode: string,
-  sameDayCount: number
-): string {
-  // Parse INT-YYMMDD-XXX → use YYMMDD, replace INT with attorney_code, use seq + random letter
-  const match = intakeId.match(/^INT-(\d{6})-/);
-  const yymmdd = match ? match[1] : new Date().toISOString().slice(2, 10).replace(/-/g, "");
-  const seq = String(sameDayCount + 1).padStart(2, "0");
-  const letter = "ABCDEFGHJKLMNPQRSTUVWXYZ"[Math.floor(Math.random() * 24)];
-  return `${attorneyCode}-${yymmdd}-${seq}${letter}`;
-}
-
-function generatePin(): string {
-  return String(Math.floor(100000 + Math.random() * 900000));
+/** Generate 4-digit PIN, excluding weak patterns (C.A.R.E. logic) */
+function generatePIN(): string {
+  const excluded = ["0000", "1111", "2222", "3333", "4444", "5555", "6666", "7777", "8888", "9999", "1234", "4321"];
+  let pin: string;
+  do {
+    pin = Math.floor(1000 + Math.random() * 9000).toString();
+  } while (excluded.includes(pin));
+  return pin;
 }
 
 export function AttestationReview() {
@@ -89,153 +84,222 @@ export function AttestationReview() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (role !== "attorney" || !user || !intakeId || !supabase) {
+    if (role !== "attorney" || !user || !intakeId) {
       setLoading(false);
       return;
     }
 
     (async () => {
-      const { data, error: fetchErr } = await supabase
-        .from("rc_client_intake_sessions")
-        .select("resume_token, intake_id, case_id, form_data")
-        .eq("resume_token", intakeId)
-        .in("intake_status", ["submitted", "submitted_pending_attorney"])
-        .maybeSingle();
+      // Load session by resume_token (C.A.S.E. route uses resume_token)
+      const { data: sessionData, error: sessionErr } = await supabaseGet(
+        "rc_client_intake_sessions",
+        `resume_token=eq.${intakeId}&select=resume_token,intake_id,case_id,form_data,intake_status&limit=1`
+      );
+      const session = Array.isArray(sessionData) ? sessionData[0] : sessionData;
 
-      if (fetchErr || !data) {
+      if (sessionErr || !session?.case_id) {
         setError("Intake not found or already processed.");
         setLoading(false);
         return;
       }
 
-      setFormData((data.form_data as FormDataFromDb) ?? null);
-      setIntakeIdDisplay(data.intake_id ?? "");
-      setCaseId(data.case_id);
+      const status = session.intake_status;
+      if (!["submitted", "submitted_pending_attorney"].includes(status)) {
+        setError("Intake not found or already processed.");
+        setLoading(false);
+        return;
+      }
+
+      setFormData((session.form_data as FormDataFromDb) ?? null);
+      setIntakeIdDisplay(session.intake_id ?? "");
+      setCaseId(session.case_id);
       setLoading(false);
     })();
   }, [intakeId, user, role]);
 
   const handleConfirm = async () => {
-    if (!supabase || !user || !intakeId || !caseId) return;
-
-    console.log("ATTEST: Confirming intake", intakeId);
-
-    // Get attorney's rc_users record
-    const { data: attorneyRow, error: attorneyErr } = await supabase
-      .from("rc_users")
-      .select("id, attorney_code")
-      .eq("auth_user_id", user.id)
-      .ilike("role", "attorney")
-      .maybeSingle();
-
-    if (attorneyErr || !attorneyRow?.attorney_code) {
-      toast.error("Attorney record not found.");
-      return;
-    }
+    if (!user || !intakeId || !caseId) return;
 
     setConfirming(true);
-
-    // Count same-day cases for this attorney (for sequence)
-    const intakeIdMatch = intakeIdDisplay.match(/^INT-(\d{6})/);
-    const yymmdd = intakeIdMatch ? intakeIdMatch[1] : "";
-    const { count } = await supabase
-      .from("rc_cases")
-      .select("id", { count: "exact", head: true })
-      .eq("attorney_id", attorneyRow.id)
-      .not("case_number", "is", null)
-      .like("case_number", `${attorneyRow.attorney_code}-${yymmdd}%`);
-
-    const sameDayCount = count ?? 0;
-    const caseNumber = generateCaseNumber(intakeIdDisplay, attorneyRow.attorney_code, sameDayCount);
-    const clientPin = generatePin();
-    console.log("ATTEST: Case number", caseNumber, "PIN", clientPin);
-    const now = new Date().toISOString();
-
     try {
-      // Update rc_client_intake_sessions (intake_status)
-      const { error: sessionErr } = await supabase
-        .from("rc_client_intake_sessions")
-        .update({
-          intake_status: "attorney_confirmed",
-          updated_at: now,
-        })
-        .eq("resume_token", intakeId);
+      // 1. Get attorney's rc_users record (C.A.R.E. logic)
+      const { data: rcUsers, error: rcUsersError } = await supabaseGet(
+        "rc_users",
+        `select=id,attorney_code&auth_user_id=eq.${user.id}&role=eq.attorney&limit=1`
+      );
+      if (rcUsersError) throw new Error(`Failed to get attorney: ${rcUsersError.message}`);
+      const rcUser = Array.isArray(rcUsers) ? rcUsers[0] : rcUsers;
+      if (!rcUser?.id || !rcUser?.attorney_code) throw new Error("Attorney record not found");
 
-      if (sessionErr) {
-        console.error("ATTEST: FAILED", sessionErr);
-        toast.error("Failed to update intake: " + sessionErr.message);
+      const attorneyId = rcUser.id;
+      const attorneyCode = rcUser.attorney_code;
+
+      // 2. Get rc_client_intakes by case_id (canonical intake record)
+      const { data: intakes, error: intakesError } = await supabaseGet(
+        "rc_client_intakes",
+        `select=id,case_id,intake_json,attorney_attested_at&case_id=eq.${caseId}&intake_status=in.(submitted_pending_attorney,attorney_confirmed)&order=intake_submitted_at.desc&limit=1`
+      );
+      if (intakesError) throw new Error(`Failed to get intake: ${intakesError.message}`);
+      const intake = Array.isArray(intakes) ? intakes[0] : intakes;
+      if (!intake?.case_id) throw new Error("Intake not found");
+
+      const intakeRecordId = intake.id;
+
+      // 3. Get rc_cases row (C.A.R.E. logic)
+      const { data: caseData, error: caseDataError } = await supabaseGet(
+        "rc_cases",
+        `select=id,case_number,client_pin,case_status&id=eq.${caseId}&is_superseded=eq.false&limit=1`
+      );
+      if (caseDataError) throw new Error(`Failed to get case: ${caseDataError.message}`);
+      const existingCase = Array.isArray(caseData) ? caseData[0] : caseData;
+      const existingCaseNumber = existingCase?.case_number;
+
+      // Idempotency: if already confirmed, return existing credentials
+      const alreadyConfirmed =
+        !!intake.attorney_attested_at ||
+        (!!existingCase?.client_pin && existingCase?.case_status === "attorney_confirmed");
+      if (alreadyConfirmed && existingCase?.case_number) {
+        const caseNumber = existingCase.case_number;
+        const clientPin = existingCase.client_pin ?? "";
+        setConfirmed({ caseNumber, pin: clientPin });
+        toast.success("Already confirmed. Displaying existing case number and PIN.");
         setConfirming(false);
         return;
       }
 
-      // Update rc_client_intakes if it exists (attorney_attested_at, intake_status)
-      void supabase
-        .from("rc_client_intakes")
-        .update({
-          intake_status: "attorney_confirmed",
+      if (!existingCaseNumber) throw new Error("Case number not found");
+
+      // Convert INT number to attorney case number (C.A.R.E. logic)
+      let caseNumber: string;
+      if (existingCaseNumber.startsWith("INT-")) {
+        caseNumber = existingCaseNumber.replace(/^INT-/, `${attorneyCode}-`);
+      } else {
+        caseNumber = existingCaseNumber;
+      }
+      const clientPin = generatePIN();
+      const now = new Date().toISOString();
+
+      // 4. Update rc_cases (case_number, client_pin, case_status)
+      const { error: caseErr } = await supabaseUpdate("rc_cases", `id=eq.${caseId}`, {
+        case_number: caseNumber,
+        client_pin: clientPin,
+        case_status: "attorney_confirmed",
+      });
+      if (caseErr) throw new Error(`Failed to update case: ${caseErr.message}`);
+
+      // 5. Update rc_client_intakes (attorney_attested_at, intake_status, intake_json)
+      const existingJson = intake.intake_json || {};
+      const updatedJson = {
+        ...existingJson,
+        compliance: {
+          ...(existingJson.compliance || {}),
+          attorney_confirmation_receipt: {
+            action: "CONFIRMED",
+            confirmed_at: now,
+            confirmed_by: attorneyId,
+          },
+        },
+        attorney_attestation: {
+          status: "confirmed",
+          confirmed_at: now,
+        },
+      };
+
+      const { error: intakeErr } = await supabaseUpdate(
+        "rc_client_intakes",
+        `id=eq.${intakeRecordId}`,
+        {
           attorney_attested_at: now,
-        })
-        .eq("case_id", caseId);
+          attorney_attested_by: attorneyId,
+          attorney_confirm_deadline_at: null,
+          intake_status: "attorney_confirmed",
+          intake_json: updatedJson,
+        }
+      );
+      if (intakeErr) throw new Error(`Failed to update intake: ${intakeErr.message}`);
 
-      // Update rc_cases (case_number, client_pin)
-      const { error: caseErr } = await supabase
-        .from("rc_cases")
-        .update({
-          case_number: caseNumber,
-          client_pin: clientPin,
-          case_status: "active",
-          updated_at: now,
-        })
-        .eq("id", caseId);
-
-      if (caseErr) {
-        console.error("ATTEST: FAILED", caseErr);
-        toast.error("Failed to update case: " + caseErr.message);
-        setConfirming(false);
-        return;
+      // 6. Update rc_client_intake_sessions (intake_status)
+      const { error: sessionErr } = await supabaseUpdate(
+        "rc_client_intake_sessions",
+        `resume_token=eq.${intakeId}`,
+        { intake_status: "attorney_confirmed", updated_at: now }
+      );
+      if (sessionErr) {
+        console.warn("Session update failed (non-blocking):", sessionErr.message);
       }
 
-      // Write to rc_audit_logs
-      await supabase.from("rc_audit_logs").insert({
+      // 7. Audit (C.A.S.E. uses rc_audit_log via audit())
+      await audit({
         action: "attorney_confirmed",
-        actor_role: "attorney",
-        actor_id: user.id,
-        case_id: caseId,
-        meta: { intake_session_id: intakeId, case_number: caseNumber },
-        created_at: now,
+        actorRole: "attorney",
+        actorId: user.id,
+        caseId,
+        meta: { intake_id: intakeRecordId, case_number: caseNumber },
       });
 
-      console.log("ATTEST: SUCCESS", { caseNumber, pin: clientPin, caseId });
       setConfirmed({ caseNumber, pin: clientPin });
       toast.success("Client confirmed successfully.");
-    } catch (e) {
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Attestation failed.";
       console.error("ATTEST: FAILED", e);
-      toast.error("Attestation failed.");
-      setConfirming(false);
+      toast.error(msg);
     } finally {
       setConfirming(false);
     }
   };
 
   const handleDecline = async () => {
-    if (!supabase || !intakeId) return;
+    if (!user || !intakeId || !caseId) return;
     setDeclining(true);
+    try {
+      const now = new Date().toISOString();
 
-    const { error: declineErr } = await supabase
-      .from("rc_client_intake_sessions")
-      .update({
+      // Get rc_client_intakes by case_id (C.A.R.E. decline logic)
+      const { data: intakes } = await supabaseGet(
+        "rc_client_intakes",
+        `select=id,intake_json&case_id=eq.${caseId}&intake_status=in.(submitted_pending_attorney,attorney_confirmed)&order=intake_submitted_at.desc&limit=1`
+      );
+      const intake = Array.isArray(intakes) ? intakes[0] : intakes;
+      if (!intake) throw new Error("Intake not found");
+
+      const existingJson = intake.intake_json || {};
+      const updatedJson = {
+        ...existingJson,
+        attorney_attestation: { status: "declined", declined_at: now },
+      };
+
+      const { error: intakeErr } = await supabaseUpdate(
+        "rc_client_intakes",
+        `id=eq.${intake.id}`,
+        {
+          intake_status: "attorney_declined_not_client",
+          attorney_confirm_deadline_at: null,
+          intake_json: updatedJson,
+        }
+      );
+      if (intakeErr) throw new Error(intakeErr.message);
+
+      await supabaseUpdate("rc_client_intake_sessions", `resume_token=eq.${intakeId}`, {
         intake_status: "declined",
-        updated_at: new Date().toISOString(),
-      })
-      .eq("resume_token", intakeId);
+        updated_at: now,
+      });
 
-    setDeclining(false);
-    if (declineErr) {
-      toast.error("Failed to decline: " + declineErr.message);
-      return;
+      await audit({
+        action: "attorney_declined",
+        actorRole: "attorney",
+        actorId: user.id,
+        caseId,
+        meta: { intake_id: intake.id },
+      });
+
+      toast.success("Intake declined.");
+      navigate("/attorney/dashboard");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Failed to decline.";
+      toast.error(msg);
+    } finally {
+      setDeclining(false);
     }
-    toast.success("Intake declined.");
-    navigate("/attorney/dashboard");
   };
 
   if (role !== "attorney" || !user) {

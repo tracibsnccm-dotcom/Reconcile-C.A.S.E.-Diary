@@ -35,7 +35,7 @@ export default function AttorneyDashboard() {
     }
 
     (async () => {
-      // 1. Get attorney's rc_users record (auth_user_id, role ilike 'attorney')
+      // 1. Get attorney's rc_users record
       const { data: attorneyRow, error: attorneyErr } = await supabase
         .from("rc_users")
         .select("id")
@@ -51,33 +51,17 @@ export default function AttorneyDashboard() {
       }
 
       const attorneyId = attorneyRow.id;
-      console.log("[AttorneyDashboard] Querying for attorney_id:", attorneyId);
+      // Match C.A.R.E. AttorneyIntakeTracker: rc_cases.attorney_id can be auth_user_id or rc_users.id
+      const attorneyMatchId = user.id;
 
-      // 2. Query rc_client_intake_sessions where:
-      //    - intake_status in ('submitted', 'submitted_pending_attorney')
-      //    - case_id is not null
-      const { data: sessions, error } = await supabase
-        .from("rc_client_intake_sessions")
-        .select(`
-          resume_token,
-          intake_id,
-          case_id,
-          first_name,
-          last_name,
-          updated_at,
-          form_data,
-          intake_status
-        `)
-        .in("intake_status", ["submitted", "submitted_pending_attorney"])
-        .not("case_id", "is", null);
+      // 2. Query rc_client_intakes (canonical source, like C.A.R.E.) — no case_status filter
+      const { data: intakes, error: intakesError } = await supabase
+        .from("rc_client_intakes")
+        .select("id, case_id, intake_submitted_at, intake_json")
+        .eq("intake_status", "submitted_pending_attorney");
 
-      console.log("[AttorneyDashboard] rc_client_intake_sessions raw result:", {
-        error,
-        count: sessions?.length ?? 0,
-        sessions: sessions ?? [],
-      });
-
-      if (error) {
+      if (intakesError) {
+        console.log("[AttorneyDashboard] intakes error:", intakesError);
         setLoading(false);
         setDebugInfo({
           attorneyId,
@@ -89,62 +73,59 @@ export default function AttorneyDashboard() {
         return;
       }
 
-      if (!sessions?.length) {
-        setPendingIntakes([]);
-        setLoading(false);
-        setDebugInfo({
-          attorneyId,
-          sessionsCount: 0,
-          casesCount: 0,
-          attorneyCaseIdsCount: 0,
-          filteredCount: 0,
-        });
-        return;
-      }
+      const intakeList = Array.isArray(intakes) ? intakes : intakes ? [intakes] : [];
+      const caseIds = [...new Set(intakeList.map((i: any) => i.case_id).filter(Boolean))];
 
-      // 3. Filter by cases where attorney_id matches
-      const caseIds = Array.from(new Set(sessions.map((s) => s.case_id).filter(Boolean))) as string[];
-      const { data: cases, error: casesError } = await supabase
+      // 3. Get rc_cases for attorney filter (no case_status filter — C.A.R.E. doesn't filter by it)
+      const { data: cases } = await supabase
         .from("rc_cases")
-        .select("id, attorney_id, case_status")
-        .in("id", caseIds)
-        .eq("case_status", "intake_pending");
+        .select("id, attorney_id")
+        .in("id", caseIds);
 
-      console.log("[AttorneyDashboard] rc_cases filter: case_status=intake_pending, caseIds=", caseIds);
-      console.log("[AttorneyDashboard] rc_cases raw result:", {
-        casesError,
-        count: cases?.length ?? 0,
-        cases: cases ?? [],
+      const caseList = Array.isArray(cases) ? cases : cases ? [cases] : [];
+      const attorneyCaseIds = new Set(
+        caseList
+          .filter((c: any) => c.attorney_id === attorneyId || c.attorney_id === attorneyMatchId)
+          .map((c: any) => c.id)
+      );
+
+      const filteredByAttorney = intakeList.filter((i: any) => attorneyCaseIds.has(i.case_id));
+      const sessionMap = new Map<string, { resume_token: string; intake_id: string }>();
+
+      if (caseIds.length > 0) {
+        const { data: sessions } = await supabase
+          .from("rc_client_intake_sessions")
+          .select("case_id, resume_token, intake_id")
+          .in("case_id", caseIds);
+        (sessions || []).forEach((s: any) => {
+          if (s?.case_id && s?.resume_token) {
+            sessionMap.set(s.case_id, { resume_token: s.resume_token, intake_id: s.intake_id ?? "" });
+          }
+        });
+      }
+
+      const filtered = filteredByAttorney.map((i: any) => {
+        const identity = i.intake_json?.client ?? i.intake_json?.identity ?? {};
+        const firstName = identity.first_name ?? identity.firstName ?? "";
+        const lastName = identity.last_name ?? identity.lastName ?? "";
+        const clientName = [firstName, lastName].filter(Boolean).join(" ") || "Unknown";
+        const session = sessionMap.get(i.case_id);
+        return {
+          id: session?.resume_token ?? i.case_id ?? "",
+          intakeId: session?.intake_id ?? i.intake_json?.rcmsId ?? "",
+          caseId: i.case_id ?? "",
+          clientName,
+          submittedAt: i.intake_submitted_at ?? "",
+        };
       });
 
-      const attorneyCaseIds = new Set(
-        (cases || []).filter((c) => c.attorney_id === attorneyId).map((c) => c.id)
-      );
-      console.log("[AttorneyDashboard] Filter: attorney_id must match", attorneyId, "→ attorneyCaseIds:", Array.from(attorneyCaseIds));
-
-      const filtered = sessions
-        .filter((s) => s.case_id && attorneyCaseIds.has(s.case_id))
-        .map((s) => {
-          const fd = s.form_data as { personal?: { firstName?: string; lastName?: string } } | null;
-          const firstName = fd?.personal?.firstName ?? s.first_name ?? "";
-          const lastName = fd?.personal?.lastName ?? s.last_name ?? "";
-          const clientName = [firstName, lastName].filter(Boolean).join(" ") || "Unknown";
-          return {
-            id: s.resume_token ?? s.case_id ?? "",
-            intakeId: s.intake_id ?? "",
-            caseId: s.case_id ?? "",
-            clientName,
-            submittedAt: s.updated_at ?? "",
-          };
-        });
-
-      console.log("[AttorneyDashboard] Found", filtered.length, "pending intakes (filtered)");
+      console.log("[AttorneyDashboard] Found", filtered.length, "pending intakes (from rc_client_intakes)");
       setPendingIntakes(filtered);
       setDebugInfo({
         attorneyId,
-        sessionsCount: sessions.length,
-        casesCount: cases?.length ?? 0,
-        attorneyCaseIdsCount: attorneyCaseIds.size,
+        sessionsCount: intakeList.length,
+        casesCount: filteredByAttorney.length,
+        attorneyCaseIdsCount: filtered.length,
         filteredCount: filtered.length,
       });
       setLoading(false);
