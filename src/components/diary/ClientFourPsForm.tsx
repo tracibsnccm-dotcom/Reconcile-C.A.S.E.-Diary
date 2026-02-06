@@ -654,6 +654,7 @@ export const ClientFourPsForm: React.FC = () => {
                         type="checkbox"
                         checked={formData.physical.adlsConcerns.includes(opt)}
                         onChange={() => toggleConcern('physical', 'adlsConcerns', opt)}
+                        className="w-5 h-5 border-2 border-gray-400 rounded bg-white accent-blue-600"
                       />
                       <span style={{ fontSize: '14px', color: '#374151' }}>{opt}</span>
                     </label>
@@ -710,6 +711,7 @@ export const ClientFourPsForm: React.FC = () => {
                         type="checkbox"
                         checked={formData.psychological.emotionalConcerns.includes(opt)}
                         onChange={() => toggleConcern('psychological', 'emotionalConcerns', opt)}
+                        className="w-5 h-5 border-2 border-gray-400 rounded bg-white accent-blue-600"
                       />
                       <span style={{ fontSize: '14px', color: '#374151' }}>{opt}</span>
                     </label>
@@ -791,6 +793,7 @@ export const ClientFourPsForm: React.FC = () => {
                             toggleConcern('psychosocial', 'basicNeedsConcerns', opt);
                           }
                         }}
+                        className="w-5 h-5 border-2 border-gray-400 rounded bg-white accent-blue-600"
                       />
                       <span style={{ fontSize: '14px', color: '#374151' }}>{opt}</span>
                     </label>

@@ -34,6 +34,8 @@ interface IntakeRow {
   expires_iso: string;
   attorney_attested_at: string | null;
   attorney_confirm_deadline_at: string | null;
+  intake_status?: string;
+  case_status?: string;
   assigned_rn_id?: string | null;
   nudges: number;
   my_client: boolean;
@@ -151,18 +153,17 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
       
       if (scope === 'mine' && user && authUserId) {
         try {
-          // Verify user is an attorney, then use auth_user_id directly since cases store auth_user_id as attorney_id
           const rcUsersQuery = `auth_user_id=eq.${authUserId}&role=eq.attorney&select=id`;
           const { data: rcUsers, error: rcUsersError } = await supabaseGet('rc_users', rcUsersQuery);
           if (rcUsersError) throw rcUsersError;
-          const isAttorney = Array.isArray(rcUsers) ? rcUsers.length > 0 : !!rcUsers;
-          attorneyRcUserId = isAttorney ? authUserId : null;
+          const rcUser = Array.isArray(rcUsers) ? rcUsers[0] : rcUsers;
+          attorneyRcUserId = rcUser?.id ?? authUserId;
         } catch (err) {
           console.error('Failed to get attorney rc_user ID:', err);
         }
       }
       
-      // Build query string for Supabase REST API - JOIN with rc_cases and rc_clients
+      // BUG 5: Filter by attorney_id. rc_cases.attorney_id can be auth_user_id or rc_users.id
       let queryString = 'select=*,rc_cases(id,attorney_id,case_type,case_number,case_status,date_of_injury,assigned_rn_id,rc_clients(first_name,last_name))&intake_status=in.(submitted_pending_attorney,attorney_confirmed,attorney_declined_not_client)&rc_cases.is_superseded=eq.false';
       
       if (scope === 'mine' && attorneyRcUserId) {
@@ -183,12 +184,11 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
         throw new Error('Expected array from Supabase query');
       }
 
-        // Filter out intakes where rc_cases doesn't match the attorney
-      // Also fetch client data for cases that don't have it in the nested join
+        // BUG 5: Filter out intakes where rc_cases.attorney_id doesn't match logged-in attorney
       const filteredIntakes = scope === 'mine' && attorneyRcUserId
         ? intakes.filter((intake: any) => {
             const caseData = Array.isArray(intake.rc_cases) ? intake.rc_cases[0] : intake.rc_cases;
-            return caseData && caseData.attorney_id === attorneyRcUserId;
+            return caseData && (caseData.attorney_id === attorneyRcUserId || caseData.attorney_id === user?.id);
           })
         : intakes;
       
@@ -317,6 +317,8 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
           expires_iso: intake.attorney_confirm_deadline_at || '',
           attorney_attested_at: intake.attorney_attested_at,
           attorney_confirm_deadline_at: intake.attorney_confirm_deadline_at,
+          intake_status: intake.intake_status,
+          case_status: caseData?.case_status,
           assigned_rn_id: caseData?.assigned_rn_id ?? null,
           nudges: 0,
           my_client: true,
@@ -681,7 +683,7 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="mine">My clients</SelectItem>
-                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="all">All (admin)</SelectItem>
               </SelectContent>
             </Select>
             <Select value={filter} onValueChange={(v: any) => setFilter(v)}>
@@ -745,10 +747,12 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
                 const risk = getRiskLevel(row.expires_iso);
                 const isSelected = selectedIds.has(row.case_id);
                 
-                // Determine status - hide countdown if deadline is null or attested_at exists
+                // Determine status - hide countdown if deadline is null, attested_at exists, or status is attorney_confirmed
                 const hasDeadline = !!row.attorney_confirm_deadline_at;
-                const isConfirmed = !!row.attorney_attested_at;
-                const isDeclined = row.stage === ATTORNEY_STAGE_LABELS.DECLINED || !hasDeadline && !isConfirmed;
+                const isConfirmed = !!row.attorney_attested_at ||
+                  row.intake_status === 'attorney_confirmed' ||
+                  row.case_status === 'attorney_confirmed';
+                const isDeclined = row.stage === ATTORNEY_STAGE_LABELS.DECLINED || row.intake_status === 'attorney_declined_not_client' || (!hasDeadline && !isConfirmed);
                 const isExpired = !isConfirmed && !isDeclined &&
                   hasDeadline &&
                   new Date(row.attorney_confirm_deadline_at!).getTime() < Date.now();

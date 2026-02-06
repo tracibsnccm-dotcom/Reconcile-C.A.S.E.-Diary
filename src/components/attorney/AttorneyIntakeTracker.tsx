@@ -23,6 +23,8 @@ interface IntakeRow {
   expires_iso: string;
   attorney_attested_at: string | null;
   attorney_confirm_deadline_at: string | null;
+  intake_status?: string;
+  case_status?: string;
   resume_token: string | null;
 }
 
@@ -79,8 +81,8 @@ export function AttorneyIntakeTracker({ showHeader = true }: { showHeader?: bool
             `auth_user_id=eq.${authUserId}&role=eq.attorney&select=id`
           );
           if (rcUsersError) throw rcUsersError;
-          const isAttorney = Array.isArray(rcUsers) ? rcUsers.length > 0 : !!rcUsers;
-          attorneyRcUserId = isAttorney ? authUserId : null;
+          const rcUser = Array.isArray(rcUsers) ? rcUsers[0] : rcUsers;
+          attorneyRcUserId = rcUser?.id ?? authUserId;
         } catch {
           attorneyRcUserId = null;
         }
@@ -100,7 +102,7 @@ export function AttorneyIntakeTracker({ showHeader = true }: { showHeader?: bool
         scope === "mine" && attorneyRcUserId
           ? intakes.filter((intake: any) => {
               const caseData = Array.isArray(intake.rc_cases) ? intake.rc_cases[0] : intake.rc_cases;
-              return caseData && caseData.attorney_id === attorneyRcUserId;
+              return caseData && (caseData.attorney_id === attorneyRcUserId || caseData.attorney_id === user?.id);
             })
           : intakes;
 
@@ -151,6 +153,8 @@ export function AttorneyIntakeTracker({ showHeader = true }: { showHeader?: bool
           expires_iso: intake.attorney_confirm_deadline_at || "",
           attorney_attested_at: intake.attorney_attested_at,
           attorney_confirm_deadline_at: intake.attorney_confirm_deadline_at,
+          intake_status: intake.intake_status,
+          case_status: caseData?.case_status,
           resume_token: session?.resume_token ?? null,
         };
       });
@@ -249,7 +253,9 @@ export function AttorneyIntakeTracker({ showHeader = true }: { showHeader?: bool
             </thead>
             <tbody className="text-gray-900">
               {filteredRows.map((row) => {
-                const isConfirmed = !!row.attorney_attested_at;
+                const isConfirmed = !!row.attorney_attested_at ||
+                  row.intake_status === 'attorney_confirmed' ||
+                  row.case_status === 'attorney_confirmed';
                 const risk = getRiskLevel(row.expires_iso);
                 const ttl = calculateTTL(row.expires_iso);
                 return (

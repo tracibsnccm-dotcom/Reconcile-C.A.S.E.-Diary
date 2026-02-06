@@ -78,6 +78,7 @@ export function AttestationReview() {
   const [formData, setFormData] = useState<FormDataFromDb | null>(null);
   const [intakeIdDisplay, setIntakeIdDisplay] = useState("");
   const [caseId, setCaseId] = useState<string | null>(null);
+  const [clientDisplayName, setClientDisplayName] = useState<string>("");
   const [confirming, setConfirming] = useState(false);
   const [declining, setDeclining] = useState(false);
   const [confirmed, setConfirmed] = useState<{ caseNumber: string; pin: string } | null>(null);
@@ -113,6 +114,41 @@ export function AttestationReview() {
       setFormData((session.form_data as FormDataFromDb) ?? null);
       setIntakeIdDisplay(session.intake_id ?? "");
       setCaseId(session.case_id);
+
+      // BUG 3: Fetch client name from canonical source (rc_cases + rc_clients) so it matches the list
+      const caseIdFromSession = session.case_id;
+      let nameToDisplay = "";
+      if (caseIdFromSession) {
+        try {
+          const { data: caseWithClient } = await supabaseGet(
+            "rc_cases",
+            `id=eq.${caseIdFromSession}&is_superseded=eq.false&select=id,client_id&limit=1`
+          );
+          const caseRow = Array.isArray(caseWithClient) ? caseWithClient[0] : caseWithClient;
+          const clientId = caseRow?.client_id;
+          if (clientId) {
+            const { data: clientData } = await supabaseGet(
+              "rc_clients",
+              `id=eq.${clientId}&select=first_name,last_name&limit=1`
+            );
+            const client = Array.isArray(clientData) ? clientData[0] : clientData;
+            nameToDisplay = [client?.first_name ?? "", client?.last_name ?? ""].filter(Boolean).join(" ").trim();
+          }
+        } catch (_) {}
+        if (!nameToDisplay) {
+          const { data: intakes } = await supabaseGet(
+            "rc_client_intakes",
+            `case_id=eq.${caseIdFromSession}&select=intake_json&order=intake_submitted_at.desc&limit=1`
+          );
+          const intakeRow = Array.isArray(intakes) ? intakes[0] : intakes;
+          const identity = intakeRow?.intake_json?.identity ?? intakeRow?.intake_json?.client_identity ?? {};
+          const fn = identity.first_name ?? identity.firstName ?? identity.client_first_name ?? "";
+          const ln = identity.last_name ?? identity.lastName ?? identity.client_last_name ?? "";
+          nameToDisplay = [fn, ln].filter(Boolean).join(" ").trim() || "Client";
+        }
+        setClientDisplayName(nameToDisplay);
+      }
+
       setLoading(false);
     })();
   }, [intakeId, user, role]);
@@ -413,7 +449,7 @@ export function AttestationReview() {
             <div>
               <div className={SECTION_TITLE}>Personal Information</div>
               <p className={ROW_CLASS}>
-                {personal.firstName} {personal.lastName}
+                {clientDisplayName || `${personal.firstName ?? ""} ${personal.lastName ?? ""}`.trim() || "—"}
               </p>
               <p className={ROW_CLASS}>DOB: {personal.dateOfBirth}</p>
               <p className={ROW_CLASS}>{personal.email}</p>
