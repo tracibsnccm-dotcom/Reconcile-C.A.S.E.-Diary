@@ -110,14 +110,14 @@ export type IntakeIdentityShape = {
   email: string;
   phone: string | null;
 };
-function buildIntakeIdentity(firstName: string, lastName: string, email: string, phone: string | null | undefined): IntakeIdentityShape {
+function buildIntakeIdentity(firstName: string, lastName: string, email: string | null | undefined, phone: string | null | undefined): IntakeIdentityShape {
   const f = firstName.trim();
   const l = lastName.trim();
   return {
     firstName: f,
     lastName: l,
     fullName: `${f} ${l}`.trim(),
-    email: email.trim(),
+    email: (email ?? "").trim(),
     phone: (phone != null && String(phone).trim() !== '') ? String(phone).trim() : null,
   };
 }
@@ -1055,14 +1055,7 @@ export default function IntakeWizard() {
       setSubmitting(false);
       return;
     }
-    if (!clientEmail) {
-      setSubmitStage("blocked_validation");
-      setSubmitError("We couldn't confirm your email. Please return to the Identity step or sign in.");
-      setSubmitErrorDetail("Reason: email required");
-      toast({ title: "Validation", description: "We couldn't confirm your email. Please return to the Identity step or sign in.", variant: "destructive" });
-      setSubmitting(false);
-      return;
-    }
+    // Email is optional; access is INT# + PIN, not email.
 
     // Phone: from demographics (required in Demographics step) or sessionStorage
     const clientPhone = demographics.phone?.trim() || (client as any).phone || sessionStorage.getItem("rcms_client_phone") || "";
