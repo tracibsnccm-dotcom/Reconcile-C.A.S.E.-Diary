@@ -112,10 +112,13 @@ export function AttorneyIntakeTracker({ showHeader = true }: { showHeader?: bool
         try {
           const { data: sessions } = await supabaseGet(
             "rc_client_intake_sessions",
-            `case_id=in.(${allCaseIds.join(",")})&select=case_id,intake_id,resume_token`
+            `case_id=in.(${allCaseIds.join(",")})&select=case_id,intake_id,resume_token,created_at&order=created_at.desc`
           );
-          (Array.isArray(sessions) ? sessions : []).forEach((s: any) => {
-            if (s?.case_id && s?.resume_token) sessionMap.set(s.case_id, { intake_id: s.intake_id, resume_token: s.resume_token });
+          const sessList = Array.isArray(sessions) ? sessions : [];
+          sessList.forEach((s: any) => {
+            if (s?.case_id && s?.resume_token && !sessionMap.has(s.case_id)) {
+              sessionMap.set(s.case_id, { intake_id: s.intake_id, resume_token: s.resume_token });
+            }
           });
         } catch (_) {}
       }

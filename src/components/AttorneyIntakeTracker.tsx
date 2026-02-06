@@ -347,7 +347,7 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
     setLoadingIntake(true);
     try {
       // Load intake with case data and client data for the attestation modal
-      // If intakeId is provided, load by id; otherwise load by case_id
+      // If intakeId is provided, load by id (ensures we get the SAME record that was clicked)
       const queryFilter = intakeId 
         ? `id=eq.${intakeId}` 
         : `case_id=eq.${caseId}&order=created_at.desc&limit=1`;
@@ -359,6 +359,19 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
       }
       
       const updatedIntake = (Array.isArray(intakeData) ? intakeData[0] : intakeData) as PendingIntake | null;
+      const caseData = Array.isArray(updatedIntake?.rc_cases) ? updatedIntake?.rc_cases[0] : updatedIntake?.rc_cases;
+      const clientName = updatedIntake ? getClientDisplayName({
+        case: {
+          client_first_name: caseData?.rc_clients?.first_name,
+          client_last_name: caseData?.rc_clients?.last_name,
+          client_name: caseData?.client_name,
+          client_full_name: caseData?.client_full_name,
+          intake_json: updatedIntake.intake_json,
+        },
+        intake_json: updatedIntake.intake_json,
+      }) : "";
+      const status = updatedIntake?.attorney_attested_at ? "Attorney Confirmed" : updatedIntake?.intake_status ?? "pending";
+      console.log("Attestation loading - intake_id:", updatedIntake?.id, "case_id:", caseId, "client_name:", clientName, "status:", status);
       setSelectedIntake(updatedIntake);
       
       if (updatedIntake?.attorney_attested_at) {
@@ -763,7 +776,7 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
                 let statusLabel = 'Awaiting Review';
                 let statusVariant: 'default' | 'destructive' | 'secondary' | 'outline' = 'secondary';
                 if (isConfirmed) {
-                  statusLabel = 'Confirmed';
+                  statusLabel = 'Attorney Confirmed';
                   statusVariant = 'default';
                 } else if (isDeclined) {
                   statusLabel = 'Declined';
@@ -805,7 +818,7 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
                       </Button>
                     </td>
                     <td className="px-3 py-2 min-w-[100px]">
-                      {!!row.attorney_attested_at ? (
+                      {!!row.attorney_attested_at || row.case_number ? (
                         <span className="font-mono" title={row.case_number || undefined}>{row.case_number || '—'}</span>
                       ) : (
                         <Badge variant="secondary" className="text-xs">Awaiting</Badge>

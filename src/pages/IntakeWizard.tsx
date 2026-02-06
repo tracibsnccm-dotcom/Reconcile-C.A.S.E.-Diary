@@ -3171,64 +3171,10 @@ export default function IntakeWizard() {
             <div className="mt-6 p-6 bg-gradient-to-br from-primary/5 to-primary/10 rounded-lg border-2 border-primary/20">
               <h4 className="text-xl font-bold mb-6 text-black">Assessment Snapshot</h4>
 
-              {/* Score Cards / Placeholders */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-                <div className="rounded-lg border-2 border-primary/30 bg-white p-4 shadow-sm">
-                  <p className="text-xs font-semibold text-gray-600 mb-1">4Ps Viability Score</p>
-                  <p className="text-2xl font-black text-primary">
-                    {(() => {
-                      const avg = (fourPs.physical + fourPs.psychological + fourPs.psychosocial + fourPs.professional) / 4;
-                      return `${Math.round(avg * 20)}%`;
-                    })()}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">1–5 scale</p>
-                </div>
-                <div className="rounded-lg border-2 border-primary/30 bg-white p-4 shadow-sm">
-                  <p className="text-xs font-semibold text-gray-600 mb-1">SDOH Viability Score</p>
-                  <p className="text-2xl font-black text-primary">
-                    {(() => {
-                      const vals = [
-                        sdoh.housing ?? 3, sdoh.food ?? 3, sdoh.transport ?? 3, sdoh.insuranceGap ?? 3,
-                        sdoh.financial ?? 3, sdoh.employment ?? 3, sdoh.social_support ?? 3,
-                        sdoh.safety ?? 3, sdoh.healthcare_access ?? 3
-                      ];
-                      const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
-                      return `${Math.round(avg * 20)}%`;
-                    })()}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">1–5 scale</p>
-                </div>
-                <div className="rounded-lg border-2 border-primary/30 bg-white p-4 shadow-sm">
-                  <p className="text-xs font-semibold text-gray-600 mb-1">Overall Health (4Ps)</p>
-                  <p className="text-2xl font-black text-primary">
-                    {(() => {
-                      const avg = (fourPs.physical + fourPs.psychological + fourPs.psychosocial + fourPs.professional) / 4;
-                      return Math.round(avg * 10) / 10;
-                    })()}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">1–5 indicator</p>
-                </div>
-                <div className="rounded-lg border-2 border-primary/30 bg-white p-4 shadow-sm">
-                  <p className="text-xs font-semibold text-gray-600 mb-1">Overall Health (SDOH)</p>
-                  <p className="text-2xl font-black text-primary">
-                    {(() => {
-                      const vals = [
-                        sdoh.housing ?? 3, sdoh.food ?? 3, sdoh.transport ?? 3, sdoh.insuranceGap ?? 3,
-                        sdoh.financial ?? 3, sdoh.employment ?? 3, sdoh.social_support ?? 3,
-                        sdoh.safety ?? 3, sdoh.healthcare_access ?? 3
-                      ];
-                      const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
-                      return Math.round(avg * 10) / 10;
-                    })()}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">1–5 indicator</p>
-                </div>
-              </div>
-
               {/* 4Ps Section */}
               <div className="mb-6">
                 <h5 className="text-sm font-extrabold mb-3 text-black flex items-center gap-1.5">
-                  4Ps of Wellness
+                  4Ps of Wellness — Viability Score: {Math.floor((fourPs.physical + fourPs.psychological + fourPs.psychosocial + fourPs.professional) / 4)}
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Info className="w-4 h-4 text-primary cursor-help" aria-label="4Ps explanation" />
@@ -3260,7 +3206,11 @@ export default function IntakeWizard() {
               {/* SDOH Section */}
               <div className="mb-6">
                 <h5 className="text-sm font-extrabold mb-3 text-black flex items-center gap-1.5">
-                  Social Drivers of Health (SDOH)
+                  SDOH — Viability Score: {Math.floor(([
+                    sdoh.housing ?? 3, sdoh.food ?? 3, sdoh.transport ?? 3, sdoh.insuranceGap ?? 3,
+                    sdoh.financial ?? 3, sdoh.employment ?? 3, sdoh.social_support ?? 3,
+                    sdoh.safety ?? 3, sdoh.healthcare_access ?? 3
+                  ].reduce((a, b) => a + b, 0) / 9))}
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Info className="w-4 h-4 text-primary cursor-help" aria-label="SDOH explanation" />
@@ -3326,8 +3276,8 @@ export default function IntakeWizard() {
                       className="absolute left-0 top-0 h-full rounded-full transition-all duration-500"
                       style={{ 
                         width: `${Math.min(100, (((() => {
-                          const allValues = [
-                            fourPs.physical, fourPs.psychological, fourPs.psychosocial, fourPs.professional,
+                          const fourPsAvg = (fourPs.physical + fourPs.psychological + fourPs.psychosocial + fourPs.professional) / 4;
+                          const sdohVals = [
                             typeof sdoh.housing === 'number' ? sdoh.housing : 3,
                             typeof sdoh.food === 'number' ? sdoh.food : 3,
                             typeof sdoh.transport === 'number' ? sdoh.transport : 3,
@@ -3338,8 +3288,8 @@ export default function IntakeWizard() {
                             typeof sdoh.safety === 'number' ? sdoh.safety : 3,
                             typeof sdoh.healthcare_access === 'number' ? sdoh.healthcare_access : 3
                           ];
-                          const sum = allValues.reduce((a, b) => a + b, 0);
-                          return sum / allValues.length;
+                          const sdohAvg = sdohVals.reduce((a, b) => a + b, 0) / sdohVals.length;
+                          return Math.floor((fourPsAvg + sdohAvg) / 2);
                         })() - 1) / 4) * 100)}%`,
                         background: 'linear-gradient(90deg, #c62828, #b09837, #18a05f)'
                       }}
@@ -3347,8 +3297,8 @@ export default function IntakeWizard() {
                   </div>
                   <div className="text-2xl font-black min-w-[64px] text-right text-black">
                     {(() => {
-                      const allValues = [
-                        fourPs.physical, fourPs.psychological, fourPs.psychosocial, fourPs.professional,
+                      const fourPsAvg = (fourPs.physical + fourPs.psychological + fourPs.psychosocial + fourPs.professional) / 4;
+                      const sdohVals = [
                         typeof sdoh.housing === 'number' ? sdoh.housing : 3,
                         typeof sdoh.food === 'number' ? sdoh.food : 3,
                         typeof sdoh.transport === 'number' ? sdoh.transport : 3,
@@ -3359,8 +3309,8 @@ export default function IntakeWizard() {
                         typeof sdoh.safety === 'number' ? sdoh.safety : 3,
                         typeof sdoh.healthcare_access === 'number' ? sdoh.healthcare_access : 3
                       ];
-                      const sum = allValues.reduce((a, b) => a + b, 0);
-                      return Math.floor(sum / allValues.length);
+                      const sdohAvg = sdohVals.reduce((a, b) => a + b, 0) / sdohVals.length;
+                      return Math.floor((fourPsAvg + sdohAvg) / 2);
                     })()}
                   </div>
                 </div>

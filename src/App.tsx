@@ -35,6 +35,7 @@ function App() {
           <Route path="/attorney/dashboard" element={<AttorneyDashboard />} />
           <Route path="/attorney/pending-intakes" element={<AttorneyPendingIntakes />} />
           <Route path="/attorney/review/:intakeId" element={<AttestationReview />} />
+          <Route path="/attorney/intakes/:intakeId" element={<AttestationReview />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <Toaster position="top-right" richColors />

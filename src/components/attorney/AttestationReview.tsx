@@ -91,12 +91,71 @@ export function AttestationReview() {
     }
 
     (async () => {
+      // Support both resume_token and intake_id (UUID) — intakeId from URL matches the clicked record
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(intakeId || "").trim());
+      let session: any = null;
+      let caseIdFromSession: string | null = null;
+
+      if (isUuid) {
+        // Load by rc_client_intakes.id — get case_id from the intake record that was clicked
+        const { data: intakeData, error: intakeErr } = await supabaseGet(
+          "rc_client_intakes",
+          `id=eq.${intakeId}&select=id,case_id,intake_json,intake_submitted_at&limit=1`
+        );
+        const intakeRow = Array.isArray(intakeData) ? intakeData[0] : intakeData;
+        if (intakeErr || !intakeRow?.case_id) {
+          setError("Intake not found or already processed.");
+          setLoading(false);
+          return;
+        }
+        caseIdFromSession = intakeRow.case_id;
+        setFormData((intakeRow.intake_json as FormDataFromDb) ?? null);
+        setIntakeIdDisplay(intakeRow.intake_json?.rcmsId ?? intakeId);
+        setCaseId(caseIdFromSession);
+        // Fetch client name from SAME case record (rc_cases + rc_clients)
+        let nameToDisplay = "";
+        try {
+          const { data: caseWithClient } = await supabaseGet(
+            "rc_cases",
+            `id=eq.${caseIdFromSession}&is_superseded=eq.false&select=id,client_id&limit=1`
+          );
+          const caseRow = Array.isArray(caseWithClient) ? caseWithClient[0] : caseWithClient;
+          const clientId = caseRow?.client_id;
+          if (clientId) {
+            const { data: clientData } = await supabaseGet(
+              "rc_clients",
+              `id=eq.${clientId}&select=first_name,last_name&limit=1`
+            );
+            const client = Array.isArray(clientData) ? clientData[0] : clientData;
+            nameToDisplay = [client?.first_name ?? "", client?.last_name ?? ""].filter(Boolean).join(" ").trim();
+          }
+        } catch (_) {}
+        if (!nameToDisplay) {
+          const identity = intakeRow.intake_json?.identity ?? intakeRow.intake_json?.client_identity ?? intakeRow.intake_json?.client ?? {};
+          const fn = identity.first_name ?? identity.firstName ?? identity.client_first_name ?? "";
+          const ln = identity.last_name ?? identity.lastName ?? identity.client_last_name ?? "";
+          nameToDisplay = [fn, ln].filter(Boolean).join(" ").trim() || "Client";
+        }
+        setClientDisplayName(nameToDisplay);
+        // Fetch session for form_data if available
+        const { data: sessData } = await supabaseGet(
+          "rc_client_intake_sessions",
+          `case_id=eq.${caseIdFromSession}&select=form_data,intake_status&order=created_at.desc&limit=1`
+        );
+        const sess = Array.isArray(sessData) ? sessData[0] : sessData;
+        if (sess?.form_data) setFormData((sess.form_data as FormDataFromDb) ?? null);
+        const status = sess?.intake_status ?? "submitted_pending_attorney";
+        console.log("Attestation loading - intake_id:", intakeId, "client_name:", nameToDisplay, "status:", status);
+        setLoading(false);
+        return;
+      }
+
       // Load session by resume_token (C.A.S.E. route uses resume_token)
       const { data: sessionData, error: sessionErr } = await supabaseGet(
         "rc_client_intake_sessions",
         `resume_token=eq.${intakeId}&select=resume_token,intake_id,case_id,form_data,intake_status&limit=1`
       );
-      const session = Array.isArray(sessionData) ? sessionData[0] : sessionData;
+      session = Array.isArray(sessionData) ? sessionData[0] : sessionData;
 
       if (sessionErr || !session?.case_id) {
         setError("Intake not found or already processed.");
@@ -105,6 +164,7 @@ export function AttestationReview() {
       }
 
       const status = session.intake_status;
+      console.log("Attestation loading - intake_id:", intakeId, "client_name:", "(loading)", "status:", status);
       if (!["submitted", "submitted_pending_attorney"].includes(status)) {
         setError("Intake not found or already processed.");
         setLoading(false);
@@ -115,8 +175,8 @@ export function AttestationReview() {
       setIntakeIdDisplay(session.intake_id ?? "");
       setCaseId(session.case_id);
 
-      // BUG 3: Fetch client name from canonical source (rc_cases + rc_clients) so it matches the list
-      const caseIdFromSession = session.case_id;
+      // Fetch client name from canonical source (rc_cases + rc_clients) — SAME record as clicked in list
+      caseIdFromSession = session.case_id;
       let nameToDisplay = "";
       if (caseIdFromSession) {
         try {

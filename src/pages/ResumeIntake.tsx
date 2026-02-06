@@ -91,15 +91,19 @@ export default function ResumeIntake() {
         }
 
         const fd = session.formData && typeof session.formData === "object" ? session.formData : {};
+        // Consents complete if explicitly set, or if HIPAA (step 5) was signed
         const consentsComplete =
           fd.consentsComplete === true ||
-          (fd.consentStep === 5 && fd.consents?.hipaa?.signature);
+          (fd.consentStep === 5 && !!fd.consents?.hipaa?.signature) ||
+          (fd.consentStep === 5 && !!fd.consents?.hipaa?.acknowledged);
 
         const attorneyParam = session.attorneyId || "";
         const codeParam = session.attorneyCode || "";
 
         if (consentsComplete) {
-          sessionStorage.setItem("rcms_intake_step", String(session.currentStep ?? fd.step ?? 0));
+          // Go directly to /client-intake at saved step — do NOT send to consent
+          const savedStep = Math.min(7, Math.max(0, session.currentStep ?? fd.step ?? 0));
+          sessionStorage.setItem("rcms_intake_step", String(savedStep));
           sessionStorage.setItem("rcms_consents_completed", "true");
           navigate(
             `/client-intake?attorney_id=${encodeURIComponent(attorneyParam)}&attorney_code=${encodeURIComponent(codeParam)}&resume=true`
@@ -204,9 +208,11 @@ export default function ResumeIntake() {
       // in_progress: resume to consents or intake wizard based on stored progress
       sessionStorage.setItem("rcms_intake_status", "in_progress");
       const fd = (session.formData && typeof session.formData === "object") ? session.formData : {};
+      // Consents complete if explicitly set, or if HIPAA (step 5) was signed
       const consentsComplete =
         fd.consentsComplete === true ||
-        (fd.consentStep === 5 && fd.consents?.hipaa?.signature);
+        (fd.consentStep === 5 && !!fd.consents?.hipaa?.signature) ||
+        (fd.consentStep === 5 && !!fd.consents?.hipaa?.acknowledged);
 
       sessionStorage.setItem("rcms_intake_session_id", session.id);
       sessionStorage.setItem("rcms_intake_id", session.intakeId);
@@ -220,7 +226,9 @@ export default function ResumeIntake() {
       const codeParam = session.attorneyCode || "";
 
       if (consentsComplete) {
-        sessionStorage.setItem("rcms_intake_step", String(session.currentStep ?? (fd.step) ?? 0));
+        // Go directly to /client-intake at saved step — do NOT send to consent
+        const savedStep = Math.min(7, Math.max(0, session.currentStep ?? fd.step ?? 0));
+        sessionStorage.setItem("rcms_intake_step", String(savedStep));
         sessionStorage.setItem("rcms_consents_completed", "true");
         navigate(
           `/client-intake?attorney_id=${encodeURIComponent(attorneyParam)}&attorney_code=${encodeURIComponent(codeParam)}&resume=true`
