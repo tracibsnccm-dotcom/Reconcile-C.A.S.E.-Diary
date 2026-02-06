@@ -188,6 +188,7 @@ export default function IntakeWizard() {
     | "error"
   >("idle");
   const [submitDiag, setSubmitDiag] = useState<Record<string, any>>({});
+  const [showSubmitWarning, setShowSubmitWarning] = useState(false);
   const [clientEsign, setClientEsign] = useState<{
     agreed: boolean;
     signerFullName: string;
@@ -295,6 +296,31 @@ export default function IntakeWizard() {
             !!(sdoh.financial || sdoh.employment || sdoh.social_support || sdoh.safety || sdoh.healthcare_access),
     },
   }), [intake, consent, fourPs, sdoh]);
+
+  type IncompleteItem = { step: number; label: string; field: string };
+  const incompleteItems = useMemo((): IncompleteItem[] => {
+    const items: IncompleteItem[] = [];
+    if (!demographics.dob?.trim() || !demographics.phone?.trim()) {
+      items.push({ step: 0, label: "Demographics", field: "Date of Birth and Phone Number" });
+    }
+    if (!intake?.incidentDate || String(intake.incidentDate).trim() === "") {
+      items.push({ step: 1, label: "Incident/Injury Overview", field: "Date of incident" });
+    }
+    if (physicalPreDiagnoses.includes("Other") && !(physicalPreOtherText || "").trim()) {
+      items.push({ step: 3, label: "Pre-Injury Self-Assessment", field: "Chronic conditions — 'Other' description" });
+    }
+    if (bhPreDiagnoses.includes("Other") && !(bhPreOtherText || "").trim()) {
+      items.push({ step: 4, label: "Mental Health & Well-Being Self-Assessment", field: "Pre-accident Behavioral Health — 'Other' description" });
+    }
+    if (physicalPostDiagnoses.includes("Other") && !(physicalPostOtherText || "").trim()) {
+      items.push({ step: 2, label: "Post-Injury Self-Assessment", field: "Post-injury conditions — 'Other' description" });
+    }
+    if (bhPostDiagnoses.includes("Other") && !(bhPostOtherText || "").trim()) {
+      items.push({ step: 4, label: "Mental Health & Well-Being Self-Assessment", field: "Post-accident Behavioral Health — 'Other' description" });
+    }
+    return items;
+  }, [demographics.dob, demographics.phone, intake?.incidentDate, physicalPreDiagnoses, physicalPreOtherText, bhPreDiagnoses, bhPreOtherText, physicalPostDiagnoses, physicalPostOtherText, bhPostDiagnoses, bhPostOtherText]);
+
   const progressPercent = useIntakePercent(intakeMeta);
   const formData = useMemo(() => ({
     client,
@@ -779,15 +805,15 @@ export default function IntakeWizard() {
     }));
   };
 
-  async function submit() {
-    console.log('IntakeWizard: Submit started');
+  async function submit(bypassIncompleteValidation = false) {
+    console.log('IntakeWizard: Submit started', { bypassIncompleteValidation });
     setSubmitStage("validating");
     setSubmitError(null);
     setSubmitErrorDetail(null);
     setSubmitting(true);
 
     try {
-    // Check if client window has expired
+    // Hard blocks (always enforced): client window expired
     if (clientWindowExpired) {
       setSubmitStage("blocked_validation");
       setSubmitError("Unable to submit yet.");
@@ -800,78 +826,81 @@ export default function IntakeWizard() {
       return;
     }
 
-    if (!intake?.incidentDate || String(intake.incidentDate).trim() === "") {
-      setSubmitStage("blocked_validation");
-      setSubmitError("Unable to submit yet.");
-      setSubmitErrorDetail("Reason: missing incident date");
-      toast({
-        title: "Validation",
-        description: "Incident date is required.",
-        variant: "destructive",
-      });
-      return;
-    }
+    // Soft validations (warn only when bypassIncompleteValidation is false)
+    if (!bypassIncompleteValidation) {
+      if (!intake?.incidentDate || String(intake.incidentDate).trim() === "") {
+        setSubmitStage("blocked_validation");
+        setSubmitError("Unable to submit yet.");
+        setSubmitErrorDetail("Reason: missing incident date");
+        toast({
+          title: "Validation",
+          description: "Incident date is required.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-    if (!demographics.dob?.trim() || !demographics.phone?.trim()) {
-      setSubmitStage("blocked_validation");
-      setSubmitError("Unable to submit yet.");
-      setSubmitErrorDetail("Reason: Date of Birth and Phone Number are required (Demographics step).");
-      toast({
-        title: "Validation",
-        description: "Please complete the Demographics step (Date of Birth and Phone Number are required).",
-        variant: "destructive",
-      });
-      setSubmitting(false);
-      return;
-    }
+      if (!demographics.dob?.trim() || !demographics.phone?.trim()) {
+        setSubmitStage("blocked_validation");
+        setSubmitError("Unable to submit yet.");
+        setSubmitErrorDetail("Reason: Date of Birth and Phone Number are required (Demographics step).");
+        toast({
+          title: "Validation",
+          description: "Please complete the Demographics step (Date of Birth and Phone Number are required).",
+          variant: "destructive",
+        });
+        setSubmitting(false);
+        return;
+      }
 
-    if (physicalPreDiagnoses.includes("Other") && !(physicalPreOtherText || "").trim()) {
-      setSubmitStage("blocked_validation");
-      setSubmitError("Please describe the 'Other' pre-injury condition.");
-      setSubmitErrorDetail("Go back to Medical History (Pre-injury / Chronic Conditions) and enter a description.");
-      toast({
-        title: "Validation",
-        description: "Please describe the 'Other' pre-injury condition in Medical History.",
-        variant: "destructive",
-      });
-      setSubmitting(false);
-      return;
-    }
-    if (bhPreDiagnoses.includes("Other") && !(bhPreOtherText || "").trim()) {
-      setSubmitStage("blocked_validation");
-      setSubmitError("Please describe the 'Other' chronic/pre-accident condition.");
-      setSubmitErrorDetail("Go back to Mental Health (Pre-accident Behavioral Health) and enter a description.");
-      toast({
-        title: "Validation",
-        description: "Please describe the 'Other' condition in Mental Health.",
-        variant: "destructive",
-      });
-      setSubmitting(false);
-      return;
-    }
-    if (physicalPostDiagnoses.includes("Other") && !(physicalPostOtherText || "").trim()) {
-      setSubmitStage("blocked_validation");
-      setSubmitError("Please describe the 'Other' post-injury physical condition.");
-      setSubmitErrorDetail("Go back to Medical History (Post-injury / Accident-Related) and enter a description.");
-      toast({
-        title: "Validation",
-        description: "Please describe the 'Other' post-injury condition in Medical History.",
-        variant: "destructive",
-      });
-      setSubmitting(false);
-      return;
-    }
-    if (bhPostDiagnoses.includes("Other") && !(bhPostOtherText || "").trim()) {
-      setSubmitStage("blocked_validation");
-      setSubmitError("Please describe the 'Other' post-accident behavioral health condition.");
-      setSubmitErrorDetail("Go back to Behavioral Health (Post-accident) and enter a description.");
-      toast({
-        title: "Validation",
-        description: "Please describe the 'Other' post-accident condition in Behavioral Health.",
-        variant: "destructive",
-      });
-      setSubmitting(false);
-      return;
+      if (physicalPreDiagnoses.includes("Other") && !(physicalPreOtherText || "").trim()) {
+        setSubmitStage("blocked_validation");
+        setSubmitError("Please describe the 'Other' pre-injury condition.");
+        setSubmitErrorDetail("Go back to Medical History (Pre-injury / Chronic Conditions) and enter a description.");
+        toast({
+          title: "Validation",
+          description: "Please describe the 'Other' pre-injury condition in Medical History.",
+          variant: "destructive",
+        });
+        setSubmitting(false);
+        return;
+      }
+      if (bhPreDiagnoses.includes("Other") && !(bhPreOtherText || "").trim()) {
+        setSubmitStage("blocked_validation");
+        setSubmitError("Please describe the 'Other' chronic/pre-accident condition.");
+        setSubmitErrorDetail("Go back to Mental Health (Pre-accident Behavioral Health) and enter a description.");
+        toast({
+          title: "Validation",
+          description: "Please describe the 'Other' condition in Mental Health.",
+          variant: "destructive",
+        });
+        setSubmitting(false);
+        return;
+      }
+      if (physicalPostDiagnoses.includes("Other") && !(physicalPostOtherText || "").trim()) {
+        setSubmitStage("blocked_validation");
+        setSubmitError("Please describe the 'Other' post-injury physical condition.");
+        setSubmitErrorDetail("Go back to Medical History (Post-injury / Accident-Related) and enter a description.");
+        toast({
+          title: "Validation",
+          description: "Please describe the 'Other' post-injury condition in Medical History.",
+          variant: "destructive",
+        });
+        setSubmitting(false);
+        return;
+      }
+      if (bhPostDiagnoses.includes("Other") && !(bhPostOtherText || "").trim()) {
+        setSubmitStage("blocked_validation");
+        setSubmitError("Please describe the 'Other' post-accident behavioral health condition.");
+        setSubmitErrorDetail("Go back to Behavioral Health (Post-accident) and enter a description.");
+        toast({
+          title: "Validation",
+          description: "Please describe the 'Other' post-accident condition in Behavioral Health.",
+          variant: "destructive",
+        });
+        setSubmitting(false);
+        return;
+      }
     }
 
     const masked = maskName(client.fullName || "");
@@ -2761,6 +2790,9 @@ export default function IntakeWizard() {
               4Ps Self-Assessment
             </h3>
             
+            {/* Contrast wrapper for sliders/buttons visibility */}
+            <div className="bg-white p-6 rounded-lg shadow-sm border-2 border-gray-200 mb-6">
+            
             {/* Scoring Directions */}
             <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 space-y-3 mb-6">
               <h4 className="font-semibold text-sm flex items-center gap-2">
@@ -2791,7 +2823,7 @@ export default function IntakeWizard() {
             </div>
 
             {/* Context (helps your RN Care Manager tailor your plan) — drives overlay defaults */}
-            <Card className="p-6 border-border mb-6">
+            <Card className="p-6 border-2 border-gray-200 bg-white mb-6">
               <h4 className="font-semibold text-black mb-1">Context (helps your RN Care Manager tailor your plan)</h4>
               <p className="text-sm text-black mb-4">Optional. These answers help us consider factors that may impact your care and recovery.</p>
               <div className="grid gap-6 sm:grid-cols-1">
@@ -2805,7 +2837,7 @@ export default function IntakeWizard() {
                     })()}
                     onValueChange={(v) => setClinicalContext((prev) => ({ ...(prev && typeof prev === "object" ? prev : {}), age_ranges: (v && v !== "__skip__") ? [v] : [] }))}
                   >
-                    <SelectTrigger className="w-full max-w-xs">
+                    <SelectTrigger className="w-full max-w-xs border-2 border-gray-400 bg-white">
                       <SelectValue placeholder="Select one (optional)" />
                     </SelectTrigger>
                     <SelectContent>
@@ -2819,16 +2851,17 @@ export default function IntakeWizard() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex items-center justify-between rounded-lg border p-4">
+                <div className="flex items-center justify-between rounded-lg border-2 border-gray-300 bg-white p-4">
                   <div>
                     <Label className="text-sm font-medium">Are you currently a student?</Label>
                   </div>
                   <Switch
                     checked={overlayContextFlags?.is_student ?? false}
                     onCheckedChange={(c) => setOverlayContextFlags((p) => ({ ...(p || {}), is_student: c }))}
+                    className="data-[state=unchecked]:bg-gray-300 data-[state=checked]:bg-blue-600"
                   />
                 </div>
-                <div className="flex items-center justify-between rounded-lg border p-4">
+                <div className="flex items-center justify-between rounded-lg border-2 border-gray-300 bg-white p-4">
                   <div>
                     <Label className="text-sm font-medium">Do you have caregiving responsibilities for a child or dependent?</Label>
                     <p className="text-xs text-black mt-1">This helps us consider recovery impact on family responsibilities.</p>
@@ -2836,6 +2869,7 @@ export default function IntakeWizard() {
                   <Switch
                     checked={overlayContextFlags?.has_dependents ?? false}
                     onCheckedChange={(c) => setOverlayContextFlags((p) => ({ ...(p || {}), has_dependents: c }))}
+                    className="data-[state=unchecked]:bg-gray-300 data-[state=checked]:bg-blue-600"
                   />
                 </div>
               </div>
@@ -2885,6 +2919,7 @@ export default function IntakeWizard() {
                           </Tooltip>
                         </div>
                         <Slider
+                          variant="highContrast"
                           value={[num4p]}
                           onValueChange={([value]) =>
                             setFourPs((p) => ({ ...(p || {}), [k]: Math.floor(value) }))
@@ -2903,6 +2938,9 @@ export default function IntakeWizard() {
                 )}
               </div>
             </TooltipProvider>
+
+            </div>
+            {/* End contrast wrapper */}
 
             <div className="mt-6">
               <Button
@@ -2953,6 +2991,7 @@ export default function IntakeWizard() {
                     </span>
                   </div>
                   <Slider
+                    variant="highContrast"
                     value={[numSdoh]}
                     onValueChange={([value]) => handleSDOHChange(key, Math.floor(value))}
                     min={1}
@@ -3387,37 +3426,76 @@ export default function IntakeWizard() {
               </div>
             </div>
 
-            {((physicalPreDiagnoses.includes("Other") && !(physicalPreOtherText || "").trim()) ||
-              (physicalPostDiagnoses.includes("Other") && !(physicalPostOtherText || "").trim()) ||
-              (bhPreDiagnoses.includes("Other") && !(bhPreOtherText || "").trim()) ||
-              (bhPostDiagnoses.includes("Other") && !(bhPostOtherText || "").trim())) && (
-              <Alert variant="destructive" className="mt-6">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  Please complete the &apos;Other&apos; condition description before submitting. Go back to <strong>Post-Injury Self-Assessment</strong> or <strong>Pre-Injury Self-Assessment</strong> to describe your condition.
+            {/* Submit warning: incomplete sections — show as soft warning with clickable links, never hard-block */}
+            {showSubmitWarning && incompleteItems.length > 0 && (
+              <Alert className="mt-6 bg-amber-50 border-2 border-amber-300">
+                <AlertCircle className="h-4 w-4 text-amber-700" />
+                <AlertDescription className="text-amber-900">
+                  <p className="font-semibold mb-2">The following sections have missing information:</p>
+                  <ul className="list-disc pl-5 space-y-1 mb-3">
+                    {incompleteItems.map((item, i) => (
+                      <li key={i}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowSubmitWarning(false);
+                            setStep(item.step);
+                          }}
+                          className="underline font-medium hover:text-amber-950 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 rounded"
+                        >
+                          {item.label} — {item.field}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-sm">
+                    You may still submit, but your care plan may be incomplete.
+                  </p>
                 </AlertDescription>
               </Alert>
             )}
 
-            <div className="flex gap-3 mt-6">
-              <Button
-                type="button"
-                onClick={() => {
-                  setSubmitClicks((n) => n + 1);
-                  setSubmitStage("clicked");
-                  submit();
-                }}
-                aria-label="Submit intake"
-                disabled={
-                  submitting ||
-                  (physicalPreDiagnoses.includes("Other") && !(physicalPreOtherText || "").trim()) ||
-                  (physicalPostDiagnoses.includes("Other") && !(physicalPostOtherText || "").trim()) ||
-                  (bhPreDiagnoses.includes("Other") && !(bhPreOtherText || "").trim()) ||
-                  (bhPostDiagnoses.includes("Other") && !(bhPostOtherText || "").trim())
-                }
-              >
-                {submitting ? "Submitting…" : "Submit Intake"}
-              </Button>
+            <div className="flex flex-wrap gap-3 mt-6">
+              {showSubmitWarning && incompleteItems.length > 0 ? (
+                <>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setShowSubmitWarning(false)}
+                  >
+                    Go Back and Complete
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setShowSubmitWarning(false);
+                      setSubmitClicks((n) => n + 1);
+                      setSubmitStage("clicked");
+                      submit(true);
+                    }}
+                    disabled={submitting}
+                  >
+                    {submitting ? "Submitting…" : "Submit Anyway"}
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  type="button"
+                  onClick={() => {
+                    if (incompleteItems.length > 0) {
+                      setShowSubmitWarning(true);
+                    } else {
+                      setSubmitClicks((n) => n + 1);
+                      setSubmitStage("clicked");
+                      submit();
+                    }
+                  }}
+                  aria-label="Submit intake"
+                  disabled={submitting}
+                >
+                  {submitting ? "Submitting…" : "Submit Intake"}
+                </Button>
+              )}
               <Button 
                 variant="outline" 
                 onClick={generatePDFSummary}

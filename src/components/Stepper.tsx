@@ -88,11 +88,11 @@ function StepBox({ idx, label, step, setStep, compact }: StepBoxProps) {
         "flex items-center gap-2 rounded-lg border-2 transition-all text-left",
         "min-w-[120px] px-4 py-2",
         "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
-        compact ? "min-w-0 w-full" : "w-[180px]",
+        compact ? "min-w-0 w-full" : "min-w-[200px] w-[200px]",
         isActive &&
-          "bg-primary text-primary-foreground border-primary shadow-md",
-        isComplete && !isActive && "bg-success/10 text-black border-success",
-        !isActive && !isComplete && "bg-muted/50 text-black border-border hover:border-primary/50"
+          "bg-primary text-white border-primary shadow-md",
+        isComplete && !isActive && "bg-success/10 text-gray-700 border-success",
+        !isActive && !isComplete && "bg-muted/50 text-gray-700 border-border hover:border-primary/50"
       )}
       aria-label={`Step ${idx + 1}: ${label}`}
       aria-current={isActive ? "step" : undefined}
@@ -100,14 +100,17 @@ function StepBox({ idx, label, step, setStep, compact }: StepBoxProps) {
       <span
         className={cn(
           "flex shrink-0 items-center justify-center w-8 h-8 rounded-full border-2 text-base font-semibold",
-          isActive && "bg-primary-foreground text-primary border-primary-foreground",
+          isActive && "bg-white text-primary border-white",
           isComplete && !isActive && "bg-success text-success-foreground border-success",
           !isActive && !isComplete && "bg-muted border-border"
         )}
       >
         {isComplete ? <Check className="w-5 h-5" aria-hidden="true" /> : idx + 1}
       </span>
-      <span className="font-medium text-base line-clamp-2 break-words">
+      <span className={cn(
+        "font-medium text-base line-clamp-2 break-normal",
+        isActive && "text-white"
+      )}>
         {label}
       </span>
     </button>
