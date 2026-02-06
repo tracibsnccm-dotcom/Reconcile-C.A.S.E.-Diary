@@ -732,7 +732,7 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
           </div>
         </div>
 
-        <div className="overflow-x-auto max-w-full min-w-0">
+        <div className="w-full overflow-x-auto min-w-0">
           <table className="w-full min-w-[1200px] table-auto">
             <thead className="bg-muted/50 text-xs sm:text-sm">
               <tr className="border-b">

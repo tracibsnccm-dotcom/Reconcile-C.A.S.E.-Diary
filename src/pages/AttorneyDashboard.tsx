@@ -167,7 +167,7 @@ export default function AttorneyDashboard() {
 
   return (
     <AttorneyLayout>
-      <div className="max-w-4xl mx-auto space-y-6 text-white">
+      <div className="w-full max-w-full space-y-6 text-white">
         {debugInfo && (
           <div className="mb-4 p-3 bg-white/10 rounded-lg text-sm text-white/90 font-mono">
             <div>Querying for attorney_id: {debugInfo.attorneyId ?? "—"}</div>
