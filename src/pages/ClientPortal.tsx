@@ -6,7 +6,6 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   LogOut,
   Activity,
@@ -19,7 +18,6 @@ import {
   Home,
 } from "lucide-react";
 import { CASE_BRAND } from "@/constants/brand";
-import { CANNOT_ACCESS_ACCOUNT } from "@/config/clientMessaging";
 import { ClientWellnessCheckin } from "@/components/ClientWellnessCheckin";
 import { ClientJournal } from "@/components/ClientJournal";
 import { ClientMedicationTracker } from "@/components/ClientMedicationTracker";
@@ -28,42 +26,12 @@ import { ClientAppointments } from "@/components/ClientAppointments";
 import { ClientMessaging } from "@/components/ClientMessaging";
 import { ClientProfileSettings } from "@/components/ClientProfileSettings";
 
-interface CaseData {
-  id: string;
-  case_number: string | null;
-  case_status: string | null;
-  case_type: string | null;
-  date_of_injury: string | null;
-  created_at: string;
-  client_id?: string | null;
-}
-
-async function publicSupabaseGet(table: string, query: string) {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  if (!supabaseUrl || !supabaseKey) {
-    return { data: null, error: new Error("Supabase not configured") };
-  }
-  const response = await fetch(`${supabaseUrl}/rest/v1/${table}?${query}`, {
-    headers: {
-      'apikey': supabaseKey,
-      'Authorization': `Bearer ${supabaseKey}`,
-      'Content-Type': 'application/json',
-    }
-  });
-  if (!response.ok) return { data: null, error: new Error(`${response.status}`) };
-  const data = await response.json();
-  return { data, error: null };
-}
-
 export default function ClientPortal() {
   const navigate = useNavigate();
   const [caseId, setCaseId] = useState<string | null>(null);
   const [caseNumber, setCaseNumber] = useState<string | null>(null);
   const [clientName, setClientName] = useState<string | null>(null);
-  const [caseData, setCaseData] = useState<CaseData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("home");
 
   const WRAPPER_STYLE = {
@@ -84,26 +52,8 @@ export default function ClientPortal() {
     setCaseId(storedCaseId);
     setCaseNumber(storedCaseNumber);
     setClientName(storedClientName);
-    loadCaseData(storedCaseId);
+    setLoading(false);
   }, [navigate]);
-
-  async function loadCaseData(caseIdParam: string) {
-    try {
-      setLoading(true);
-      const { data, error: fetchError } = await publicSupabaseGet(
-        'rc_cases',
-        `select=id,case_number,case_status,case_type,date_of_injury,created_at,client_id&id=eq.${caseIdParam}&is_superseded=eq.false&limit=1`
-      );
-      if (fetchError) throw new Error(fetchError.message);
-      const caseRecord = Array.isArray(data) ? data[0] : data;
-      if (!caseRecord) throw new Error(CANNOT_ACCESS_ACCOUNT);
-      setCaseData(caseRecord as CaseData);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : CANNOT_ACCESS_ACCOUNT);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   function handleLogout() {
     sessionStorage.removeItem("client_case_id");
@@ -119,17 +69,6 @@ export default function ClientPortal() {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4" />
           <p>Loading your portal...</p>
         </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4 font-sans" style={WRAPPER_STYLE}>
-        <Alert variant="destructive" className="max-w-md bg-white">
-          <AlertDescription>{error}</AlertDescription>
-          <Button onClick={() => navigate("/client-login")} className="mt-4">Return to Login</Button>
-        </Alert>
       </div>
     );
   }
@@ -196,22 +135,16 @@ export default function ClientPortal() {
               <CardContent className="space-y-3 text-gray-700">
                 <div>
                   <p className="text-gray-500 text-sm">Case Number</p>
-                  <p className="text-orange-600 font-mono font-semibold">{caseData?.case_number || caseNumber || "N/A"}</p>
+                  <p className="text-orange-600 font-mono font-semibold">{caseNumber || "N/A"}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500 text-sm">Client Name</p>
+                  <p>{clientName || "N/A"}</p>
                 </div>
                 <div>
                   <p className="text-gray-500 text-sm">Status</p>
-                  <p className="capitalize">{caseData?.case_status?.replace(/_/g, " ") || "Active"}</p>
+                  <p>Your case has been confirmed. Care plan generation in progress.</p>
                 </div>
-                <div>
-                  <p className="text-gray-500 text-sm">Case Type</p>
-                  <p>{caseData?.case_type || "N/A"}</p>
-                </div>
-                {caseData?.date_of_injury && (
-                  <div>
-                    <p className="text-gray-500 text-sm">Date of Injury</p>
-                    <p>{new Date(caseData.date_of_injury).toLocaleDateString()}</p>
-                  </div>
-                )}
               </CardContent>
             </Card>
             <Card className={CARD_CLASS}>
