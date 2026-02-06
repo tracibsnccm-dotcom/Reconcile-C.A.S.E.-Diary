@@ -40,11 +40,11 @@ export default function AttorneyDashboard() {
         return;
       }
 
-      console.log("ATTORNEY: Loading pending intakes for", attorneyRow.id);
+      const attorneyId = attorneyRow.id;
 
       // 2. Query rc_client_intake_sessions where:
       //    - intake_status in ('submitted', 'submitted_pending_attorney')
-      //    - case's attorney_id matches attorney's rc_users.id
+      //    - case_id is not null
       const { data: sessions, error } = await supabase
         .from("rc_client_intake_sessions")
         .select(`
@@ -79,7 +79,7 @@ export default function AttorneyDashboard() {
         .eq("case_status", "intake_pending");
 
       const attorneyCaseIds = new Set(
-        (cases || []).filter((c) => c.attorney_id === attorneyRow.id).map((c) => c.id)
+        (cases || []).filter((c) => c.attorney_id === attorneyId).map((c) => c.id)
       );
 
       const filtered = sessions
@@ -98,7 +98,6 @@ export default function AttorneyDashboard() {
           };
         });
 
-      console.log("ATTORNEY: Found", filtered.length, "pending intakes");
       setPendingIntakes(filtered);
       setLoading(false);
     })();
@@ -106,9 +105,14 @@ export default function AttorneyDashboard() {
 
   if (role !== "attorney" || !user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0f172a] to-[#1e293b] flex items-center justify-center p-4">
-        <div className="bg-slate-800 border border-slate-700 rounded-xl p-8 text-center max-w-md">
-          <p className="text-slate-300 mb-4">Please log in to access the attorney dashboard.</p>
+      <div
+        className="min-h-screen flex items-center justify-center p-4"
+        style={{
+          background: "linear-gradient(145deg, #3b6a9b 0%, #4a7fb0 40%, #5a90c0 70%, #6aa0cf 100%)",
+        }}
+      >
+        <div className="bg-white rounded-xl p-8 text-center max-w-md shadow-lg border border-slate-200">
+          <p className="text-slate-700 mb-4">Please log in to access the attorney dashboard.</p>
           <button
             onClick={() => navigate("/attorney-login")}
             className="px-6 py-2.5 rounded-lg bg-orange-500 text-white font-medium hover:bg-orange-600"
@@ -137,7 +141,12 @@ export default function AttorneyDashboard() {
   const pendingCount = pendingIntakes.length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0f172a] to-[#1e293b] text-white p-6">
+    <div
+      className="min-h-screen text-white p-6"
+      style={{
+        background: "linear-gradient(145deg, #3b6a9b 0%, #4a7fb0 40%, #5a90c0 70%, #6aa0cf 100%)",
+      }}
+    >
       <div className="max-w-4xl mx-auto">
         {pendingCount > 0 && (
           <button
@@ -151,7 +160,7 @@ export default function AttorneyDashboard() {
         )}
         <div className="flex justify-between items-center mb-8">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-orange-500">Attorney Dashboard</h1>
+            <h1 className="text-2xl font-bold text-white">Attorney Dashboard</h1>
             {pendingCount > 0 && (
               <span
                 className="inline-flex items-center justify-center min-w-[1.5rem] h-6 px-2 rounded-full text-xs font-semibold text-white"
@@ -162,7 +171,7 @@ export default function AttorneyDashboard() {
             )}
           </div>
           <div className="flex items-center gap-3">
-            <p className="text-slate-400 text-sm hidden sm:block">{user.email}</p>
+            <p className="text-white/80 text-sm hidden sm:block">{user.email}</p>
             <button
               onClick={async () => {
                 await signOut();
@@ -177,14 +186,14 @@ export default function AttorneyDashboard() {
 
         <div
           ref={pendingListRef}
-          className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden"
+          className="bg-white rounded-xl overflow-hidden shadow-lg border border-slate-200"
         >
-          <div className="p-6 border-b border-slate-700">
-            <h2 className="text-lg font-semibold text-white">{CASE_BRAND.platformName}</h2>
-            <p className="text-slate-400 text-sm mt-1">Pending client intakes requiring attestation</p>
+          <div className="p-6 border-b border-slate-200">
+            <h2 className="text-lg font-semibold text-slate-900">{CASE_BRAND.platformName}</h2>
+            <p className="text-slate-600 text-sm mt-1">Pending client intakes requiring attestation</p>
             <Link
               to="/attorney/pending-intakes"
-              className="mt-3 inline-block text-orange-500 hover:text-orange-400 text-sm font-medium"
+              className="mt-3 inline-block text-orange-500 hover:text-orange-600 text-sm font-medium"
             >
               View full intake list →
             </Link>
@@ -192,9 +201,9 @@ export default function AttorneyDashboard() {
 
           <div className="p-6">
             {loading ? (
-              <p className="text-slate-400 text-center py-8">Loading pending intakes…</p>
+              <p className="text-slate-600 text-center py-8">Loading pending intakes…</p>
             ) : pendingIntakes.length === 0 ? (
-              <p className="text-slate-400 text-center py-8">
+              <p className="text-slate-600 text-center py-8">
                 No pending intakes. New client submissions will appear here.
               </p>
             ) : (
@@ -202,12 +211,12 @@ export default function AttorneyDashboard() {
                 {pendingIntakes.map((intake) => (
                   <li
                     key={intake.id}
-                    className="flex flex-wrap items-center justify-between gap-4 p-4 bg-slate-700/50 rounded-lg border border-slate-600"
+                    className="flex flex-wrap items-center justify-between gap-4 p-4 bg-slate-50 rounded-lg border border-slate-200 shadow-sm"
                   >
                     <div>
-                      <p className="font-medium text-white">{intake.clientName}</p>
+                      <p className="font-medium text-slate-900">{intake.clientName}</p>
                       <p className="text-orange-500 font-mono text-sm mt-0.5">{intake.intakeId}</p>
-                      <p className="text-slate-400 text-xs mt-1">
+                      <p className="text-slate-600 text-xs mt-1">
                         Submitted {formatDate(intake.submittedAt)}
                       </p>
                     </div>
