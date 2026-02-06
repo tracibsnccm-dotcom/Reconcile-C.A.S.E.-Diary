@@ -1,46 +1,18 @@
-// ClientPortal — sessionStorage client_case_id, client_case_number; get-client-case Edge Function for case data. (Ported from C.A.R.E., C.A.S.E. theme)
+// ClientPortal — uses sessionStorage (client_case_id, client_case_number, client_name) from login. No get-client-case call.
 
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { LogOut, BookOpen, MessageSquare } from "lucide-react";
 import { CASE_BRAND } from "@/constants/brand";
-import { CANNOT_ACCESS_ACCOUNT } from "@/config/clientMessaging";
-
-interface CaseData {
-  id: string;
-  case_number: string | null;
-  case_status: string | null;
-  case_type: string | null;
-  date_of_injury: string | null;
-  created_at: string;
-  client_id?: string | null;
-}
-
-async function fetchClientCase(caseId: string, caseNumber: string): Promise<CaseData> {
-  const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-client-case`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ case_id: caseId, case_number: caseNumber }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err?.error || `Request failed (${res.status})`);
-  }
-  return res.json();
-}
 
 export default function ClientPortal() {
   const navigate = useNavigate();
   const [caseId, setCaseId] = useState<string | null>(null);
   const [caseNumber, setCaseNumber] = useState<string | null>(null);
   const [clientName, setClientName] = useState<string | null>(null);
-  const [caseData, setCaseData] = useState<CaseData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const storedCaseId = sessionStorage.getItem("client_case_id");
@@ -55,20 +27,8 @@ export default function ClientPortal() {
     setCaseId(storedCaseId);
     setCaseNumber(storedCaseNumber);
     setClientName(storedClientName);
-    loadCaseData(storedCaseId, storedCaseNumber);
+    setReady(true);
   }, [navigate]);
-
-  async function loadCaseData(caseId: string, caseNumber: string) {
-    try {
-      setLoading(true);
-      const caseRecord = await fetchClientCase(caseId, caseNumber);
-      setCaseData(caseRecord);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : CANNOT_ACCESS_ACCOUNT);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   function handleLogout() {
     sessionStorage.removeItem("client_case_id");
@@ -82,28 +42,13 @@ export default function ClientPortal() {
   };
   const CARD_CLASS = "bg-white rounded-lg shadow-lg p-6";
 
-  if (loading) {
+  if (!ready) {
     return (
       <div className="min-h-screen flex items-center justify-center text-white font-sans" style={WRAPPER_STYLE}>
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4" />
           <p>Loading your portal...</p>
         </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4 font-sans" style={WRAPPER_STYLE}>
-        <Card className={`${CARD_CLASS} max-w-md w-full`}>
-          <Alert variant="destructive" className="bg-red-50 border-red-200">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-          <Button onClick={() => navigate("/client-login")} className="mt-4 bg-orange-500 hover:bg-orange-600 text-white w-full">
-            Return to Login
-          </Button>
-        </Card>
       </div>
     );
   }
@@ -137,22 +82,16 @@ export default function ClientPortal() {
           <CardContent className="space-y-3 text-gray-900">
             <div>
               <p className="text-gray-600 text-sm">Case Number</p>
-              <p className="text-xl font-bold font-mono text-black">{caseData?.case_number || "N/A"}</p>
+              <p className="text-xl font-bold font-mono text-black">{caseNumber ?? "N/A"}</p>
+            </div>
+            <div>
+              <p className="text-gray-600 text-sm">Client Name</p>
+              <p className="font-medium">{clientName ?? "N/A"}</p>
             </div>
             <div>
               <p className="text-gray-600 text-sm">Status</p>
-              <p className="capitalize font-medium">{caseData?.case_status?.replace(/_/g, " ") || "N/A"}</p>
+              <p className="font-medium">Your case has been confirmed. Care plan generation in progress.</p>
             </div>
-            <div>
-              <p className="text-gray-600 text-sm">Case Type</p>
-              <p className="font-medium">{caseData?.case_type || "N/A"}</p>
-            </div>
-            {caseData?.date_of_injury && (
-              <div>
-                <p className="text-gray-600 text-sm">Date of Injury</p>
-                <p className="font-medium">{new Date(caseData.date_of_injury).toLocaleDateString()}</p>
-              </div>
-            )}
           </CardContent>
         </Card>
 
