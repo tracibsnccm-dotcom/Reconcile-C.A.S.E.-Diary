@@ -733,10 +733,10 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
         </div>
 
         <div className="overflow-x-auto max-w-full min-w-0">
-          <table className="w-full max-w-full table-fixed min-w-0">
+          <table className="w-full min-w-[1200px] table-auto">
             <thead className="bg-muted/50 text-xs sm:text-sm">
               <tr className="border-b">
-                <th className="p-1.5 w-10 min-w-[2.5rem] text-left">
+                <th className="px-3 py-2 w-10 min-w-[2.5rem] text-left">
                   <Checkbox
                     checked={selectedIds.size === filteredRows.length && filteredRows.length > 0}
                     onCheckedChange={(checked) => {
@@ -748,17 +748,17 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
                     }}
                   />
                 </th>
-                <th className="p-1.5 w-24 max-w-[100px] text-left font-semibold">INT Number</th>
-                <th className="p-1.5 w-28 max-w-[120px] text-left font-semibold">Case Number</th>
-                <th className="p-1.5 min-w-0 text-left font-semibold">Client Name</th>
-                <th className="p-1.5 w-24 max-w-[100px] text-left font-semibold">Date of Injury</th>
-                <th className="p-1.5 w-20 max-w-[80px] text-left font-semibold">Case Type</th>
-                <th className="p-1.5 w-24 max-w-[100px] text-left font-semibold">Status</th>
-                <th className="p-1.5 w-32 max-w-[128px] text-left font-semibold">Stage</th>
-                <th className="p-1.5 w-28 max-w-[120px] text-left font-semibold hidden md:table-cell">Last Activity</th>
-                <th className="p-1.5 w-24 max-w-[100px] text-left font-semibold hidden md:table-cell">Time Remaining</th>
-                <th className="p-1.5 w-16 max-w-[64px] text-left font-semibold">Risk</th>
-                <th className="p-1.5 w-32 max-w-[128px] text-left font-semibold">Actions</th>
+                <th className="px-3 py-2 min-w-[100px] text-left font-semibold whitespace-nowrap">INT Number</th>
+                <th className="px-3 py-2 min-w-[100px] text-left font-semibold whitespace-nowrap">Case Number</th>
+                <th className="px-3 py-2 min-w-[120px] text-left font-semibold whitespace-nowrap">Client Name</th>
+                <th className="px-3 py-2 min-w-[100px] text-left font-semibold whitespace-nowrap">Date of Injury</th>
+                <th className="px-3 py-2 min-w-[80px] text-left font-semibold whitespace-nowrap">Case Type</th>
+                <th className="px-3 py-2 min-w-[90px] text-left font-semibold whitespace-nowrap">Status</th>
+                <th className="px-3 py-2 min-w-[150px] text-left font-semibold whitespace-nowrap">Stage</th>
+                <th className="px-3 py-2 min-w-[120px] text-left font-semibold whitespace-nowrap hidden md:table-cell">Last Activity</th>
+                <th className="px-3 py-2 min-w-[90px] text-left font-semibold whitespace-nowrap hidden md:table-cell">Time Remaining</th>
+                <th className="px-3 py-2 min-w-[64px] text-left font-semibold whitespace-nowrap">Risk</th>
+                <th className="px-3 py-2 min-w-[128px] text-left font-semibold whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody className="text-xs sm:text-sm">
@@ -794,7 +794,7 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
 
                 return (
                   <tr key={row.case_id} className="border-b hover:bg-muted/30">
-                    <td className="p-1.5 w-10 min-w-[2.5rem]">
+                    <td className="px-3 py-2 w-10 min-w-[2.5rem]">
                       <Checkbox
                         checked={isSelected}
                         onCheckedChange={(checked) => {
@@ -808,8 +808,8 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
                         }}
                       />
                     </td>
-                    <td className="p-1.5 w-24 max-w-[100px] overflow-hidden">
-                      <div className="font-mono font-bold text-primary truncate max-w-[100px]" title={row.int_number || undefined}>
+                    <td className="px-3 py-2 min-w-[100px]">
+                      <div className="font-mono font-bold text-primary" title={row.int_number || undefined}>
                         {row.int_number || '—'}
                       </div>
                       <Button
@@ -820,44 +820,44 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
                         {row.case_id.slice(0, 8)}...
                       </Button>
                     </td>
-                    <td className="p-1.5 w-28 max-w-[120px] overflow-hidden">
+                    <td className="px-3 py-2 min-w-[100px]">
                       {!!row.attorney_attested_at ? (
-                        <span className="font-mono truncate max-w-[100px] block" title={row.case_number || undefined}>{row.case_number || '—'}</span>
+                        <span className="font-mono" title={row.case_number || undefined}>{row.case_number || '—'}</span>
                       ) : (
                         <Badge variant="secondary" className="text-xs">Awaiting</Badge>
                       )}
                     </td>
-                    <td className="p-1.5 min-w-0 overflow-hidden">
-                      <div className="font-medium truncate max-w-[120px] sm:max-w-[180px]" title={row.client_name || row.client}>{row.client_name || row.client}</div>
+                    <td className="px-3 py-2 min-w-[120px]">
+                      <div className="font-medium min-w-[120px] max-w-[200px] truncate" title={row.client_name || row.client}>{row.client_name || row.client}</div>
                     </td>
-                    <td className="p-1.5 w-24 max-w-[100px] text-muted-foreground overflow-hidden">
-                      <span className="truncate max-w-[100px] block">{row.date_of_injury 
+                    <td className="px-3 py-2 min-w-[100px] text-muted-foreground">
+                      {row.date_of_injury
                         ? new Date(row.date_of_injury).toLocaleDateString()
-                        : 'N/A'}</span>
+                        : 'N/A'}
                     </td>
-                    <td className="p-1.5 w-20 max-w-[80px] text-muted-foreground overflow-hidden">
-                      <span className="truncate max-w-[80px] block">{row.case_type || 'N/A'}</span>
+                    <td className="px-3 py-2 min-w-[80px] text-muted-foreground">
+                      {row.case_type || 'N/A'}
                     </td>
-                    <td className="p-1.5 w-24 max-w-[100px]">
+                    <td className="px-3 py-2 min-w-[90px]">
                       <Badge variant={statusVariant} className="text-xs whitespace-nowrap">{statusLabel}</Badge>
                     </td>
-                    <td className="p-1.5 w-32 max-w-[128px] overflow-hidden">
-                      <Badge variant="outline" className="text-xs truncate max-w-[100px] inline-block" title={row.stage}>{row.stage}</Badge>
+                    <td className="px-3 py-2 min-w-[150px]">
+                      <Badge variant="outline" className="text-xs max-w-full truncate inline-block" title={row.stage}>{row.stage}</Badge>
                     </td>
-                    <td className={`p-1.5 w-28 max-w-[120px] text-muted-foreground hidden md:table-cell overflow-hidden`}>
-                      <span className="truncate max-w-[100px] block">{new Date(row.last_activity_iso).toLocaleString()}</span>
+                    <td className={`px-3 py-2 min-w-[120px] text-muted-foreground hidden md:table-cell`}>
+                      <span title={new Date(row.last_activity_iso).toLocaleString()}>{new Date(row.last_activity_iso).toLocaleString()}</span>
                     </td>
-                    <td className={`p-1.5 w-24 max-w-[100px] font-bold hidden md:table-cell ${ttl.className}`}>
+                    <td className={`px-3 py-2 min-w-[90px] font-bold hidden md:table-cell ${ttl.className}`}>
                       {shouldShowCountdown ? (
                         ttl.label
                       ) : (
                         <Badge variant={statusVariant} className="text-xs">{statusLabel}</Badge>
                       )}
                     </td>
-                    <td className="p-1.5 w-16 max-w-[64px]">
+                    <td className="px-3 py-2 min-w-[64px]">
                       {shouldShowCountdown && <Badge variant={risk.variant} className="text-xs">{risk.level}</Badge>}
                     </td>
-                    <td className="p-1.5 w-32 max-w-[128px] overflow-hidden">
+                    <td className="px-3 py-2 min-w-[128px]">
                       <div className="flex flex-wrap gap-1">
                         <Button
                           size="sm"
