@@ -34,6 +34,7 @@ export default function ResumeIntake() {
   const [error, setError] = useState<string | null>(null);
   const [canonicalState, setCanonicalState] = useState<ClientIntakeState | null>(null);
   const [resolvedIntakeId, setResolvedIntakeId] = useState("");
+  const [statusAttorneyName, setStatusAttorneyName] = useState("");
   const attemptsRef = useRef(0);
 
   // Token-based resume: attempt to load session from ?token=xxx on mount
@@ -64,6 +65,7 @@ export default function ResumeIntake() {
 
         if (session.intakeStatus === "converted") {
           setResolvedIntakeId(session.intakeId);
+          setStatusAttorneyName((session.formData && session.formData.attorneyName) || sessionStorage.getItem("rcms_attorney_name") || "");
           setCanonicalState("LOCKED_UNDER_REVIEW");
           setLoading(false);
           return;
@@ -71,6 +73,7 @@ export default function ResumeIntake() {
 
         if (session.intakeStatus === "submitted") {
           setResolvedIntakeId(session.intakeId);
+          setStatusAttorneyName((session.formData && session.formData.attorneyName) || sessionStorage.getItem("rcms_attorney_name") || "");
           setCanonicalState("SUBMITTED_PENDING_REVIEW");
           setLoading(false);
           return;
@@ -192,12 +195,14 @@ export default function ResumeIntake() {
 
       if (session.intakeStatus === "converted") {
         sessionStorage.setItem("rcms_intake_status", "converted");
+        setStatusAttorneyName((session.formData && session.formData.attorneyName) || sessionStorage.getItem("rcms_attorney_name") || "");
         setCanonicalState("LOCKED_UNDER_REVIEW");
         setLoading(false);
         return;
       }
       if (session.intakeStatus === "submitted") {
         sessionStorage.setItem("rcms_intake_status", "submitted_pending_attorney");
+        setStatusAttorneyName((session.formData && session.formData.attorneyName) || sessionStorage.getItem("rcms_attorney_name") || "");
         setCanonicalState("SUBMITTED_PENDING_REVIEW");
         setLoading(false);
         return;
@@ -242,19 +247,34 @@ export default function ResumeIntake() {
 
   const resetToForm = () => {
     setCanonicalState(null);
+    setStatusAttorneyName("");
     setError(null);
   };
 
   // Canonical state screens: SUBMITTED_PENDING_REVIEW, LOCKED_UNDER_REVIEW, EXPIRED_OR_INVALID
   if (canonicalState && ["SUBMITTED_PENDING_REVIEW", "LOCKED_UNDER_REVIEW", "EXPIRED_OR_INVALID"].includes(canonicalState)) {
     const msg = CLIENT_INTAKE_STATE_MESSAGES[canonicalState];
+    const attorneyName = statusAttorneyName.trim() || null;
+    const showAttorneyBlock = (canonicalState === "SUBMITTED_PENDING_REVIEW" || canonicalState === "LOCKED_UNDER_REVIEW") && attorneyName;
     return (
       <div className="min-h-screen bg-gradient-to-br from-secondary via-secondary-light to-primary py-8 px-4 flex flex-col items-center">
         <IntakeCountdownBanner />
         <div className="flex-1 flex items-center justify-center w-full">
           <Card className="p-8 max-w-2xl space-y-4">
+            {showAttorneyBlock && (
+              <div className="text-center mb-4">
+                <p className="text-gray-600">Your Attorney</p>
+                <p className="text-xl font-semibold text-black">{attorneyName}</p>
+              </div>
+            )}
             <h2 className="text-xl font-semibold">{msg.title}</h2>
-            <p className="text-muted-foreground">{msg.body}</p>
+            <p className="text-muted-foreground">
+              {canonicalState === "SUBMITTED_PENDING_REVIEW"
+                ? `Your intake is waiting for ${attorneyName || "your attorney"} to review and confirm your case.`
+                : canonicalState === "LOCKED_UNDER_REVIEW"
+                  ? `Your intake is locked while ${attorneyName || "your attorney"} completes their review.`
+                  : msg.body}
+            </p>
             {resolvedIntakeId && (
               <p className="text-sm text-muted-foreground">
                 <strong>Intake ID (INT#):</strong> {resolvedIntakeId}
