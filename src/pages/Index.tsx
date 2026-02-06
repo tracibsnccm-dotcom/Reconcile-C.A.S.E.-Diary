@@ -6,7 +6,7 @@ export default function Index() {
   return (
     <div style={{
       minHeight: "100vh",
-      background: "linear-gradient(135deg, #bae6fd 0%, #7dd3fc 50%, #60a5fa 100%)",
+      background: "linear-gradient(180deg, #e0f2fe 0%, #bae6fd 25%, #f0f9ff 60%, #fffbeb 100%)",
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
@@ -20,14 +20,14 @@ export default function Index() {
       }}>
         <span style={{
           fontSize: "2rem",
-          color: "white",
-          textShadow: "2px 2px 4px rgba(0,0,0,0.2)",
+          color: "#0c4a6e",
+          textShadow: "0 1px 2px rgba(255,255,255,0.5)",
         }}>Reconcile</span>{" "}
         <span style={{
           color: "#f97316",
           fontSize: "3.5rem",
           fontWeight: "bold",
-          textShadow: "2px 2px 0px white, 4px 4px 8px rgba(0,0,0,0.2)",
+          textShadow: "0 1px 2px rgba(0,0,0,0.1)",
         }}>
           C.A.S.E.
         </span>
@@ -55,7 +55,8 @@ export default function Index() {
         padding: "48px 40px",
         maxWidth: "480px",
         margin: "0 auto 48px auto",
-        boxShadow: "0 25px 80px rgba(0,0,0,0.18), 0 10px 30px rgba(0,0,0,0.12), 0 0 0 1px rgba(255,255,255,0.5)",
+        boxShadow: "0 25px 80px rgba(0,0,0,0.14), 0 10px 30px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.06)",
+        border: "1px solid rgba(0,0,0,0.05)",
       }}>
         <h2 style={{
           fontSize: "1.5rem",
