@@ -1,7 +1,7 @@
 export const CASE_BRAND = {
   name: "Reconcile C.A.S.E.",
   fullName: "Client's Advocacy & Settlement Evidence",
-  tagline: "Document your recovery journey. Build evidence for your case.",
+  tagline: "Document your recovery journey while building evidence for your case.",
   company: "Reconcile Care Management Services",
   copyright: "© 2024-2026 Nurses as Entrepreneurs / Traci B. SNCCM",
   colors: {
