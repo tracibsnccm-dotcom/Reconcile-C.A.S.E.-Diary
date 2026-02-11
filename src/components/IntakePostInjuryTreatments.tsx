@@ -43,7 +43,7 @@ export function IntakePostInjuryTreatments({
           <Info className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
           <div>
             <h4 className="font-semibold text-sm mb-1">Post-Injury Treatment & Services</h4>
-            <p className="text-sm text-black">
+            <p className="text-sm text-muted-foreground">
               List treatments or services you've started receiving after the incident.
             </p>
           </div>
@@ -103,7 +103,7 @@ export function IntakePostInjuryTreatments({
           ))}
 
           {treatments.length === 0 && (
-            <p className="text-sm text-black text-center py-4">
+            <p className="text-sm text-muted-foreground text-center py-4">
               No post-injury treatments or services added yet.
             </p>
           )}

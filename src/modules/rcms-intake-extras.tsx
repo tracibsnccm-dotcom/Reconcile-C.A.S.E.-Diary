@@ -31,7 +31,7 @@
 
 // -------------------------------- Types (align with your app) --------------------------------
 import * as React from "react";
-import { scheduleReminders, sendNudge, notifyExpired } from "@/lib/supabaseOperations";
+import { scheduleReminders, sendNudge, notifyExpired } from "../lib/supabaseOperations";
 
 export type IntakeRequired = { incident: boolean; injuries: boolean; consent: boolean; };
 export type IntakeOptional = { fourPs: boolean; sdoh: boolean; };

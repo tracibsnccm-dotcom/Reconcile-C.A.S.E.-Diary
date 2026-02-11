@@ -67,7 +67,7 @@ export function IntakeBehavioralHealthMedications({
             <Info className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
             <div>
               <h4 className="font-semibold text-sm mb-1">Behavioral Health Medications</h4>
-              <p className="text-sm text-black">
+              <p className="text-sm text-muted-foreground">
                 List any medications for mental health conditions, both before and after the incident.
               </p>
             </div>
@@ -75,12 +75,12 @@ export function IntakeBehavioralHealthMedications({
         )}
 
         <div className="space-y-8">
-          {/* Pre-Injury Section */}
+          {/* Pre-Accident Section */}
           {!showOnlyPost && (
             <div>
               {!showOnlyPre && (
-                <h4 className="font-semibold text-base mb-4 text-black border-b pb-2">
-                  Pre-Injury Mental Health Medications
+                <h4 className="font-semibold text-base mb-4 text-foreground border-b pb-2">
+                  Pre-Accident Mental Health Medications
                 </h4>
               )}
             <div className="space-y-4">
@@ -137,8 +137,8 @@ export function IntakeBehavioralHealthMedications({
               ))}
 
               {preMedications.length === 0 && (
-                <p className="text-sm text-black text-center py-4">
-                  No pre-injury mental health medications added yet.
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No pre-accident mental health medications added yet.
                 </p>
               )}
 
@@ -149,18 +149,18 @@ export function IntakeBehavioralHealthMedications({
                 className="w-full"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Add Pre-Injury Mental Health Medication
+                Add Pre-Accident Mental Health Medication
               </Button>
             </div>
           </div>
           )}
 
-          {/* Post-Injury Section */}
+          {/* Post-Accident Section */}
           {!showOnlyPre && (
             <div>
               {!showOnlyPost && (
-                <h4 className="font-semibold text-base mb-4 text-black border-b pb-2">
-                  Post-Injury Mental Health Medications
+                <h4 className="font-semibold text-base mb-4 text-foreground border-b pb-2">
+                  Post-Accident Mental Health Medications
                 </h4>
               )}
             <div className="space-y-4">
@@ -217,7 +217,7 @@ export function IntakeBehavioralHealthMedications({
               ))}
 
               {postMedications.length === 0 && (
-                <p className="text-sm text-black text-center py-4">
+                <p className="text-sm text-muted-foreground text-center py-4">
                   No post-accident mental health medications added yet.
                 </p>
               )}
@@ -229,7 +229,7 @@ export function IntakeBehavioralHealthMedications({
                 className="w-full"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Add Post-Injury Mental Health Medication
+                Add Post-Accident Mental Health Medication
               </Button>
             </div>
           </div>

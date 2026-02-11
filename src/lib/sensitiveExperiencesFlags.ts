@@ -160,7 +160,7 @@ export function analyzeSensitiveExperiences(data: SensitiveExperiencesData): Sen
 export function getClientFacingMessage(flags: SensitiveFlag[]): string {
   if (flags.length === 0) return '';
   
-  return "Thank you for sharing this information. Your care plan will incorporate this to ensure you have the right support.";
+  return "Thank you for sharing this information. Your RN Care Manager will review and follow up to ensure you have the right support.";
 }
 
 export function getAttorneyVisibleNote(flags: SensitiveFlag[]): string {

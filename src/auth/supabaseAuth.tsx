@@ -1,144 +1,263 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import type { User, Session } from "@supabase/supabase-js";
+// src/auth/supabaseAuth.tsx
 
-type UserRole = "attorney" | "client";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import {
+  type Session,
+  type User,
+} from "@supabase/supabase-js";
+import { supabase, isSupabaseConfigured } from "@/integrations/supabase/client";
 
-interface ClientSession {
-  caseId: string;
-  caseNumber: string;
-  clientId: string;
-  clientName: string;
+// Redact patterns that might contain secrets. Do NOT display env vars, keys, tokens.
+function sanitizeForDisplay(s: string): string {
+  if (!s || typeof s !== 'string') return s;
+  return s
+    .replace(/(?:process\.env|import\.meta\.env)\.\w+/gi, '[REDACTED]')
+    .replace(/(?:api[_-]?key|apikey|secret|password|token|credential|bearer)\s*[=:]\s*['"]?[^\s'"]{8,}['"]?/gi, '[REDACTED]')
+    .replace(/[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, '[REDACTED]');
 }
 
-interface AuthContextType {
+// Map rc_users role values (lowercase) to app role names. DB canonical: 'attorney', 'super_user', 'super_admin', etc.
+function mapRcUserRoleToAppRole(rcRole: string): string {
+  const roleMap: Record<string, string> = {
+    'attorney': 'ATTORNEY',
+    'super_user': 'SUPER_USER',
+    'super_admin': 'SUPER_ADMIN',
+    'rn_cm': 'RN_CM',
+    'rn': 'RN_CM',
+    'rn_supervisor': 'RN_CM_SUPERVISOR',
+    'provider': 'PROVIDER',
+    'client': 'CLIENT',
+    'supervisor': 'RN_CM_SUPERVISOR',
+  };
+  return roleMap[rcRole.toLowerCase()] || rcRole.toUpperCase();
+}
+
+export type RolesLoadDiagnostics = {
+  hasSession: boolean;
+  auth_user_id: string | null;
+  roleQueryTable: string;
+  roleQueryResultCount?: number;
+  role?: string;
+  error?: string;
+  /** DEV: was session present on first getSession(). */
+  hadSessionInitially?: boolean;
+  /** DEV: ms to fetch role from rc_users. */
+  roleFetchDurationMs?: number;
+};
+
+type AuthContextValue = {
   user: User | null;
   session: Session | null;
-  role: UserRole | null;
-  clientSession: ClientSession | null;
-  isLoading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  loading: boolean; // Backwards compatibility: authLoading || rolesLoading
+  authLoading: boolean; // True while checking if user is logged in
+  rolesLoading: boolean; // True while fetching roles
+  /** Set when role load fails (timeout, Supabase/RLS/network). Never a bypass; deny access when set. */
+  rolesLoadError: string | null;
+  /** Error code when rolesLoadError is set (e.g. PGRST116, TIMEOUT). */
+  rolesLoadErrorCode: string | null;
+  /** DEV/debug only: diagnostics when rolesLoadError is set. */
+  rolesLoadDiagnostics: RolesLoadDiagnostics | null;
+  roles: string[];
+  primaryRole: string | null;
+  signInWithEmail: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
-  clientLogin: (caseNumber: string, pin: string) => Promise<{ error: any }>;
-  clientLogout: () => void;
-}
+};
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [role, setRole] = useState<UserRole | null>(null);
-  const [clientSession, setClientSession] = useState<ClientSession | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
+  const [roles, setRoles] = useState<string[]>([]);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [rolesLoading, setRolesLoading] = useState(true);
+  const [rolesLoadError, setRolesLoadError] = useState<string | null>(null);
+  const [rolesLoadErrorCode, setRolesLoadErrorCode] = useState<string | null>(null);
+  const [rolesLoadDiagnostics, setRolesLoadDiagnostics] = useState<RolesLoadDiagnostics | null>(null);
 
+  const lastLoadedUserIdRef = useRef<string | null>(null);
+  const hadSessionInitiallyRef = useRef<boolean | null>(null);
+  const userRef = useRef<User | null>(null);
+  const sessionRef = useRef<Session | null>(null);
+  userRef.current = user;
+  sessionRef.current = session;
+
+  // Init: getSession() first, then onAuthStateChange to keep session in sync. No role fetch here.
   useEffect(() => {
-    if (!supabase) {
-      setIsLoading(false);
+    const init = async () => {
+      try {
+        if (!supabase || !isSupabaseConfigured()) {
+          setSession(null);
+          setUser(null);
+          hadSessionInitiallyRef.current = false;
+          setAuthLoading(false);
+          return;
+        }
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          if (import.meta.env.DEV) console.warn('Auth getSession error:', error.message);
+        }
+        hadSessionInitiallyRef.current = !!session?.user;
+        setSession(session ?? null);
+        setUser(session?.user ?? null);
+      } catch (e) {
+        if (import.meta.env.DEV) console.warn('Auth getSession exception:', e);
+      } finally {
+        setAuthLoading(false);
+      }
+    };
+
+    void init();
+
+    if (!supabase || !isSupabaseConfigured()) {
       return;
     }
 
-    // Check for existing attorney session
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s);
-      setUser(s?.user ?? null);
-      if (s?.user) setRole("attorney");
-      setIsLoading(false);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session ?? null);
+      setUser(session?.user ?? null);
     });
 
-    // Check for client session in sessionStorage
-    const stored = sessionStorage.getItem("case_client_session");
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        setClientSession(parsed);
-        setRole("client");
-      } catch {}
-    }
-
-    // Listen for auth changes (attorney sessions)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
-      setSession(s);
-      setUser(s?.user ?? null);
-      if (s?.user) setRole("attorney");
-      else if (!clientSession) setRole(null);
-    });
-
-    return () => subscription.unsubscribe();
+    return () => { subscription.unsubscribe(); };
   }, []);
 
-  const signIn = async (email: string, password: string) => {
-    if (!supabase) return { error: { message: "Supabase not configured" } };
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error };
+  // Role fetch when user changes. Deterministic: getSession supplies user; we wait 500ms only if no user, then fetch rc_users once. Always resolve (loaded/denied/error). No hanging.
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!user?.id) {
+      setRolesLoadError(null);
+      setRolesLoadErrorCode(null);
+      setRolesLoadDiagnostics(null);
+      setRolesLoading(true);
+      const t = window.setTimeout(() => {
+        if (cancelled) return;
+        if (!userRef.current?.id) {
+          const msg = 'Not authenticated';
+          setRolesLoadError(sanitizeForDisplay(msg));
+          setRolesLoadErrorCode('SESSION_UNAVAILABLE');
+          setRolesLoadDiagnostics({
+            hasSession: false,
+            auth_user_id: null,
+            roleQueryTable: 'rc_users',
+            error: msg,
+            hadSessionInitially: hadSessionInitiallyRef.current ?? false,
+            roleFetchDurationMs: 0,
+          });
+          setRoles([]);
+          lastLoadedUserIdRef.current = null;
+          setRolesLoading(false);
+          if (import.meta.env.DEV) console.log('Role load:', { hadSessionInitially: false, userId: null, roleFetchDurationMs: 0 });
+        }
+      }, 500);
+      return () => { clearTimeout(t); cancelled = true; };
+    }
+
+    // User exists: fetch from rc_users once. 8s timeout on DB only. setRolesLoading(false) in finally.
+    setRolesLoadError(null);
+    setRolesLoadErrorCode(null);
+    setRolesLoadDiagnostics(null);
+    setRolesLoading(true);
+
+    const doFetchRoles = async () => {
+      const start = Date.now();
+      const isCancelled = () => cancelled;
+      try {
+        const DB_TIMEOUT_MS = 8000;
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(Object.assign(new Error('Role fetch timed out'), { code: 'TIMEOUT' })), DB_TIMEOUT_MS)
+        );
+        const rcPromise = supabase
+          .from('rc_users')
+          .select('role')
+          .eq('auth_user_id', user.id)
+          .maybeSingle();
+
+        const res = await Promise.race([rcPromise, timeoutPromise]) as { data: { role?: string } | null; error: { message?: string; code?: string } | null };
+        if (isCancelled()) return;
+        if (res.error) throw Object.assign(new Error(res.error?.message ?? 'rc_users error'), { code: res.error?.code ?? 'UNKNOWN' });
+
+        const raw = (res.data?.role ?? '').toLowerCase().trim();
+        const mapped = raw ? mapRcUserRoleToAppRole(raw) : null;
+        if (mapped) {
+          setRoles([mapped]);
+          lastLoadedUserIdRef.current = user.id;
+        } else {
+          setRoles([]);
+          lastLoadedUserIdRef.current = null;
+        }
+        setRolesLoadError(null);
+        setRolesLoadErrorCode(null);
+        setRolesLoadDiagnostics(null);
+      } catch (e) {
+        if (isCancelled()) return;
+        setRoles([]);
+        lastLoadedUserIdRef.current = null;
+        const message = e instanceof Error ? e.message : String(e);
+        const code = (e && typeof e === 'object' && 'code' in e) ? String((e as { code: unknown }).code) : 'UNKNOWN';
+        setRolesLoadError(sanitizeForDisplay(message));
+        setRolesLoadErrorCode(code);
+        setRolesLoadDiagnostics({
+          hasSession: !!sessionRef.current,
+          auth_user_id: user.id,
+          roleQueryTable: 'rc_users',
+          error: message,
+          hadSessionInitially: hadSessionInitiallyRef.current ?? true,
+          roleFetchDurationMs: Date.now() - start,
+        });
+      } finally {
+        const roleFetchDurationMs = Date.now() - start;
+        if (!isCancelled()) setRolesLoading(false);
+        if (import.meta.env.DEV) console.log('Role load:', { hadSessionInitially: hadSessionInitiallyRef.current ?? !!user?.id, userId: user.id, roleFetchDurationMs });
+      }
+    };
+
+    void doFetchRoles();
+    return () => { cancelled = true; };
+  }, [user?.id]);
+
+  const signInWithEmail = async (email: string) => {
+    if (!supabase) return;
+    await supabase.auth.signInWithOtp({ email });
   };
 
   const signOut = async () => {
-    if (!supabase) return;
-    await supabase.auth.signOut();
-    setUser(null);
-    setSession(null);
-    setRole(null);
+    if (supabase) await supabase.auth.signOut();
   };
 
-  const clientLogin = async (caseNumber: string, pin: string) => {
-    if (!supabase) return { error: { message: "Supabase not configured" } };
+  const primaryRole = roles.length > 0 ? roles[0] : null;
 
-    // Look up case by case_number and client_pin
-    const { data, error } = await supabase
-      .from("rc_cases")
-      .select("id, case_number, client_id, client_pin, case_status, is_superseded")
-      .eq("case_number", caseNumber.toUpperCase().trim())
-      .eq("client_pin", pin.trim())
-      .eq("is_superseded", false)
-      .maybeSingle();
+  const loading = authLoading || rolesLoading;
 
-    if (error) return { error: { message: "Login failed. Please try again." } };
-    if (!data) return { error: { message: "Invalid case number or PIN." } };
-    if (data.case_status === "closed") return { error: { message: "This case has been closed." } };
-
-    // Get client name
-    let clientName = "Client";
-    if (data.client_id) {
-      const { data: client } = await supabase
-        .from("rc_clients")
-        .select("first_name, last_name")
-        .eq("id", data.client_id)
-        .maybeSingle();
-      if (client) clientName = [client.first_name, client.last_name].filter(Boolean).join(" ") || "Client";
-    }
-
-    const cs: ClientSession = {
-      caseId: data.id,
-      caseNumber: data.case_number,
-      clientId: data.client_id || "",
-      clientName,
-    };
-
-    sessionStorage.setItem("case_client_session", JSON.stringify(cs));
-    setClientSession(cs);
-    setRole("client");
-    return { error: null };
+  const value: AuthContextValue = {
+    user,
+    session,
+    loading,
+    authLoading,
+    rolesLoading,
+    rolesLoadError,
+    rolesLoadErrorCode,
+    rolesLoadDiagnostics,
+    roles,
+    primaryRole,
+    signInWithEmail,
+    signOut,
   };
 
-  const clientLogout = () => {
-    sessionStorage.removeItem("case_client_session");
-    setClientSession(null);
-    if (!user) setRole(null);
-  };
-
-  return (
-    <AuthContext.Provider value={{
-      user, session, role, clientSession, isLoading,
-      signIn, signOut, clientLogin, clientLogout,
-    }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth must be used within AuthProvider");
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return ctx;
 }

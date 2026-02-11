@@ -48,7 +48,7 @@ export function IntakeMedicationAllergies({
           <AlertTriangle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
           <div>
             <h4 className="font-semibold text-sm mb-1">Medication Allergies & Sensitivities</h4>
-            <p className="text-sm text-black">
+            <p className="text-sm text-muted-foreground">
               List any medications you are allergic to or have had negative reactions with. This is critical for your safety.
             </p>
           </div>
@@ -107,7 +107,7 @@ export function IntakeMedicationAllergies({
           ))}
 
           {allergies.length === 0 && (
-            <p className="text-sm text-black text-center py-4">
+            <p className="text-sm text-muted-foreground text-center py-4">
               No known medication allergies or sensitivities.
             </p>
           )}

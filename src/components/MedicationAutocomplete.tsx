@@ -141,7 +141,7 @@ export function MedicationAutocomplete({ medications, onMedicationsChange }: Med
                       onClick={() => handleSelectSuggestion(suggestion)}
                     >
                       <div className="font-medium">{suggestion.name}</div>
-                      <div className="text-sm text-black">
+                      <div className="text-sm text-muted-foreground">
                         {suggestion.form} {suggestion.strength && `• ${suggestion.strength}`}
                       </div>
                     </button>
@@ -222,7 +222,7 @@ export function MedicationAutocomplete({ medications, onMedicationsChange }: Med
                 >
                   <div className="flex-1">
                     <div className="font-medium">{med.name}</div>
-                    <div className="text-sm text-black">
+                    <div className="text-sm text-muted-foreground">
                       {med.form && `${med.form} • `}
                       {med.frequency && `${med.frequency} • `}
                       {med.startDate && `Started ${med.startDate}`}

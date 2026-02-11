@@ -11,6 +11,7 @@ import { HelpCircle, Clock, ArrowLeft, Eye, AlertTriangle, Shield } from 'lucide
 import { toast } from 'sonner';
 import { Link, useNavigate } from 'react-router-dom';
 import { AttorneyAttestationCard } from '@/components/AttorneyAttestationCard';
+import { AttorneyRnAssignmentReadOnly } from '@/components/attorney/AttorneyRnAssignmentReadOnly';
 import { ConsentDocumentViewer } from '@/components/ConsentDocumentViewer';
 import { formatHMS, COMPLIANCE_COPY } from '@/constants/compliance';
 import { getAttorneyCaseStageLabel, ATTORNEY_STAGE_LABELS } from '@/lib/attorneyCaseStageLabels';
@@ -34,8 +35,6 @@ interface IntakeRow {
   expires_iso: string;
   attorney_attested_at: string | null;
   attorney_confirm_deadline_at: string | null;
-  intake_status?: string;
-  case_status?: string;
   assigned_rn_id?: string | null;
   nudges: number;
   my_client: boolean;
@@ -153,22 +152,22 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
       
       if (scope === 'mine' && user && authUserId) {
         try {
+          // Verify user is an attorney, then use auth_user_id directly since cases store auth_user_id as attorney_id
           const rcUsersQuery = `auth_user_id=eq.${authUserId}&role=eq.attorney&select=id`;
           const { data: rcUsers, error: rcUsersError } = await supabaseGet('rc_users', rcUsersQuery);
           if (rcUsersError) throw rcUsersError;
-          const rcUser = Array.isArray(rcUsers) ? rcUsers[0] : rcUsers;
-          attorneyRcUserId = rcUser?.id ?? authUserId;
+          const isAttorney = Array.isArray(rcUsers) ? rcUsers.length > 0 : !!rcUsers;
+          attorneyRcUserId = isAttorney ? authUserId : null;
         } catch (err) {
           console.error('Failed to get attorney rc_user ID:', err);
         }
       }
       
-      // Match AttorneyDashboard: rc_cases.attorney_id can be auth_user_id or rc_users.id
+      // Build query string for Supabase REST API - JOIN with rc_cases and rc_clients
       let queryString = 'select=*,rc_cases(id,attorney_id,case_type,case_number,case_status,date_of_injury,assigned_rn_id,rc_clients(first_name,last_name))&intake_status=in.(submitted_pending_attorney,attorney_confirmed,attorney_declined_not_client)&rc_cases.is_superseded=eq.false';
       
-      if (scope === 'mine' && (attorneyRcUserId || authUserId)) {
-        const attorneyIds = [...new Set([attorneyRcUserId, authUserId].filter(Boolean))];
-        queryString += `&rc_cases.attorney_id=in.(${attorneyIds.join(',')})`;
+      if (scope === 'mine' && attorneyRcUserId) {
+        queryString += `&rc_cases.attorney_id=eq.${attorneyRcUserId}`;
       }
       
       // Use REST helper for RLS-protected queries
@@ -185,11 +184,12 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
         throw new Error('Expected array from Supabase query');
       }
 
-        // Match AttorneyDashboard: filter by rc_users.id OR auth_user_id
-      const filteredIntakes = scope === 'mine' && (attorneyRcUserId || authUserId)
+        // Filter out intakes where rc_cases doesn't match the attorney
+      // Also fetch client data for cases that don't have it in the nested join
+      const filteredIntakes = scope === 'mine' && attorneyRcUserId
         ? intakes.filter((intake: any) => {
             const caseData = Array.isArray(intake.rc_cases) ? intake.rc_cases[0] : intake.rc_cases;
-            return caseData && (caseData.attorney_id === attorneyRcUserId || caseData.attorney_id === authUserId);
+            return caseData && caseData.attorney_id === attorneyRcUserId;
           })
         : intakes;
       
@@ -252,7 +252,7 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
         } catch (_) {}
       }
 
-      // ATTORNEY-5: Exclude cases that have a submitted care plan — they belong in Active Cases
+      // ATTORNEY-5: Exclude cases that have a submitted care plan (RN released) — they belong in Active Cases
       const caseIdsWithSubmittedPlan = new Set<string>();
       if (allCaseIds.length > 0) {
         try {
@@ -268,7 +268,7 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
         } catch (_) {}
       }
 
-      // Transform to IntakeRow format for display (exclude cases with submitted care plan)
+      // Transform to IntakeRow format for display (exclude cases with submitted care plan — ATTORNEY-5)
       const transformedRows: IntakeRow[] = (filteredIntakes || [])
         .filter((intake: any) => !caseIdsWithSubmittedPlan.has(intake.case_id))
         .map((intake: any) => {
@@ -318,16 +318,13 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
           expires_iso: intake.attorney_confirm_deadline_at || '',
           attorney_attested_at: intake.attorney_attested_at,
           attorney_confirm_deadline_at: intake.attorney_confirm_deadline_at,
-          intake_status: intake.intake_status,
-          case_status: caseData?.case_status,
           assigned_rn_id: caseData?.assigned_rn_id ?? null,
           nudges: 0,
           my_client: true,
         };
       });
 
-      const pendingResults = transformedRows.filter(r => r.stage === 'Intake Submitted — Awaiting Attorney Review');
-      console.log("Intake list query - attorney_id:", attorneyRcUserId ?? authUserId, "results:", pendingResults.length);
+      console.log('loadData: Transformed rows:', transformedRows);
 
       setRows(transformedRows);
 
@@ -347,7 +344,7 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
     setLoadingIntake(true);
     try {
       // Load intake with case data and client data for the attestation modal
-      // If intakeId is provided, load by id (ensures we get the SAME record that was clicked)
+      // If intakeId is provided, load by id; otherwise load by case_id
       const queryFilter = intakeId 
         ? `id=eq.${intakeId}` 
         : `case_id=eq.${caseId}&order=created_at.desc&limit=1`;
@@ -359,19 +356,6 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
       }
       
       const updatedIntake = (Array.isArray(intakeData) ? intakeData[0] : intakeData) as PendingIntake | null;
-      const caseData = Array.isArray(updatedIntake?.rc_cases) ? updatedIntake?.rc_cases[0] : updatedIntake?.rc_cases;
-      const clientName = updatedIntake ? getClientDisplayName({
-        case: {
-          client_first_name: caseData?.rc_clients?.first_name,
-          client_last_name: caseData?.rc_clients?.last_name,
-          client_name: caseData?.client_name,
-          client_full_name: caseData?.client_full_name,
-          intake_json: updatedIntake.intake_json,
-        },
-        intake_json: updatedIntake.intake_json,
-      }) : "";
-      const status = updatedIntake?.attorney_attested_at ? "Attorney Confirmed" : updatedIntake?.intake_status ?? "pending";
-      console.log("Attestation loading - intake_id:", updatedIntake?.id, "case_id:", caseId, "client_name:", clientName, "status:", status);
       setSelectedIntake(updatedIntake);
       
       if (updatedIntake?.attorney_attested_at) {
@@ -403,6 +387,22 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
     } catch (error) {
       console.error('Nudge error:', error);
       toast.error('Failed to send nudge');
+    }
+  };
+
+  const handleEscalate = async (caseId: string) => {
+    if (!confirm('Escalate this intake to RN CM now?')) return;
+
+    try {
+      const { error } = await supabase.functions.invoke('attorney-intake-tracker', {
+        body: { action: 'escalate', case_id: caseId }
+      });
+      if (error) throw error;
+      toast.success('Escalated to RN CM');
+      loadData();
+    } catch (error) {
+      console.error('Escalate error:', error);
+      toast.error('Failed to escalate');
     }
   };
 
@@ -520,7 +520,7 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
               <CardTitle className="text-base">What this means</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-muted-foreground">
-              <p>The client has completed their intake. Please review the information and confirm whether the case should proceed. Once reviewed, the AI Care Plan Builder will generate the care plan.</p>
+              <p>The client has completed their intake. Please review the information and confirm whether the case should proceed. Once reviewed, the case can be assigned to an RN for initial care planning.</p>
               <p className="text-xs italic text-muted-foreground/90">
                 Client view: While under review, the client sees their intake as submitted and awaiting attorney review.
               </p>
@@ -617,6 +617,11 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
 
         {isConfirmed && !isExpired && (
           <>
+            {/* RN Assignment — read-only (attorneys do not assign; RN Supervisor does) */}
+            <AttorneyRnAssignmentReadOnly
+              assignedRnId={caseData?.assigned_rn_id ?? null}
+              updatedAt={caseData?.updated_at ?? undefined}
+            />
             {/* Consent Documents */}
             <ConsentDocumentViewer caseId={selectedCaseId!} showPrintButton={true} />
             
@@ -698,7 +703,7 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="mine">My clients</SelectItem>
-                <SelectItem value="all">All (admin)</SelectItem>
+                <SelectItem value="all">All</SelectItem>
               </SelectContent>
             </Select>
             <Select value={filter} onValueChange={(v: any) => setFilter(v)}>
@@ -727,11 +732,11 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
           </div>
         </div>
 
-        <div className="w-full overflow-x-auto min-w-0">
-          <table className="w-full min-w-[1200px] table-auto">
-            <thead className="bg-muted/50 text-xs sm:text-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-muted/50">
               <tr className="border-b">
-                <th className="px-3 py-2 w-10 min-w-[2.5rem] text-left">
+                <th className="p-2 text-left">
                   <Checkbox
                     checked={selectedIds.size === filteredRows.length && filteredRows.length > 0}
                     onCheckedChange={(checked) => {
@@ -743,31 +748,29 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
                     }}
                   />
                 </th>
-                <th className="px-3 py-2 min-w-[100px] text-left font-semibold whitespace-nowrap">INT Number</th>
-                <th className="px-3 py-2 min-w-[100px] text-left font-semibold whitespace-nowrap">Case Number</th>
-                <th className="px-3 py-2 min-w-[120px] text-left font-semibold whitespace-nowrap">Client Name</th>
-                <th className="px-3 py-2 min-w-[100px] text-left font-semibold whitespace-nowrap">Date of Injury</th>
-                <th className="px-3 py-2 min-w-[80px] text-left font-semibold whitespace-nowrap">Case Type</th>
-                <th className="px-3 py-2 min-w-[90px] text-left font-semibold whitespace-nowrap">Status</th>
-                <th className="px-3 py-2 min-w-[150px] text-left font-semibold whitespace-nowrap">Stage</th>
-                <th className="px-3 py-2 min-w-[120px] text-left font-semibold whitespace-nowrap hidden md:table-cell">Last Activity</th>
-                <th className="px-3 py-2 min-w-[90px] text-left font-semibold whitespace-nowrap hidden md:table-cell">Time Remaining</th>
-                <th className="px-3 py-2 min-w-[64px] text-left font-semibold whitespace-nowrap">Risk</th>
-                <th className="px-3 py-2 min-w-[128px] text-left font-semibold whitespace-nowrap">Actions</th>
+                <th className="p-2 text-left font-semibold">INT Number</th>
+                <th className="p-2 text-left font-semibold">Case Number</th>
+                <th className="p-2 text-left font-semibold">Client Name</th>
+                <th className="p-2 text-left font-semibold">Date of Injury</th>
+                <th className="p-2 text-left font-semibold">Case Type</th>
+                <th className="p-2 text-left font-semibold">Status</th>
+                <th className="p-2 text-left font-semibold">Stage</th>
+                <th className="p-2 text-left font-semibold">Last Activity</th>
+                <th className="p-2 text-left font-semibold">Time Remaining</th>
+                <th className="p-2 text-left font-semibold">Risk</th>
+                <th className="p-2 text-left font-semibold">Actions</th>
               </tr>
             </thead>
-            <tbody className="text-xs sm:text-sm">
+            <tbody>
               {filteredRows.map((row) => {
                 const ttl = calculateTTL(row.expires_iso);
                 const risk = getRiskLevel(row.expires_iso);
                 const isSelected = selectedIds.has(row.case_id);
                 
-                // Determine status - hide countdown if deadline is null, attested_at exists, or status is attorney_confirmed
+                // Determine status - hide countdown if deadline is null or attested_at exists
                 const hasDeadline = !!row.attorney_confirm_deadline_at;
-                const isConfirmed = !!row.attorney_attested_at ||
-                  row.intake_status === 'attorney_confirmed' ||
-                  row.case_status === 'attorney_confirmed';
-                const isDeclined = row.stage === ATTORNEY_STAGE_LABELS.DECLINED || row.intake_status === 'attorney_declined_not_client' || (!hasDeadline && !isConfirmed);
+                const isConfirmed = !!row.attorney_attested_at;
+                const isDeclined = row.stage === ATTORNEY_STAGE_LABELS.DECLINED || !hasDeadline && !isConfirmed;
                 const isExpired = !isConfirmed && !isDeclined &&
                   hasDeadline &&
                   new Date(row.attorney_confirm_deadline_at!).getTime() < Date.now();
@@ -776,7 +779,7 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
                 let statusLabel = 'Awaiting Review';
                 let statusVariant: 'default' | 'destructive' | 'secondary' | 'outline' = 'secondary';
                 if (isConfirmed) {
-                  statusLabel = 'Attorney Confirmed';
+                  statusLabel = 'Confirmed';
                   statusVariant = 'default';
                 } else if (isDeclined) {
                   statusLabel = 'Declined';
@@ -791,7 +794,7 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
 
                 return (
                   <tr key={row.case_id} className="border-b hover:bg-muted/30">
-                    <td className="px-3 py-2 w-10 min-w-[2.5rem]">
+                    <td className="p-2">
                       <Checkbox
                         checked={isSelected}
                         onCheckedChange={(checked) => {
@@ -805,74 +808,80 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
                         }}
                       />
                     </td>
-                    <td className="px-3 py-2 min-w-[100px]">
-                      <div className="font-mono font-bold text-primary" title={row.int_number || undefined}>
+                    <td className="p-2">
+                      <div className="font-mono font-bold text-primary">
                         {row.int_number || '—'}
                       </div>
                       <Button
                         variant="link"
                         onClick={() => handleViewIntake(row.case_id, row.intake_id)}
-                        className="p-0 h-auto text-primary hover:underline text-xs mt-0.5"
+                        className="p-0 h-auto text-primary hover:underline text-xs mt-1"
                       >
                         {row.case_id.slice(0, 8)}...
                       </Button>
                     </td>
-                    <td className="px-3 py-2 min-w-[100px]">
-                      {!!row.attorney_attested_at || row.case_number ? (
-                        <span className="font-mono" title={row.case_number || undefined}>{row.case_number || '—'}</span>
+                    <td className="p-2">
+                      {!!row.attorney_attested_at ? (
+                        <span className="font-mono text-sm">{row.case_number || '—'}</span>
                       ) : (
-                        <Badge variant="secondary" className="text-xs">Awaiting</Badge>
+                        <Badge variant="secondary">Awaiting assignment</Badge>
                       )}
                     </td>
-                    <td className="px-3 py-2 min-w-[120px]">
-                      <div className="font-medium min-w-[120px] max-w-[200px] truncate" title={row.client_name || row.client}>{row.client_name || row.client}</div>
+                    <td className="p-2">
+                      <div className="font-medium">{row.client_name || row.client}</div>
                     </td>
-                    <td className="px-3 py-2 min-w-[100px] text-muted-foreground">
-                      {row.date_of_injury
+                    <td className="p-2 text-sm text-muted-foreground">
+                      {row.date_of_injury 
                         ? new Date(row.date_of_injury).toLocaleDateString()
                         : 'N/A'}
                     </td>
-                    <td className="px-3 py-2 min-w-[80px] text-muted-foreground">
+                    <td className="p-2 text-sm text-muted-foreground">
                       {row.case_type || 'N/A'}
                     </td>
-                    <td className="px-3 py-2 min-w-[90px]">
-                      <Badge variant={statusVariant} className="text-xs whitespace-nowrap">{statusLabel}</Badge>
+                    <td className="p-2">
+                      <Badge variant={statusVariant}>{statusLabel}</Badge>
                     </td>
-                    <td className="px-3 py-2 min-w-[150px]">
-                      <Badge variant="outline" className="text-xs max-w-full truncate inline-block" title={row.stage}>{row.stage}</Badge>
+                    <td className="p-2">
+                      <Badge variant="outline">{row.stage}</Badge>
                     </td>
-                    <td className={`px-3 py-2 min-w-[120px] text-muted-foreground hidden md:table-cell`}>
-                      <span title={new Date(row.last_activity_iso).toLocaleString()}>{new Date(row.last_activity_iso).toLocaleString()}</span>
+                    <td className="p-2 text-sm text-muted-foreground">
+                      {new Date(row.last_activity_iso).toLocaleString()}
                     </td>
-                    <td className={`px-3 py-2 min-w-[90px] font-bold hidden md:table-cell ${ttl.className}`}>
+                    <td className={`p-2 font-bold ${ttl.className}`}>
                       {shouldShowCountdown ? (
                         ttl.label
                       ) : (
-                        <Badge variant={statusVariant} className="text-xs">{statusLabel}</Badge>
+                        <Badge variant={statusVariant}>{statusLabel}</Badge>
                       )}
                     </td>
-                    <td className="px-3 py-2 min-w-[64px]">
-                      {shouldShowCountdown && <Badge variant={risk.variant} className="text-xs">{risk.level}</Badge>}
+                    <td className="p-2">
+                      {shouldShowCountdown && <Badge variant={risk.variant}>{risk.level}</Badge>}
                     </td>
-                    <td className="px-3 py-2 min-w-[128px]">
-                      <div className="flex flex-wrap gap-1">
+                    <td className="p-2">
+                      <div className="flex gap-2">
                         <Button
                           size="sm"
                           variant="outline"
-                          className="text-xs h-7 px-1.5"
                           onClick={() =>
                             isConfirmed && row.intake_id
                               ? navigate(`/attorney/intakes/${row.intake_id}`)
                               : handleViewIntake(row.case_id, row.intake_id)
                           }
                         >
-                          <Eye className="w-3 h-3 mr-0.5 shrink-0" />
-                          <span className="truncate">{isConfirmed ? 'View' : 'Review'}</span>
+                          <Eye className="w-4 h-4 mr-1" />
+                          {isConfirmed ? 'View' : 'Review Intake & Proceed'}
                         </Button>
                         {!isConfirmed && (
                           <>
-                            <Button size="sm" className="text-xs h-7 px-1.5" onClick={() => handleNudge(row.case_id)}>
+                            <Button size="sm" onClick={() => handleNudge(row.case_id)}>
                               Nudge
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEscalate(row.case_id)}
+                            >
+                              Escalate
                             </Button>
                           </>
                         )}
@@ -891,7 +900,7 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
                           <CardTitle className="text-base">What this means</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3 text-sm text-muted-foreground">
-                          <p>The client has completed their intake. Please review the information and confirm whether the case should proceed. Once reviewed, the AI Care Plan Builder will generate the care plan.</p>
+                          <p>The client has completed their intake. Please review the information and confirm whether the case should proceed. Once reviewed, the case can be assigned to an RN for initial care planning.</p>
                           <p className="text-xs italic text-muted-foreground/90">
                             Client view: While under review, the client sees their intake as submitted and awaiting attorney review.
                           </p>
@@ -907,7 +916,9 @@ export const AttorneyIntakeTracker = ({ showHeader = true }: { showHeader?: bool
 
         <div className="p-3 border-t bg-muted/20">
           <p className="text-xs text-muted-foreground">
-            Intakes auto-delete after 7 days. Auto-nudge sends a reminder every 48h until finished or time expires.
+            Intakes auto-delete after 7 days. "Auto-nudge" sends a reminder every 48h until
+            finished or time expires; prompt escalation to RN CM after two nudges or{' '}
+            <strong>&lt;24h</strong> remaining.
           </p>
         </div>
       </Card>

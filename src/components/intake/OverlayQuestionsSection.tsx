@@ -57,7 +57,7 @@ export function OverlayQuestionsSection({
   return (
     <div className="space-y-6">
       <h4 className="font-semibold text-foreground">Additional Questions</h4>
-      <p className="text-sm text-black">
+      <p className="text-sm text-muted-foreground">
         Optional. These help us tailor outreach and resources.
       </p>
       {questions.map((q) => {
@@ -69,7 +69,7 @@ export function OverlayQuestionsSection({
           return (
             <div key={q.key} className="space-y-2">
               <Label htmlFor={id}>{q.label}</Label>
-              {q.helpText && <p className="text-xs text-black">{q.helpText}</p>}
+              {q.helpText && <p className="text-xs text-muted-foreground">{q.helpText}</p>}
               <Input
                 id={id}
                 type="text"
@@ -84,7 +84,7 @@ export function OverlayQuestionsSection({
           return (
             <div key={q.key} className="space-y-2">
               <Label htmlFor={id}>{q.label}</Label>
-              {q.helpText && <p className="text-xs text-black">{q.helpText}</p>}
+              {q.helpText && <p className="text-xs text-muted-foreground">{q.helpText}</p>}
               <Textarea
                 id={id}
                 value={value}
@@ -104,7 +104,7 @@ export function OverlayQuestionsSection({
             return (
               <div key={q.key} className="space-y-2">
                 <Label htmlFor={id}>{q.label}</Label>
-                {q.helpText && <p className="text-xs text-black">{q.helpText}</p>}
+                {q.helpText && <p className="text-xs text-muted-foreground">{q.helpText}</p>}
                 <Input id={id} disabled placeholder="Options not available" className="bg-muted" />
               </div>
             );
@@ -114,7 +114,7 @@ export function OverlayQuestionsSection({
           return (
             <div key={q.key} className="space-y-2">
               <Label htmlFor={id}>{q.label}</Label>
-              {q.helpText && <p className="text-xs text-black">{q.helpText}</p>}
+              {q.helpText && <p className="text-xs text-muted-foreground">{q.helpText}</p>}
               <Select value={safeValue} onValueChange={(v) => onChange(q.key, v)}>
                 <SelectTrigger id={id} className="bg-background border-border">
                   <SelectValue placeholder="Select (optional)" />
@@ -139,7 +139,7 @@ export function OverlayQuestionsSection({
             return (
               <div key={q.key} className="space-y-2">
                 <Label>{q.label}</Label>
-                {q.helpText && <p className="text-xs text-black">{q.helpText}</p>}
+                {q.helpText && <p className="text-xs text-muted-foreground">{q.helpText}</p>}
                 <Input disabled placeholder="Options not available" className="bg-muted" />
               </div>
             );
@@ -149,7 +149,7 @@ export function OverlayQuestionsSection({
           return (
             <div key={q.key} className="space-y-2">
               <Label>{q.label}</Label>
-              {q.helpText && <p className="text-xs text-black">{q.helpText}</p>}
+              {q.helpText && <p className="text-xs text-muted-foreground">{q.helpText}</p>}
               <RadioGroup
                 value={safeValue}
                 onValueChange={(v) => onChange(q.key, v)}
@@ -178,7 +178,7 @@ export function OverlayQuestionsSection({
               />
               <Label htmlFor={id} className="font-normal cursor-pointer">
                 {q.label}
-                {q.helpText && <span className="text-black font-normal"> — {q.helpText}</span>}
+                {q.helpText && <span className="text-muted-foreground font-normal"> — {q.helpText}</span>}
               </Label>
             </div>
           );
@@ -188,7 +188,7 @@ export function OverlayQuestionsSection({
           return (
             <div key={q.key} className="space-y-2">
               <Label htmlFor={id}>{q.label}</Label>
-              {q.helpText && <p className="text-xs text-black">{q.helpText}</p>}
+              {q.helpText && <p className="text-xs text-muted-foreground">{q.helpText}</p>}
               <Input
                 id={id}
                 type="number"
@@ -206,7 +206,7 @@ export function OverlayQuestionsSection({
           return (
             <div key={q.key} className="space-y-2">
               <Label htmlFor={id}>{q.label}</Label>
-              {q.helpText && <p className="text-xs text-black">{q.helpText}</p>}
+              {q.helpText && <p className="text-xs text-muted-foreground">{q.helpText}</p>}
               <Input
                 id={id}
                 type="date"

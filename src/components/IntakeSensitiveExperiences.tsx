@@ -215,7 +215,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
 
   useEffect(() => {
     if (hasSelections) {
-      setClientMessage("Thank you for sharing. Your care plan will incorporate this to ensure you have the right support.");
+      setClientMessage("Thank you for sharing. Your RN Care Manager will review and follow up to ensure you have the right support.");
     } else {
       setClientMessage("");
     }
@@ -524,7 +524,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
       <Card className="p-6">
         <div className="flex items-center justify-center gap-3 py-8">
           <Loader2 className="h-5 w-5 animate-spin text-primary" />
-          <p className="text-black">Loading previous selections...</p>
+          <p className="text-muted-foreground">Loading previous selections...</p>
         </div>
       </Card>
     );
@@ -536,9 +536,9 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
       <Card className="p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Heart className="h-5 w-5 text-black" />
+            <Heart className="h-5 w-5 text-muted-foreground" />
             <div>
-              <h3 className="text-lg font-semibold text-black">Sensitive or Personal Experiences</h3>
+              <h3 className="text-lg font-semibold text-muted-foreground">Sensitive or Personal Experiences</h3>
               <Badge variant="secondary" className="mt-1">Section Skipped</Badge>
             </div>
           </div>
@@ -560,7 +560,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger>
-                  <Lock className="h-4 w-4 text-black" />
+                  <Lock className="h-4 w-4 text-muted-foreground" />
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>Your responses are private. We only share with your permission.</p>
@@ -593,7 +593,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
               </Button>
             )}
             {isSaving && (
-              <div className="flex items-center gap-2 text-sm text-black">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
                 <span>Saving...</span>
               </div>
@@ -628,7 +628,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
                 {editHistory.slice(0, 5).map((item, i) => (
                   <div key={i} className="flex justify-between">
                     <span>{item.itemCode.replace(/_/g, ' ')}</span>
-                    <span className="text-black">
+                    <span className="text-muted-foreground">
                       {item.auditEvent} - {new Date(item.updatedAt).toLocaleString()}
                     </span>
                   </div>
@@ -644,10 +644,10 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
             <p className="font-medium mb-2">Why we ask these questions:</p>
             <p>
               These questions help us understand factors that may affect your health, recovery, and access to care. 
-              Your answers help us connect you with appropriate resources and support.
+              Your answers help your RN Care Manager connect you with appropriate resources and support.
             </p>
             {!caseId && (
-              <p className="text-xs mt-2 text-black italic">
+              <p className="text-xs mt-2 text-muted-foreground italic">
                 Your selections will be saved when you submit your intake form.
               </p>
             )}
@@ -710,7 +710,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
                 <Button
                   variant="outline"
                   className={cn(
-                    "w-full justify-between min-h-[48px] bg-white text-gray-900 border-2 border-gray-400",
+                    "w-full justify-between min-h-[48px]",
                     data.substanceUse.length > 0 && "border-primary"
                   )}
                   type="button"
@@ -723,7 +723,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
                   <ChevronDown className="h-4 w-4 opacity-50" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="bottom" className="max-h-[80vh] overflow-y-auto bg-white text-gray-900">
+              <SheetContent side="bottom" className="max-h-[80vh] overflow-y-auto">
                 <SheetHeader>
                   <SheetTitle>Substance Use / Dependency</SheetTitle>
                 </SheetHeader>
@@ -753,7 +753,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
                 <Button
                   variant="outline"
                   className={cn(
-                    "w-full justify-between bg-white text-gray-900 border-2 border-gray-400",
+                    "w-full justify-between",
                     data.substanceUse.length > 0 && "border-primary"
                   )}
                   type="button"
@@ -766,7 +766,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
                   <ChevronDown className="h-4 w-4 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[500px] p-4 max-h-[400px] overflow-y-auto bg-white text-gray-900 border-2 border-gray-400">
+              <PopoverContent className="w-[500px] p-4 max-h-[400px] overflow-y-auto">
                 <div className="space-y-2">
                   {substanceUseOptions.map((option) => (
                     <div key={option} className="flex items-start space-x-2 py-2">
@@ -806,7 +806,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
                 <Button
                   variant="outline"
                   className={cn(
-                    "w-full justify-between min-h-[48px] bg-white text-gray-900 border-2 border-gray-400",
+                    "w-full justify-between min-h-[48px]",
                     data.safetyTrauma.length > 0 && "border-primary"
                   )}
                   type="button"
@@ -819,7 +819,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
                   <ChevronDown className="h-4 w-4 opacity-50" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="bottom" className="max-h-[80vh] overflow-y-auto bg-white text-gray-900">
+              <SheetContent side="bottom" className="max-h-[80vh] overflow-y-auto">
                 <SheetHeader>
                   <SheetTitle>Safety & Trauma History</SheetTitle>
                 </SheetHeader>
@@ -849,7 +849,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
                 <Button
                   variant="outline"
                   className={cn(
-                    "w-full justify-between bg-white text-gray-900 border-2 border-gray-400",
+                    "w-full justify-between",
                     data.safetyTrauma.length > 0 && "border-primary"
                   )}
                   type="button"
@@ -862,7 +862,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
                   <ChevronDown className="h-4 w-4 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[500px] p-4 max-h-[400px] overflow-y-auto bg-white text-gray-900 border-2 border-gray-400">
+              <PopoverContent className="w-[500px] p-4 max-h-[400px] overflow-y-auto">
                 <div className="space-y-2">
                   {safetyTraumaOptions.map((option) => (
                     <div key={option} className="flex items-start space-x-2 py-2">
@@ -902,7 +902,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
                 <Button
                   variant="outline"
                   className={cn(
-                    "w-full justify-between min-h-[48px] bg-white text-gray-900 border-2 border-gray-400",
+                    "w-full justify-between min-h-[48px]",
                     data.stressors.length > 0 && "border-primary"
                   )}
                   type="button"
@@ -915,7 +915,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
                   <ChevronDown className="h-4 w-4 opacity-50" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="bottom" className="max-h-[80vh] overflow-y-auto bg-white text-gray-900">
+              <SheetContent side="bottom" className="max-h-[80vh] overflow-y-auto">
                 <SheetHeader>
                   <SheetTitle>Current Stressors or Barriers</SheetTitle>
                 </SheetHeader>
@@ -945,7 +945,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
                 <Button
                   variant="outline"
                   className={cn(
-                    "w-full justify-between bg-white text-gray-900 border-2 border-gray-400",
+                    "w-full justify-between",
                     data.stressors.length > 0 && "border-primary"
                   )}
                   type="button"
@@ -958,7 +958,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
                   <ChevronDown className="h-4 w-4 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[500px] p-4 max-h-[400px] overflow-y-auto bg-white text-gray-900 border-2 border-gray-400">
+              <PopoverContent className="w-[500px] p-4 max-h-[400px] overflow-y-auto">
                 <div className="space-y-2">
                   {stressorsOptions.map((option) => (
                     <div key={option} className="flex items-start space-x-2 py-2">
@@ -987,7 +987,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
             <Label className="text-sm font-medium">
               Optional: If you experienced something not listed above or want to provide more details, please describe it here.
             </Label>
-            <p className="text-xs text-black">
+            <p className="text-xs text-muted-foreground">
               (You may leave this blank if you prefer.)
             </p>
             <Textarea
@@ -1009,7 +1009,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
               <p id="details-error" className="text-xs text-destructive">
                 {validationError || ''}
               </p>
-              <p className="text-xs text-black">
+              <p className="text-xs text-muted-foreground">
                 {(data.additionalDetails || '').length}/250 characters
               </p>
             </div>
@@ -1039,7 +1039,7 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
                 </Button>
               )}
             </div>
-            <p className="text-sm text-black">
+            <p className="text-sm text-muted-foreground">
               Please indicate your consent for sharing this information. <strong>Both choices are required to proceed.</strong>
             </p>
             
@@ -1136,14 +1136,14 @@ export function IntakeSensitiveExperiences({ data, onChange, caseId, onProgressC
         )}
       </Card>
       
-      {/* Skip Confirmation Dialog - very light overlay so screen doesn't go dark */}
+      {/* Skip Confirmation Dialog */}
       <AlertDialog open={showSkipDialog} onOpenChange={setShowSkipDialog}>
-        <AlertDialogContent overlayClassName="bg-black/15">
+        <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Skip this section?</AlertDialogTitle>
             <AlertDialogDescription>
               Any selections you made here will be cleared. Safety-critical items (e.g., self-harm) 
-              that were already flagged will remain active for review.
+              that were already flagged will remain active for your RN team to review.
               <br /><br />
               You can resume this section later if you change your mind.
             </AlertDialogDescription>

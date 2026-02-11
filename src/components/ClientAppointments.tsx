@@ -12,7 +12,7 @@ import { createAutoNote } from "@/lib/autoNotes";
 
 interface Appointment {
   id: string;
-  title?: string | null;
+  title: string;
   provider_name: string | null;
   appointment_type?: string | null;
   scheduled_at: string;
@@ -428,7 +428,7 @@ export function ClientAppointments({ caseId }: ClientAppointmentsProps) {
         <CardContent>
           <div className="space-y-4">
             <div className="bg-white/20 border border-white/30 rounded-lg p-4">
-              <p className="font-medium text-white">{checkInAppointment.title || checkInAppointment.appointment_type || checkInAppointment.provider_name || 'Appointment'}</p>
+              <p className="font-medium text-white">{checkInAppointment.title}</p>
               {checkInAppointment.provider_name && (
                 <p className="text-sm text-white/80 mt-1">Provider: {checkInAppointment.provider_name}</p>
               )}
@@ -695,7 +695,7 @@ export function ClientAppointments({ caseId }: ClientAppointmentsProps) {
                 <CardContent className="p-4">
                   <div className="flex justify-between items-start mb-2">
                     <div className="flex-1">
-                      <h3 className="font-semibold text-white mb-2">{appointment.title || appointment.appointment_type || appointment.provider_name || 'Appointment'}</h3>
+                      <h3 className="font-semibold text-white mb-2">{appointment.title}</h3>
                       <div className="flex justify-between items-center mb-2">
                         <div className={appointment.status === 'cancelled' ? 'line-through' : ''}>
                           {appointment.provider_name && (

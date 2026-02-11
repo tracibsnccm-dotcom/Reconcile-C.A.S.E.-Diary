@@ -299,7 +299,7 @@ export function IntakeWelcome({
       {/* Consent Card */}
       <Card className="p-6 border-2 border-accent">
         <h2 className="text-2xl font-bold text-primary mb-2">Welcome & Consent Gate</h2>
-        <p className="text-black mb-6">
+        <p className="text-muted-foreground mb-6">
           Please tell us your name and how you want us to share information with your care team.
         </p>
 
@@ -308,7 +308,7 @@ export function IntakeWelcome({
             <Label htmlFor="client-name" className="flex items-center gap-2 mb-2">
               Client full name
               <button
-                className="text-xs text-black hover:text-black"
+                className="text-xs text-muted-foreground hover:text-foreground"
                 onClick={() => handleAskCara("Please explain why you need my full name")}
               >
                 <HelpCircle className="w-4 h-4" />
@@ -337,7 +337,7 @@ export function IntakeWelcome({
               <Label htmlFor="consent-attorney" className="cursor-pointer flex items-center gap-2">
                 Authorize sharing with attorney
                 <button
-                  className="text-xs text-black hover:text-black"
+                  className="text-xs text-muted-foreground hover:text-foreground"
                   onClick={(e) => {
                     e.preventDefault();
                     handleAskCara("What does authorizing sharing with attorney mean?");
@@ -362,7 +362,7 @@ export function IntakeWelcome({
               <Label htmlFor="consent-providers" className="cursor-pointer flex items-center gap-2">
                 Authorize sharing with providers
                 <button
-                  className="text-xs text-black hover:text-black"
+                  className="text-xs text-muted-foreground hover:text-foreground"
                   onClick={(e) => {
                     e.preventDefault();
                     handleAskCara("What does authorizing sharing with providers mean?");
@@ -412,7 +412,7 @@ export function IntakeWelcome({
                 <Label htmlFor="sensitive-tag" className="cursor-pointer font-bold flex items-center gap-2">
                   Mark as Sensitive Case
                   <button
-                    className="text-xs text-black hover:text-black"
+                    className="text-xs text-muted-foreground hover:text-foreground"
                     onClick={(e) => {
                       e.preventDefault();
                       handleAskCara("What is a sensitive case and why would I mark it?");
@@ -421,7 +421,7 @@ export function IntakeWelcome({
                     <HelpCircle className="w-4 h-4" />
                   </button>
                 </Label>
-                <p className="text-sm text-black mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   (sexual assault, minor, hate-crime) — If checked, your case is restricted and only visible to a limited team with additional protections.
                 </p>
               </div>

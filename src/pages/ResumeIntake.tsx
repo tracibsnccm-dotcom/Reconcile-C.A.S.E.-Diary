@@ -48,12 +48,6 @@ export default function ResumeIntake() {
         const session = await getIntakeSessionByToken(tokenFromUrl.trim());
         if (cancelled) return;
 
-        console.log("=== RESUME INTAKE DEBUG ===");
-        console.log("Session from database:", session);
-        console.log("formData:", session?.formData);
-        console.log("consentsComplete:", session?.formData?.consentsComplete);
-        console.log("currentStep:", session?.formData?.currentStep);
-
         if (!session) {
           setCanonicalState("EXPIRED_OR_INVALID");
           setLoading(false);
@@ -97,28 +91,23 @@ export default function ResumeIntake() {
         }
 
         const fd = session.formData && typeof session.formData === "object" ? session.formData : {};
-        // Check consentsComplete FIRST, then navigate. Do NOT navigate to consent by default.
-        const consentsComplete = fd.consentsComplete === true || (fd.consentStep ?? 0) >= 5;
-        const savedStep = fd.step ?? fd.currentStep ?? session.currentStep ?? 0;
+        const consentsComplete =
+          fd.consentsComplete === true ||
+          (fd.consentStep === 5 && fd.consents?.hipaa?.signature);
 
-        console.log("Navigation decision - consentsComplete:", consentsComplete, "savedStep:", savedStep);
+        const attorneyParam = session.attorneyId || "";
+        const codeParam = session.attorneyCode || "";
 
         if (consentsComplete) {
-          console.log("Consents complete, going to intake wizard at step:", savedStep);
-          sessionStorage.setItem("rcms_intake_step", String(savedStep));
+          sessionStorage.setItem("rcms_intake_step", String(session.currentStep ?? fd.step ?? 0));
           sessionStorage.setItem("rcms_consents_completed", "true");
-          sessionStorage.setItem("rcms_consent_session_id", session.id);
-          const attorneyParam = session.attorneyId || "";
-          const codeParam = session.attorneyCode || "";
           navigate(
-            `/client-intake?attorney_id=${encodeURIComponent(attorneyParam)}&attorney_code=${encodeURIComponent(codeParam)}&resume=true`,
-            { replace: true, state: { resumeStep: savedStep } }
+            `/client-intake?attorney_id=${encodeURIComponent(attorneyParam)}&attorney_code=${encodeURIComponent(codeParam)}&resume=true`
           );
         } else {
-          console.log("Consents NOT complete, going to consent page");
           sessionStorage.setItem("rcms_intake_step", "0");
           sessionStorage.setItem("rcms_consent_step", String(fd.consentStep ?? 0));
-          navigate("/client-consent?resume=true", { replace: true });
+          navigate(`/client-consent?resume=true`);
         }
       } catch (err) {
         if (!cancelled) {
@@ -155,12 +144,6 @@ export default function ResumeIntake() {
     setLoading(true);
     try {
       const session = await getIntakeSessionByIntakeId(normalized);
-      console.log("=== RESUME INTAKE DEBUG ===");
-      console.log("Session from database:", session);
-      console.log("formData:", session?.formData);
-      console.log("consentsComplete:", session?.formData?.consentsComplete);
-      console.log("currentStep:", session?.formData?.currentStep);
-
       if (!session) {
         setError("We couldn't find that Intake ID (INT#). Please check and try again.");
         setLoading(false);
@@ -220,6 +203,11 @@ export default function ResumeIntake() {
 
       // in_progress: resume to consents or intake wizard based on stored progress
       sessionStorage.setItem("rcms_intake_status", "in_progress");
+      const fd = (session.formData && typeof session.formData === "object") ? session.formData : {};
+      const consentsComplete =
+        fd.consentsComplete === true ||
+        (fd.consentStep === 5 && fd.consents?.hipaa?.signature);
+
       sessionStorage.setItem("rcms_intake_session_id", session.id);
       sessionStorage.setItem("rcms_intake_id", session.intakeId);
       sessionStorage.setItem("rcms_current_attorney_id", session.attorneyId || "");
@@ -228,29 +216,19 @@ export default function ResumeIntake() {
         sessionStorage.setItem("rcms_intake_form_data", JSON.stringify(session.formData));
       }
 
-      const fd = (session.formData && typeof session.formData === "object") ? session.formData : {};
-      // Check consentsComplete FIRST, then navigate. Do NOT navigate to consent by default.
-      const consentsComplete = fd.consentsComplete === true || (fd.consentStep ?? 0) >= 5;
-      const savedStep = fd.step ?? fd.currentStep ?? session.currentStep ?? 0;
-
-      console.log("Navigation decision - consentsComplete:", consentsComplete, "savedStep:", savedStep);
+      const attorneyParam = session.attorneyId || "";
+      const codeParam = session.attorneyCode || "";
 
       if (consentsComplete) {
-        console.log("Consents complete, going to intake wizard at step:", savedStep);
-        sessionStorage.setItem("rcms_intake_step", String(savedStep));
+        sessionStorage.setItem("rcms_intake_step", String(session.currentStep ?? (fd.step) ?? 0));
         sessionStorage.setItem("rcms_consents_completed", "true");
-        sessionStorage.setItem("rcms_consent_session_id", session.id);
-        const attorneyParam = session.attorneyId || "";
-        const codeParam = session.attorneyCode || "";
         navigate(
-          `/client-intake?attorney_id=${encodeURIComponent(attorneyParam)}&attorney_code=${encodeURIComponent(codeParam)}&resume=true`,
-          { replace: true, state: { resumeStep: savedStep } }
+          `/client-intake?attorney_id=${encodeURIComponent(attorneyParam)}&attorney_code=${encodeURIComponent(codeParam)}&resume=true`
         );
       } else {
-        console.log("Consents NOT complete, going to consent page");
         sessionStorage.setItem("rcms_intake_step", "0");
         sessionStorage.setItem("rcms_consent_step", String(fd.consentStep ?? 0));
-        navigate("/client-consent?resume=true", { replace: true });
+        navigate(`/client-consent?resume=true`);
       }
     } catch (err: any) {
       setError(err?.message || "Something went wrong. Please try again.");
@@ -267,15 +245,15 @@ export default function ResumeIntake() {
   if (canonicalState && ["SUBMITTED_PENDING_REVIEW", "LOCKED_UNDER_REVIEW", "EXPIRED_OR_INVALID"].includes(canonicalState)) {
     const msg = CLIENT_INTAKE_STATE_MESSAGES[canonicalState];
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#3b6a9b] via-[#4a7fb0] to-[#6aa0cf] py-8 px-4 flex flex-col items-center text-white">
+      <div className="min-h-screen bg-gradient-to-br from-secondary via-secondary-light to-primary py-8 px-4 flex flex-col items-center">
         <IntakeCountdownBanner />
         <div className="flex-1 flex items-center justify-center w-full">
-          <Card className="bg-white rounded-lg shadow-lg p-8 max-w-2xl space-y-4 text-gray-900">
+          <Card className="p-8 max-w-2xl space-y-4">
             <h2 className="text-xl font-semibold">{msg.title}</h2>
-            <p className="text-gray-700">{msg.body}</p>
+            <p className="text-muted-foreground">{msg.body}</p>
             {resolvedIntakeId && (
-              <p className="text-sm text-gray-700">
-                <strong>Intake ID (INT#):</strong> <span className="font-mono font-bold text-black">{resolvedIntakeId}</span>
+              <p className="text-sm text-muted-foreground">
+                <strong>Intake ID (INT#):</strong> {resolvedIntakeId}
               </p>
             )}
             <div className="flex gap-3 flex-wrap">
@@ -293,8 +271,8 @@ export default function ResumeIntake() {
   // Token loading in progress
   if (tokenFromUrl && loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#3b6a9b] via-[#4a7fb0] to-[#6aa0cf] py-8 px-4 flex items-center justify-center text-white">
-        <Card className="bg-white rounded-lg shadow-lg p-8 max-w-2xl text-gray-900">
+      <div className="min-h-screen bg-gradient-to-br from-secondary via-secondary-light to-primary py-8 px-4 flex items-center justify-center">
+        <Card className="p-8 max-w-2xl">
           <div className="flex items-center gap-3">
             <Loader2 className="h-6 w-6 animate-spin" />
             <span>Verifying your intake session…</span>
@@ -306,10 +284,10 @@ export default function ResumeIntake() {
 
   // Form
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#3b6a9b] via-[#4a7fb0] to-[#6aa0cf] py-8 px-4 flex items-center justify-center text-white">
-      <Card className="bg-white rounded-lg shadow-lg p-6 md:p-8 max-w-md w-full text-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-secondary via-secondary-light to-primary py-8 px-4 flex items-center justify-center">
+      <Card className="p-6 md:p-8 max-w-md w-full">
         <h1 className="text-xl font-bold mb-2">Resume or Check Status</h1>
-        <p className="text-sm text-gray-600 mb-6">
+        <p className="text-sm text-muted-foreground mb-6">
           Enter your Intake ID (INT#) and temporary PIN to resume an unfinished intake or check your status.
         </p>
         <form onSubmit={handleSubmit} className="space-y-4">

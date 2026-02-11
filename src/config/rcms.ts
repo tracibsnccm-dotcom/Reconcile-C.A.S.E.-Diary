@@ -97,8 +97,6 @@ export interface Client {
   state?: string;
   fullName?: string;            // stored but RBAC-gated in UI
   displayNameMasked?: string;   // masked fallback (e.g., "A*** B***")
-  firstName?: string;         // intake flow: from IntakeIdentity, persisted in sessionStorage
-  lastName?: string;
 }
 
 export interface Intake {
@@ -189,7 +187,7 @@ export interface Case {
   riskLevel?: RiskLevel;
   assignedProviderId?: string;
   status: CaseStatus;
-  /** ATTORNEY-5: True when care plan submitted; used for stage label "Care Plan Released" */
+  /** ATTORNEY-5: True when RN care plan submitted; used for stage label "RN Care Plan Released" */
   carePlanReleased?: boolean;
   designatedAttorneyId?: string;
   checkins?: Checkin[];

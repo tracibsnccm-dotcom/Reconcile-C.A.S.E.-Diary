@@ -73,7 +73,7 @@ export function IntakeCountdownBanner({ onExpired }: IntakeCountdownBannerProps)
 
   if (status === "loading") {
     return (
-      <div className="bg-muted/50 border-b border-border px-4 py-2 text-sm text-black">
+      <div className="bg-muted/50 border-b border-border px-4 py-2 text-sm text-muted-foreground">
         {text}
       </div>
     );

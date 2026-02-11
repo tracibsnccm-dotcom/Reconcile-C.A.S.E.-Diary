@@ -124,15 +124,15 @@ export async function saveSensitiveDisclosure({
   }
 }
 
-// Create safety alert for care plan workflow
+// Create safety alert for RN CM
 async function createSafetyAlert(caseId: string, itemCode: string, riskLevel: RiskLevel) {
   const severity = riskLevel === 'RED' ? 'critical' : 'high';
   const alertType = riskLevel === 'RED' ? 'CRITICAL_SAFETY' : 'HIGH_SAFETY';
   
   const messages: Record<string, string> = {
-    self_harm: 'Client disclosed self-harm. Immediate support assessment needed.',
-    suicide_thoughts: 'Client disclosed suicidal thoughts. Immediate support assessment needed.',
-    suicidal_ideation: 'Client disclosed suicidal ideation. Immediate support assessment needed.',
+    self_harm: 'Client disclosed self-harm. Immediate RN CM review required.',
+    suicide_thoughts: 'Client disclosed suicidal thoughts. Immediate RN CM review required.',
+    suicidal_ideation: 'Client disclosed suicidal ideation. Immediate RN CM review required.',
     dv_ipv: 'Client disclosed domestic/intimate partner violence. Safety assessment needed.',
     intimate_partner_violence: 'Client disclosed intimate partner violence. Safety assessment needed.',
     domestic_violence: 'Client disclosed domestic violence. Safety assessment needed.',
@@ -168,7 +168,7 @@ async function createSafetyAlert(caseId: string, itemCode: string, riskLevel: Ri
     return;
   }
   
-  // Trigger immediate notification for RED/ORANGE alerts
+  // Trigger immediate RN notification for RED/ORANGE alerts
   if (riskLevel === 'RED' || riskLevel === 'ORANGE') {
     try {
       await supabase.functions.invoke('notify-rn-alert', {
@@ -180,7 +180,7 @@ async function createSafetyAlert(caseId: string, itemCode: string, riskLevel: Ri
         }
       });
     } catch (error) {
-      console.error('Error sending safety notification:', error);
+      console.error('Error sending RN notification:', error);
       // Don't throw - alert was created, notification failure shouldn't block
     }
   }

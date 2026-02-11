@@ -188,7 +188,7 @@ export const IntakeSaveBar = ({ formData, onSaveExit }: IntakeSaveBarProps) => {
       <div className="sticky top-0 z-50 bg-background border-b flex justify-between items-center gap-3 px-3 py-2.5">
         <div className="text-sm">
           <strong>We save your progress automatically.</strong>{' '}
-          <span className="text-black">{lastSaved}</span> ·{' '}
+          <span className="text-muted-foreground">{lastSaved}</span> ·{' '}
           <span className={urgencyClass}>{expiresIn}</span>
         </div>
         <div className="flex gap-2">

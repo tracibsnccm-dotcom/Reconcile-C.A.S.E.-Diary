@@ -170,7 +170,7 @@ export function FileUploadZone({
             onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
             onDragLeave={() => setIsDragging(false)}
           >
-            <Upload className="w-12 h-12 mx-auto mb-4 text-black" />
+            <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
             <p className="mb-2 font-medium">Drag & drop files here, or</p>
             <input
               type="file"
@@ -187,7 +187,7 @@ export function FileUploadZone({
             >
               Choose Files
             </Button>
-            <p className="mt-3 text-sm text-black">
+            <p className="mt-3 text-sm text-muted-foreground">
               Allowed: {allowedTypes.join(', ')} • Max {maxSizeMB}MB each
             </p>
           </div>
@@ -204,10 +204,10 @@ export function FileUploadZone({
                   className="flex items-center justify-between p-3 bg-muted rounded-lg"
                 >
                   <div className="flex items-center space-x-3 flex-1">
-                    <File className="w-5 h-5 text-black flex-shrink-0" />
+                    <File className="w-5 h-5 text-muted-foreground flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{upload.file.name}</p>
-                      <p className="text-sm text-black">
+                      <p className="text-sm text-muted-foreground">
                         {(upload.file.size / 1024).toFixed(1)} KB
                       </p>
                     </div>
@@ -215,7 +215,7 @@ export function FileUploadZone({
                       <CheckCircle2 className="w-5 h-5 text-success flex-shrink-0" />
                     )}
                     {upload.status === 'uploading' && (
-                      <div className="text-sm text-black flex-shrink-0">
+                      <div className="text-sm text-muted-foreground flex-shrink-0">
                         Uploading...
                       </div>
                     )}

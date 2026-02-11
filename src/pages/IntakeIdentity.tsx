@@ -1,6 +1,6 @@
 // src/pages/IntakeIdentity.tsx
-// Dedicated page for collecting Minimum Intake Identity (first name, last name, attorney, date of injury, PIN)
-// This page creates the INT intake session BEFORE consents. ALL fields required — hard gate.
+// C.A.S.E.: Minimum Intake Identity (attorney, first name, last name, PIN). No email here — email is collected later in the intake wizard.
+// This page creates the INT intake session BEFORE consents. Client uses INT# + PIN to resume/check status.
 
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -9,39 +9,28 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Info, CheckCircle2, Copy, X } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { Info, CheckCircle2, Copy } from "lucide-react";
 import { createIntakeSession, updateIntakeSession, hashTempPin } from "@/lib/intakeSessionService";
 import { supabase } from "@/integrations/supabase/client";
+
+type AttorneyOption = { attorney_id: string; attorney_name: string; attorney_code?: string | null };
 
 export default function IntakeIdentity() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  // Attorney info from URL params (pre-populate when coming from ClientConsent)
   const attorneyIdParam = searchParams.get("attorney_id") || "";
   const attorneyCodeParam = searchParams.get("attorney_code") || "";
 
-  // Form state
+  const [availableAttorneys, setAvailableAttorneys] = useState<AttorneyOption[]>([]);
+  const [selectedAttorneyId, setSelectedAttorneyId] = useState(attorneyIdParam);
+  const [attorneyCode, setAttorneyCode] = useState(attorneyCodeParam);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [dateOfInjury, setDateOfInjury] = useState("");
-  const [approximateDate, setApproximateDate] = useState(false);
   const [tempPin, setTempPin] = useState("");
   const [tempPinConfirm, setTempPinConfirm] = useState("");
 
-  // Attorney state
-  const [attorneys, setAttorneys] = useState<any[]>([]);
-  const [selectedAttorneyId, setSelectedAttorneyId] = useState("");
-  const [attorneyCode, setAttorneyCode] = useState("");
-
-  // Session state
   const [intakeId, setIntakeId] = useState<string>("");
   const [createdIntakeSessionId, setCreatedIntakeSessionId] = useState<string>("");
   const [createdAt, setCreatedAt] = useState<string>("");
@@ -49,59 +38,7 @@ export default function IntakeIdentity() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [showSuccessCard, setShowSuccessCard] = useState(false);
-  const [showIntakeConfirmation, setShowIntakeConfirmation] = useState(false);
-  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
 
-  // Fetch attorneys on mount
-  useEffect(() => {
-    if (!supabase) return;
-    (async () => {
-      const { data } = await supabase.rpc("get_attorney_directory");
-      const list = Array.isArray(data) ? data : data ? [data] : [];
-      setAttorneys(list);
-    })();
-  }, []);
-
-  // Pre-populate attorney from URL params
-  useEffect(() => {
-    if (attorneyIdParam && attorneys.length > 0) {
-      const exists = attorneys.some(
-        (a: { attorney_id?: string }) => a.attorney_id === attorneyIdParam
-      );
-      if (exists) {
-        setSelectedAttorneyId(attorneyIdParam);
-        setAttorneyCode("");
-      }
-    } else if (attorneyCodeParam.trim() && attorneys.length > 0) {
-      const codeNorm = attorneyCodeParam.trim().toLowerCase();
-      const match = attorneys.find(
-        (a: { attorney_code?: string | null }) =>
-          a.attorney_code && String(a.attorney_code).trim().toLowerCase() === codeNorm
-      );
-      if (match) {
-        setSelectedAttorneyId((match as { attorney_id: string }).attorney_id);
-        setAttorneyCode(attorneyCodeParam.trim());
-      }
-    }
-  }, [attorneyIdParam, attorneyCodeParam, attorneys]);
-
-  // Validate attorney code when user types and resolve to attorney
-  useEffect(() => {
-    if (!attorneyCode.trim() || attorneys.length === 0) return;
-    const codeNorm = attorneyCode.trim().toLowerCase();
-    const match = attorneys.find(
-      (a: { attorney_code?: string | null }) =>
-        a.attorney_code && String(a.attorney_code).trim().toLowerCase() === codeNorm
-    );
-    if (match) {
-      setSelectedAttorneyId((match as { attorney_id: string }).attorney_id);
-    } else {
-      setSelectedAttorneyId("");
-    }
-  }, [attorneyCode, attorneys]);
-
-  // Load existing session if returning
   useEffect(() => {
     const storedIntakeId = sessionStorage.getItem("rcms_intake_id");
     const storedSessionId = sessionStorage.getItem("rcms_intake_session_id");
@@ -112,63 +49,74 @@ export default function IntakeIdentity() {
       setCreatedIntakeSessionId(storedSessionId || "");
       setCreatedAt(storedCreatedAt || "");
       setIntakeSessionCreated(true);
-      setShowSuccessCard(true);
     }
   }, []);
 
-  // Validation
-  const pinValid = /^\d{6}$/.test(tempPin) && tempPin === tempPinConfirm;
-  const attorneyResolved = !!selectedAttorneyId;
-  const isValid =
-    firstName.trim() &&
-    lastName.trim() &&
-    attorneyResolved &&
-    dateOfInjury.trim() &&
-    pinValid;
-  const isValidWithPin = isValid;
-  const submitting = isSaving;
+  useEffect(() => {
+    if (!attorneyIdParam && !attorneyCodeParam) return;
+    setSelectedAttorneyId((prev) => prev || attorneyIdParam);
+    setAttorneyCode((prev) => prev || attorneyCodeParam);
+  }, [attorneyIdParam, attorneyCodeParam]);
 
-  const showFieldError = (field: string) => {
-    if (!attemptedSubmit) return false;
-    switch (field) {
-      case "firstName":
-        return !firstName.trim();
-      case "lastName":
-        return !lastName.trim();
-      case "attorney":
-        return !attorneyResolved;
-      case "dateOfInjury":
-        return !dateOfInjury.trim();
-      case "tempPin":
-        return !/^\d{6}$/.test(tempPin);
-      case "tempPinConfirm":
-        return tempPin !== tempPinConfirm || !tempPinConfirm;
-      default:
-        return false;
-    }
-  };
+  useEffect(() => {
+    const load = async () => {
+      if (!supabase) return;
+      const { data } = await supabase.rpc("get_attorney_directory");
+      const list = Array.isArray(data) ? data : data ? [data] : [];
+      setAvailableAttorneys(list);
+    };
+    load();
+  }, []);
+
+  useEffect(() => {
+    if (intakeSessionCreated) return;
+    const hasAttorney = selectedAttorneyId || attorneyCode.trim();
+    if (hasAttorney) return;
+    navigate("/client-consent?attorney_required=1", { replace: true });
+  }, [intakeSessionCreated, selectedAttorneyId, attorneyCode, navigate]);
+
+  const pinValid = /^\d{6}$/.test(tempPin) && tempPin === tempPinConfirm;
+  const hasAttorney = !!(selectedAttorneyId || attorneyCode.trim());
+  const isValid = hasAttorney && firstName.trim() && lastName.trim() && (intakeSessionCreated || pinValid);
 
   const handleCopyIntakeId = async () => {
-    if (intakeId) {
-      try {
-        await navigator.clipboard.writeText(intakeId);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      } catch (err) {
-        console.error("Failed to copy to clipboard:", err);
-      }
+    if (!intakeId) return;
+    try {
+      await navigator.clipboard.writeText(intakeId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy to clipboard:", err);
     }
   };
 
-  const handleContinue = async () => {
-    if (intakeSessionCreated && !showIntakeConfirmation) {
+  const resolveAttorney = async (): Promise<{ attorneyId?: string; attorneyCode?: string } | null> => {
+    const resolvedId = selectedAttorneyId || undefined;
+    const resolvedCode = attorneyCode.trim() || undefined;
+    if (!supabase || (!resolvedId && !resolvedCode)) return { attorneyId: resolvedId, attorneyCode: resolvedCode };
+    const { data } = await supabase.rpc("get_attorney_directory");
+    const attorneys = Array.isArray(data) ? data : data ? [data] : [];
+    if (resolvedId) {
+      const exists = attorneys.some((a: { attorney_id?: string }) => a.attorney_id === resolvedId);
+      if (!exists) return null;
+      return { attorneyId: resolvedId, attorneyCode: resolvedCode };
+    }
+    const codeNorm = resolvedCode!.toLowerCase();
+    const match = attorneys.find(
+      (a: { attorney_code?: string | null }) =>
+        a.attorney_code && String(a.attorney_code).trim().toLowerCase() === codeNorm
+    );
+    if (!match) return null;
+    return { attorneyId: (match as { attorney_id: string }).attorney_id, attorneyCode: resolvedCode };
+  };
+
+  const handleSubmit = async () => {
+    if (intakeSessionCreated) {
       navigate("/client-consent");
       return;
     }
 
     setError(null);
-    setAttemptedSubmit(true);
-
     if (!firstName.trim()) {
       setError("Please enter your first name.");
       return;
@@ -177,16 +125,8 @@ export default function IntakeIdentity() {
       setError("Please enter your last name.");
       return;
     }
-    if (!attorneyResolved) {
-      setError("Please select your attorney from the dropdown or enter a valid attorney code.");
-      return;
-    }
-    if (!dateOfInjury.trim()) {
-      setError("Please enter the date of injury.");
-      return;
-    }
     if (!/^\d{6}$/.test(tempPin)) {
-      setError("Create a 6-digit temporary PIN (numbers only).");
+      setError("Create a 6-digit PIN (numbers only).");
       return;
     }
     if (tempPin !== tempPinConfirm) {
@@ -194,42 +134,39 @@ export default function IntakeIdentity() {
       return;
     }
 
-    const selectedAttorney = attorneys.find(
-      (a: { attorney_id?: string }) => a.attorney_id === selectedAttorneyId
-    );
-    const attorneyName = (selectedAttorney as { attorney_name?: string })?.attorney_name || "";
+    const resolved = await resolveAttorney();
+    if (!resolved || (!resolved.attorneyId && !resolved.attorneyCode)) {
+      setError("Please select your attorney or enter a valid attorney code.");
+      return;
+    }
 
     setIsSaving(true);
     try {
       const session = await createIntakeSession({
-        attorneyId: selectedAttorneyId,
-        attorneyCode: attorneyCode.trim() || undefined,
+        attorneyId: resolved.attorneyId,
+        attorneyCode: resolved.attorneyCode,
         firstName: firstName.trim(),
         lastName: lastName.trim(),
-        email: "",
+        // C.A.S.E.: no email; session lookup is INT# + PIN
       });
 
       setIntakeId(session.intakeId);
       setCreatedIntakeSessionId(session.id);
-      setCreatedAt(session.createdAt);
+      setCreatedAt(session.createdAt || "");
       setIntakeSessionCreated(true);
-      setShowIntakeConfirmation(true);
 
       sessionStorage.setItem("rcms_intake_session_id", session.id);
       sessionStorage.setItem("rcms_intake_id", session.intakeId);
       sessionStorage.setItem("rcms_resume_token", session.resumeToken);
-      sessionStorage.setItem("rcms_current_attorney_id", selectedAttorneyId);
-      sessionStorage.setItem("rcms_attorney_name", attorneyName);
-      sessionStorage.setItem("rcms_client_first_name", firstName.trim());
-      sessionStorage.setItem("rcms_client_last_name", lastName.trim());
-      sessionStorage.setItem("rcms_client_email", "");
-      sessionStorage.setItem("rcms_date_of_injury", dateOfInjury);
-      sessionStorage.setItem("rcms_date_approximate", approximateDate ? "true" : "false");
-
+      sessionStorage.setItem("rcms_current_attorney_id", resolved.attorneyId || session.attorneyId || "");
+      sessionStorage.setItem("rcms_attorney_code", resolved.attorneyCode || session.attorneyCode || "");
       const existing = sessionStorage.getItem("rcms_intake_created_at");
       if (!existing) {
         sessionStorage.setItem("rcms_intake_created_at", session.createdAt || new Date().toISOString());
       }
+      sessionStorage.setItem("rcms_client_first_name", session.firstName || "");
+      sessionStorage.setItem("rcms_client_last_name", session.lastName || "");
+      sessionStorage.setItem("rcms_client_email", session.email || "");
 
       if (tempPin && /^\d{6}$/.test(tempPin)) {
         const tempPinHash = await hashTempPin(tempPin, session.intakeId);
@@ -242,40 +179,50 @@ export default function IntakeIdentity() {
     }
   };
 
-  // INT# confirmation screen — show immediately after session creation, before consents
-  if (showIntakeConfirmation && intakeId) {
+  // INT# confirmation screen after submit
+  if (intakeSessionCreated && intakeId) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#3b6a9b] via-[#4a7fb0] to-[#6aa0cf] py-8 px-4 text-white">
+      <div className="min-h-screen bg-gradient-to-br from-secondary via-secondary-light to-primary py-8 px-4">
         <div className="max-w-2xl mx-auto">
-          <Card className="bg-white rounded-lg shadow-lg p-6 md:p-8 text-gray-900">
-            <div className="text-center space-y-6 py-8">
-              <div className="text-green-600 text-6xl">✓</div>
-              <h2 className="text-2xl font-bold text-black">Your Intake Has Been Started</h2>
-
-              <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6 max-w-md mx-auto">
-                <p className="text-sm text-gray-700 mb-2">Your Intake ID</p>
-                <p className="text-3xl font-mono font-bold text-black">{intakeId}</p>
+          <Card className="p-6 md:p-8">
+            <div className="space-y-6">
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="h-6 w-6 text-green-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h1 className="text-2xl font-bold text-foreground mb-2">Your Intake ID (INT#)</h1>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Save your Intake ID (INT#) and PIN. You will need these to resume your intake, check your status, and access the system.
+                  </p>
+                  <div className="flex items-center gap-2 flex-wrap mb-2">
+                    <span className="font-mono font-bold text-lg bg-muted px-3 py-2 rounded">
+                      {intakeId}
+                    </span>
+                    <Button variant="outline" size="sm" onClick={handleCopyIntakeId}>
+                      {copied ? (
+                        <>
+                          <CheckCircle2 className="h-3 w-3 mr-1" />
+                          Copied!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3 w-3 mr-1" />
+                          Copy
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  {createdAt && (
+                    <p className="text-xs text-muted-foreground">
+                      Created: {new Date(createdAt).toLocaleString()}
+                    </p>
+                  )}
+                </div>
               </div>
-
-              <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4 max-w-md mx-auto">
-                <p className="font-semibold text-yellow-800">⚠️ Important — Write this down!</p>
-                <p className="text-sm text-yellow-700 mt-2">
-                  You&apos;ll need your Intake ID and the PIN you created to resume or check your status.
-                </p>
-                <p className="text-sm text-yellow-700 mt-2">
-                  You can leave at any time and come back later using these credentials.
-                </p>
-                <p className="text-sm text-yellow-700 mt-2 font-medium">
-                  You have 7 days to complete your intake. After 7 days, your information will be deleted and you will need to start over.
-                </p>
-                <p className="text-sm text-yellow-700 mt-2">
-                  Watch the countdown clock at the top of your assessment pages to track your remaining time.
-                </p>
+              <div className="flex justify-end">
+                <Button onClick={() => navigate("/client-consent")} className="min-w-[140px]">
+                  Continue
+                </Button>
               </div>
-
-              <Button onClick={() => navigate("/client-consent")} className="mt-4">
-                Continue to Consents →
-              </Button>
             </div>
           </Card>
         </div>
@@ -284,16 +231,16 @@ export default function IntakeIdentity() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#3b6a9b] via-[#4a7fb0] to-[#6aa0cf] py-8 px-4 text-white">
+    <div className="min-h-screen bg-gradient-to-br from-secondary via-secondary-light to-primary py-8 px-4">
       <div className="max-w-2xl mx-auto">
-        <Card className="bg-white rounded-lg shadow-lg p-6 md:p-8 text-gray-900">
+        <Card className="p-6 md:p-8">
           <div className="space-y-6">
             <div>
               <h1 className="text-2xl font-bold text-foreground mb-2">
                 Basic Contact Information
               </h1>
-              <p className="text-sm text-black">
-                We need basic contact information so we can save your intake. All fields are required.
+              <p className="text-sm text-muted-foreground">
+                We need basic information to create your intake. You will use your Intake ID (INT#) and PIN to resume and check status.
               </p>
             </div>
 
@@ -301,127 +248,51 @@ export default function IntakeIdentity() {
               <Alert className="bg-amber-50 border-amber-200">
                 <Info className="h-4 w-4 text-amber-600" />
                 <AlertDescription className="text-amber-900">
-                  <strong>Before you continue:</strong> We need basic contact information so we can save your intake.
-                  If you leave before completing this step, your information will not be saved.
+                  <strong>Before you continue:</strong> Complete this step so we can save your intake. If you leave before finishing, your information will not be saved.
                 </AlertDescription>
               </Alert>
             )}
 
-            {showSuccessCard && intakeSessionCreated && intakeId && (
-              <Card className="bg-green-50 border-green-200 border-2">
-                <div className="p-4 space-y-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-3 flex-1">
-                      <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-green-900 mb-2">
-                          Your intake has been saved!
-                        </h3>
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm text-green-800">
-                              <strong>Intake ID:</strong>
-                            </span>
-                            <span className="font-mono font-bold text-green-900 bg-green-100 px-2 py-1 rounded">
-                              {intakeId}
-                            </span>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={handleCopyIntakeId}
-                              className="h-7 text-xs"
-                            >
-                              {copied ? (
-                                <>
-                                  <CheckCircle2 className="h-3 w-3 mr-1" />
-                                  Copied!
-                                </>
-                              ) : (
-                                <>
-                                  <Copy className="h-3 w-3 mr-1" />
-                                  Copy ID
-                                </>
-                              )}
-                            </Button>
-                          </div>
-                          {createdAt && (
-                            <p className="text-xs text-green-700">
-                              Created: {new Date(createdAt).toLocaleString()}
-                            </p>
-                          )}
-                          <p className="text-sm text-green-800">
-                            You can leave and return anytime using your Intake ID and temporary PIN.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowSuccessCard(false)}
-                      className="h-6 w-6 p-0 text-green-600 hover:text-green-800 hover:bg-green-100"
-                      aria-label="Dismiss"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            )}
-
-            {/* SECTION 1 — ATTORNEY (at the top, with border below) */}
-            <div className="space-y-4 pb-6 mb-6 border-b-2 border-gray-300">
-              <h3 className="text-lg font-semibold text-black">Who is your attorney?</h3>
-
+            <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="attorney-select">
-                  Select Your Attorney <span className="text-destructive">*</span>
-                </Label>
+                <Label>Select Your Attorney</Label>
                 <Select
                   value={selectedAttorneyId}
                   onValueChange={(val) => {
                     setSelectedAttorneyId(val);
                     setAttorneyCode("");
                   }}
-                  disabled={intakeSessionCreated}
                 >
-                  <SelectTrigger
-                    id="attorney-select"
-                    className={showFieldError("attorney") ? "border-destructive border-2" : ""}
-                  >
+                  <SelectTrigger>
                     <SelectValue placeholder="Choose your attorney..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {attorneys.map((a: { attorney_id: string; attorney_name?: string }) => (
+                    {availableAttorneys.map((a) => (
                       <SelectItem key={a.attorney_id} value={a.attorney_id}>
-                        {a.attorney_name || a.attorney_id}
+                        {a.attorney_name}
+                        {a.attorney_code ? ` (${a.attorney_code})` : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              <div className="text-center text-sm text-gray-600">— OR —</div>
-
               <div className="space-y-2">
-                <Label htmlFor="attorney-code">Enter Your Attorney&apos;s Code</Label>
+                <Label htmlFor="attorney-code">Attorney code</Label>
                 <Input
                   id="attorney-code"
                   value={attorneyCode}
-                  onChange={(e) => setAttorneyCode(e.target.value)}
-                  placeholder="e.g. ABC123"
-                  disabled={intakeSessionCreated}
+                  onChange={(e) => {
+                    setAttorneyCode(e.target.value);
+                    setSelectedAttorneyId("");
+                  }}
+                  placeholder="e.g., 01, 02"
                 />
               </div>
-            </div>
-
-            {/* SECTION 2 — CLIENT INFO (below the border) */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-black">Your Information</h3>
 
               <div className="space-y-2">
                 <Label htmlFor="first-name">
-                  First Name <span className="text-destructive">*</span>
+                  First name <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="first-name"
@@ -429,14 +300,12 @@ export default function IntakeIdentity() {
                   onChange={(e) => setFirstName(e.target.value)}
                   placeholder="Enter your first name"
                   required
-                  disabled={intakeSessionCreated}
-                  className={showFieldError("firstName") ? "border-destructive border-2" : ""}
                 />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="last-name">
-                  Last Name <span className="text-destructive">*</span>
+                  Last name <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="last-name"
@@ -444,76 +313,43 @@ export default function IntakeIdentity() {
                   onChange={(e) => setLastName(e.target.value)}
                   placeholder="Enter your last name"
                   required
-                  disabled={intakeSessionCreated}
-                  className={showFieldError("lastName") ? "border-destructive border-2" : ""}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="date-of-injury">
-                  Date of Injury <span className="text-destructive">*</span>
+                <Label htmlFor="temp-pin">
+                  6-digit PIN <span className="text-destructive">*</span>
                 </Label>
                 <Input
-                  id="date-of-injury"
-                  type="date"
-                  value={dateOfInjury}
-                  onChange={(e) => setDateOfInjury(e.target.value)}
-                  placeholder="Select date of injury"
-                  disabled={intakeSessionCreated}
-                  max={new Date().toISOString().split("T")[0]}
-                  className={showFieldError("dateOfInjury") ? "border-destructive border-2" : ""}
+                  id="temp-pin"
+                  type="password"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  value={tempPin}
+                  onChange={(e) => setTempPin(e.target.value.replace(/\D/g, ""))}
+                  placeholder="6 digits"
                 />
-                <div className="flex items-center gap-2 mt-2">
-                  <input
-                    type="checkbox"
-                    id="approximate-date"
-                    checked={approximateDate}
-                    onChange={(e) => setApproximateDate(e.target.checked)}
-                    className="h-4 w-4 border-2 border-gray-600 rounded accent-blue-900"
-                  />
-                  <label htmlFor="approximate-date" className="text-sm text-black">
-                    I&apos;m not sure of the exact date (approximate is okay)
-                  </label>
-                </div>
+                <p className="text-xs text-muted-foreground">
+                  Use with your Intake ID to resume or check status. 6 digits only.
+                </p>
               </div>
 
-              {!intakeSessionCreated && (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="temp-pin">
-                      Create PIN <span className="text-destructive">*</span>
-                    </Label>
-                    <Input
-                      id="temp-pin"
-                      type="password"
-                      inputMode="numeric"
-                      autoComplete="one-time-code"
-                      maxLength={6}
-                      value={tempPin}
-                      onChange={(e) => setTempPin(e.target.value.replace(/\D/g, ""))}
-                      placeholder="6 digits"
-                      className={showFieldError("tempPin") ? "border-destructive border-2" : ""}
-                    />
-                    <p className="text-xs text-black">
-                      Use this with your Intake ID to resume or check status. 6 digits only.
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="temp-pin-confirm">Confirm PIN</Label>
-                    <Input
-                      id="temp-pin-confirm"
-                      type="password"
-                      inputMode="numeric"
-                      autoComplete="one-time-code"
-                      maxLength={6}
-                      value={tempPinConfirm}
-                      onChange={(e) => setTempPinConfirm(e.target.value.replace(/\D/g, ""))}
-                      placeholder="6 digits"
-                      className={showFieldError("tempPinConfirm") ? "border-destructive border-2" : ""}
-                    />
-                  </div>
-                </>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="temp-pin-confirm">
+                  Confirm PIN <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="temp-pin-confirm"
+                  type="password"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  value={tempPinConfirm}
+                  onChange={(e) => setTempPinConfirm(e.target.value.replace(/\D/g, ""))}
+                  placeholder="6 digits"
+                />
+              </div>
             </div>
 
             {error && (
@@ -523,28 +359,15 @@ export default function IntakeIdentity() {
             )}
 
             <div className="flex justify-end gap-3">
-              {intakeSessionCreated && (
-                <Button
-                  variant="outline"
-                  onClick={() => setShowSuccessCard(true)}
-                  disabled={showSuccessCard}
-                >
-                  Show Details
-                </Button>
-              )}
-              <Button variant="outline" onClick={() => navigate(-1)} disabled={submitting}>
+              <Button variant="outline" onClick={() => navigate(-1)} disabled={isSaving}>
                 Back
               </Button>
               <Button
-                onClick={handleContinue}
-                disabled={!isValidWithPin || submitting}
+                onClick={handleSubmit}
+                disabled={isSaving || !isValid}
                 className="min-w-[140px]"
               >
-                {submitting
-                  ? "Saving..."
-                  : intakeSessionCreated
-                    ? "Continue to Consents"
-                    : "Continue"}
+                {isSaving ? "Saving..." : "Continue"}
               </Button>
             </div>
           </div>

@@ -1,6 +1,6 @@
 // src/pages/ClientConsent.tsx
-// Flow: IntakeIdentity (attorney + client info) -> ClientConsent (steps 1-5 consents only)
-// Attorney selection lives on IntakeIdentity; this page starts at step 1 (first consent).
+// Updated flow: Attorney Selection (0) -> [IntakeIdentity page] -> Consents (1-5)
+// Identity step is now handled by separate IntakeIdentity page
 
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -67,9 +67,8 @@ async function saveConsentStep(sessionId: string, step: number, data: any) {
   } else if (dbStep === 3) {
     // Legal Disclosure (UI step 2)
     updates.legal_disclosure_signed_at = new Date().toISOString();
-    updates.legal_disclosure_signature = data.signature ?? "";
-    updates.legal_disclosure_attorney_name = data.attorneyName ?? null;
-    // Note: legal_disclosure_declined column does not exist in rc_client_consents; add it to the DB if step-2 decline tracking is needed.
+    updates.legal_disclosure_signature = data.signature;
+    updates.legal_disclosure_attorney_name = data.attorneyName;
   } else if (dbStep === 4) {
     // Obtain Records (UI step 3)
     updates.obtain_records_signed_at = new Date().toISOString();
@@ -130,89 +129,19 @@ function getCurrentDate(): string {
   return `${year}-${month}-${day}`;
 }
 
-// Clear all client PII and intake-related data from sessionStorage (after consent 1 or 2 decline)
-function clearClientDataFromSession(): void {
-  const keysToRemove = [
-    "rcms_client_first_name",
-    "rcms_client_last_name",
-    "rcms_client_email",
-    "rcms_intake_session_id",
-    "rcms_intake_id",
-    "rcms_resume_token",
-    "rcms_intake_created_at",
-    "rcms_date_of_injury",
-    "rcms_date_approximate",
-    "rcms_consent_session_id",
-    "rcms_consents_completed",
-    "rcms_current_attorney_id",
-    "rcms_attorney_code",
-    "rcms_attorney_name",
-    "rcms_intake_form_data",
-    "rcms_consent_step",
-    "rcms_intake_step",
-    "rcms_declined_consents",
-    "rcms_given_consents",
-  ];
-  keysToRemove.forEach((key) => sessionStorage.removeItem(key));
-}
-
-// Notify attorney and store aggregate count when consent 1 or 2 is declined (no PII stored except client_name in notification)
-async function notifyAttorneyOnDecline(
-  attorneyId: string | null,
-  clientName: string,
-  declinedStep: 1 | 2
-): Promise<void> {
-  const consentLabel =
-    declinedStep === 1
-      ? "RCMS care management services"
-      : "to authorize PHI sharing with your office";
-  const message = `${clientName} has declined ${consentLabel} during the intake process. The client has been advised to contact your office directly.\n\nImportant:\n- RCMS does not store this information — please keep for your records if this is an item you track.\n- If the client decides to accept services at a later date, A NEW INTAKE MUST BE COMPLETED.`;
-
-  const payload = {
-    attorney_id: attorneyId,
-    client_name: clientName,
-    declined_consent: declinedStep,
-    message,
-  };
-  if (supabase) {
-    const { error } = await supabase.rpc("notify_attorney_consent_decline", {
-      p_attorney_id: attorneyId,
-      p_notification_type: "client_declined_consent",
-      p_client_name: clientName,
-      p_declined_consent: declinedStep,
-      p_message: message,
-    });
-    if (error) {
-      console.log("ATTORNEY NOTIFICATION:", payload);
-    }
-  } else {
-    console.log("ATTORNEY NOTIFICATION:", payload);
-  }
-
-  const monthYear = new Date().toISOString().slice(0, 7);
-  const aggPayload = { attorney_id: attorneyId, consent_type: declinedStep, month_year: monthYear };
-  if (supabase) {
-    const { error: aggError } = await supabase.rpc("increment_consent_decline_stats", {
-      p_attorney_id: attorneyId,
-      p_consent_type: declinedStep,
-      p_month_year: monthYear,
-    });
-    if (aggError) {
-      console.log("AGGREGATE DECLINE:", aggPayload);
-    }
-  } else {
-    console.log("AGGREGATE DECLINE:", aggPayload);
-  }
-}
-
 type ConsentStep = 0 | 1 | 2 | 3 | 4 | 5; // Step 0: Attorney, Steps 1-5: Consents
 
 export default function ClientConsent() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   
-  // Attorney selection is now on IntakeIdentity; always start at first consent step (1).
-  const [step, setStep] = useState<ConsentStep>(1);
+  // Check if coming from IntakeIdentity - if intake session exists, start at consent step 1
+  // Otherwise, start at attorney selection step 0
+  const hasIntakeSession = sessionStorage.getItem("rcms_intake_id");
+  const [step, setStep] = useState<ConsentStep>(() => {
+    // If intake session exists, start at step 1 (consents), otherwise step 0 (attorney)
+    return hasIntakeSession ? 1 : 0;
+  });
   
   const [sessionId] = useState<string>(() => {
     // Try to get existing session ID from sessionStorage, or generate new one
@@ -239,9 +168,7 @@ export default function ClientConsent() {
   // Step 3: Obtain Records
   const [obtainRecordsAuthorized, setObtainRecordsAuthorized] = useState(false);
   const [obtainRecordsSignature, setObtainRecordsSignature] = useState("");
-  const [injuryDate, setInjuryDate] = useState(() => {
-    return sessionStorage.getItem("rcms_date_of_injury") || "";
-  });
+  const [injuryDate, setInjuryDate] = useState("");
 
   // Step 4: Healthcare Coordination
   const [healthcareCoordAuthorized, setHealthcareCoordAuthorized] = useState(false);
@@ -258,10 +185,7 @@ export default function ClientConsent() {
   const [savingExit, setSavingExit] = useState(false);
   const [countdownExpired, setCountdownExpired] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [declinedConsent, setDeclinedConsent] = useState<number | null>(null);
   const [showDeclineMessage, setShowDeclineMessage] = useState(false);
-  const [declinedConsents, setDeclinedConsents] = useState<number[]>([]);
-  const [givenConsents, setGivenConsents] = useState<number[]>([]);
 
   // Attorney selection state (from get_attorney_directory RPC)
   const [availableAttorneys, setAvailableAttorneys] = useState<{attorney_id: string, attorney_name: string, attorney_code?: string | null}[]>([]);
@@ -313,20 +237,6 @@ export default function ClientConsent() {
         }
       }
     } catch (_) { /* ignore */ }
-    const givenRaw = sessionStorage.getItem("rcms_given_consents");
-    if (givenRaw) {
-      try {
-        const arr = JSON.parse(givenRaw);
-        if (Array.isArray(arr)) setGivenConsents(arr);
-      } catch (_) { /* ignore */ }
-    }
-    const declinedRaw = sessionStorage.getItem("rcms_declined_consents");
-    if (declinedRaw) {
-      try {
-        const arr = JSON.parse(declinedRaw);
-        if (Array.isArray(arr)) setDeclinedConsents(arr);
-      } catch (_) { /* ignore */ }
-    }
   }, []);
 
   // Load available attorneys on mount via get_attorney_directory RPC
@@ -387,98 +297,90 @@ export default function ClientConsent() {
     // Restore attorney info if available
     const storedAttorneyId = sessionStorage.getItem("rcms_current_attorney_id");
     const storedAttorneyCode = sessionStorage.getItem("rcms_attorney_code");
-    const storedAttorneyName = sessionStorage.getItem("rcms_attorney_name");
     if (storedAttorneyId) setSelectedAttorneyId(storedAttorneyId);
     if (storedAttorneyCode) setAttorneyCode(storedAttorneyCode);
-    if (storedAttorneyName) setAttorneyName(storedAttorneyName);
   }, [step, navigate]);
 
-  // Auto-populate attorney name on Step 3 of 6 (Legal Disclosure) from attorney selected in Step 1
-  useEffect(() => {
-    if (step !== 2) return;
-    if (attorneyName.trim()) return;
-    const stored = sessionStorage.getItem("rcms_attorney_name");
-    if (stored) {
-      setAttorneyName(stored);
-      return;
-    }
-    const attorneyId = sessionStorage.getItem("rcms_current_attorney_id");
-    if (attorneyId && availableAttorneys.length > 0) {
-      const atty = availableAttorneys.find((a) => a.attorney_id === attorneyId);
-      if (atty?.attorney_name) setAttorneyName(atty.attorney_name);
-    }
-  }, [step, attorneyName, availableAttorneys]);
 
-
-  const buildConsentsPayload = () => ({
-    serviceAgreement: { accepted: serviceAgreementAccepted, signature: serviceAgreementSignature },
-    legalDisclosure: { authorized: legalDisclosureAuthorized, attorneyName, signature: legalDisclosureSignature },
-    obtainRecords: { authorized: obtainRecordsAuthorized, injuryDate, signature: obtainRecordsSignature },
-    healthcareCoord: { authorized: healthcareCoordAuthorized, pcp, specialist, therapy, signature: healthcareCoordSignature },
-    hipaa: { acknowledged: hipaaAcknowledged, signature: hipaaSignature },
-  });
-
-  const handleConsent = async (consented: boolean) => {
+  const handleDecline = async () => {
+    setIsSaving(true);
     setError(null);
-    if (step < 1 || step > 5) return;
+    try {
+      // Save decline status (UI step 1 = DB step 2 = Service Agreement)
+      await saveConsentStep(sessionId, 1, {
+        signature: "",
+        declined: true,
+      });
+      setShowDeclineMessage(true);
+      // Redirect to home after 3 seconds
+      setTimeout(() => {
+        navigate("/");
+      }, 3000);
+    } catch (err: any) {
+      setError(err.message || "Failed to save. Please try again.");
+      setIsSaving(false);
+    }
+  };
 
-    // --- I Do Not Consent: steps 1 or 2 → stop intake, notify attorney, clear PII
-    if (!consented && (step === 1 || step === 2)) {
-      setIsSaving(true);
-      try {
-        const attorneyId = sessionStorage.getItem("rcms_current_attorney_id");
-        const first = sessionStorage.getItem("rcms_client_first_name")?.trim() || "";
-        const last = sessionStorage.getItem("rcms_client_last_name")?.trim() || "";
-        const clientName = [first, last].filter(Boolean).join(" ") || "Client";
-
-        await saveConsentStep(sessionId, step, {
-          signature: "",
-          declined: true,
-          ...(step === 2 && { attorneyName: "" }),
-        });
-        await notifyAttorneyOnDecline(attorneyId, clientName, step as 1 | 2);
-        clearClientDataFromSession();
-        setDeclinedConsent(step);
-        setShowDeclineMessage(true);
-      } catch (err: any) {
-        setError(err.message || "Failed to save. Please try again.");
-      } finally {
-        setIsSaving(false);
-      }
+  const handleSaveAndExit = async () => {
+    const sid = sessionStorage.getItem("rcms_intake_session_id");
+    if (!sid) {
+      toast.error("No intake session. Please start from the beginning.");
       return;
     }
+    const consents = {
+      serviceAgreement: { accepted: serviceAgreementAccepted, signature: serviceAgreementSignature },
+      legalDisclosure: { authorized: legalDisclosureAuthorized, attorneyName, signature: legalDisclosureSignature },
+      obtainRecords: { authorized: obtainRecordsAuthorized, injuryDate, signature: obtainRecordsSignature },
+      healthcareCoord: { authorized: healthcareCoordAuthorized, pcp, specialist, therapy, signature: healthcareCoordSignature },
+      hipaa: { acknowledged: hipaaAcknowledged, signature: hipaaSignature },
+    };
+    const existing = JSON.parse(sessionStorage.getItem("rcms_intake_form_data") || "{}");
+    const merged = { ...existing, consentStep: step, consents };
+    setSavingExit(true);
+    setError(null);
+    try {
+      await updateIntakeSession(sid, { formData: { consentStep: step, consents } });
+      sessionStorage.setItem("rcms_intake_form_data", JSON.stringify(merged));
+      sessionStorage.setItem("rcms_consent_step", String(step));
+      sessionStorage.setItem("rcms_intake_step", "0");
+      toast.success(SAVE_AND_EXIT_TOAST);
+      navigate("/");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to save. Please try again.");
+    } finally {
+      setSavingExit(false);
+    }
+  };
 
-    // --- I Do Not Consent: steps 3, 4, 5 → proceed with flag
-    if (!consented && (step === 3 || step === 4 || step === 5)) {
-      const nextDeclined = [...declinedConsents, step];
-      setDeclinedConsents(nextDeclined);
-      sessionStorage.setItem("rcms_declined_consents", JSON.stringify(nextDeclined));
-      if (step === 5) {
-        const sid = sessionStorage.getItem("rcms_intake_session_id");
-        const consents = buildConsentsPayload();
-        if (sid) {
-          console.log("=== SAVING CONSENT COMPLETION ===");
-          console.log("Saving consentsComplete:", true);
-          try {
-            const existingFormData = JSON.parse(sessionStorage.getItem("rcms_intake_form_data") || "{}");
-            await updateIntakeSession(sid, {
-              formData: { ...existingFormData, consentStep: 5, consents, consentsComplete: true },
-            });
-          } catch (_) {}
+  const handleContinue = async () => {
+    setError(null);
+
+    // Validate current step
+    if (step === 0) {
+      // Attorney Selection - require dropdown selection OR validated attorney code
+      const effectiveAttorneyId = selectedAttorneyId || validatedAttorneyId;
+      if (!effectiveAttorneyId) {
+        if (attorneyCode.trim()) {
+          setError("The attorney code you entered was not found. Please check the code or select your attorney from the dropdown.");
+        } else {
+          setError("Please select your attorney or enter a valid attorney code to continue.");
         }
-        sessionStorage.removeItem("rcms_intake_submitted");
-        sessionStorage.setItem("rcms_consents_completed", "true");
-        const attorneyParam = sessionStorage.getItem("rcms_current_attorney_id") || "";
-        const codeParam = sessionStorage.getItem("rcms_attorney_code") || "";
-        navigate(`/client-intake?attorney_id=${encodeURIComponent(attorneyParam)}&attorney_code=${encodeURIComponent(codeParam)}`);
-      } else {
-        setStep((step + 1) as ConsentStep);
+        return;
       }
-      return;
-    }
-
-    // --- I Consent: validate, save, track given, advance
-    if (step === 1) {
+      // Store attorney selection in sessionStorage (use effective attorney_id)
+      const codeToStore = selectedAttorneyId ? attorneyCode : attorneyCode.trim();
+      sessionStorage.setItem("rcms_current_attorney_id", effectiveAttorneyId);
+      sessionStorage.setItem("rcms_attorney_code", codeToStore);
+      // Store attorney name for carry-over throughout intake
+      const selectedAtty = availableAttorneys.find(a => a.attorney_id === effectiveAttorneyId);
+      if (selectedAtty) {
+        sessionStorage.setItem("rcms_attorney_name", selectedAtty.attorney_name || "");
+      }
+      // Navigate to IntakeIdentity page with attorney info
+      navigate(`/intake-identity?attorney_id=${encodeURIComponent(effectiveAttorneyId)}&attorney_code=${encodeURIComponent(codeToStore)}`);
+    } else if (step === 1) {
+      // Service Agreement (UI step 1 = DB step 2)
       if (!serviceAgreementAccepted) {
         setError("Please confirm that you have read and agree to the Service Agreement.");
         return;
@@ -487,7 +389,25 @@ export default function ClientConsent() {
         setError("Please enter your full legal name (first and last name) as your signature.");
         return;
       }
+      setIsSaving(true);
+      try {
+        await saveConsentStep(sessionId, 1, {
+          signature: serviceAgreementSignature,
+          declined: false,
+        });
+        const sid = sessionStorage.getItem("rcms_intake_session_id");
+        if (sid) {
+          const consents = { serviceAgreement: { accepted: serviceAgreementAccepted, signature: serviceAgreementSignature }, legalDisclosure: { authorized: legalDisclosureAuthorized, attorneyName, signature: legalDisclosureSignature }, obtainRecords: { authorized: obtainRecordsAuthorized, injuryDate, signature: obtainRecordsSignature }, healthcareCoord: { authorized: healthcareCoordAuthorized, pcp, specialist, therapy, signature: healthcareCoordSignature }, hipaa: { acknowledged: hipaaAcknowledged, signature: hipaaSignature } };
+          await updateIntakeSession(sid, { formData: { consentStep: 2, consents } });
+        }
+        setStep(2);
+      } catch (err: any) {
+        setError(err.message || "Failed to save. Please try again.");
+      } finally {
+        setIsSaving(false);
+      }
     } else if (step === 2) {
+      // Legal Disclosure (UI step 2 = DB step 3)
       if (!attorneyName.trim()) {
         setError("Please enter your attorney or firm name.");
         return;
@@ -500,7 +420,25 @@ export default function ClientConsent() {
         setError("Please enter your full legal name (first and last name) as your signature.");
         return;
       }
+      setIsSaving(true);
+      try {
+        await saveConsentStep(sessionId, 2, {
+          signature: legalDisclosureSignature,
+          attorneyName: attorneyName.trim(),
+        });
+        const sid = sessionStorage.getItem("rcms_intake_session_id");
+        if (sid) {
+          const consents = { serviceAgreement: { accepted: serviceAgreementAccepted, signature: serviceAgreementSignature }, legalDisclosure: { authorized: legalDisclosureAuthorized, attorneyName, signature: legalDisclosureSignature }, obtainRecords: { authorized: obtainRecordsAuthorized, injuryDate, signature: obtainRecordsSignature }, healthcareCoord: { authorized: healthcareCoordAuthorized, pcp, specialist, therapy, signature: healthcareCoordSignature }, hipaa: { acknowledged: hipaaAcknowledged, signature: hipaaSignature } };
+          await updateIntakeSession(sid, { formData: { consentStep: 3, consents } });
+        }
+        setStep(3);
+      } catch (err: any) {
+        setError(err.message || "Failed to save. Please try again.");
+      } finally {
+        setIsSaving(false);
+      }
     } else if (step === 3) {
+      // Obtain Records (UI step 3 = DB step 4)
       if (!injuryDate) {
         setError("Please enter the date of injury/incident.");
         return;
@@ -513,7 +451,25 @@ export default function ClientConsent() {
         setError("Please enter your full legal name (first and last name) as your signature.");
         return;
       }
+      setIsSaving(true);
+      try {
+        await saveConsentStep(sessionId, 3, {
+          signature: obtainRecordsSignature,
+          injuryDate,
+        });
+        const sid = sessionStorage.getItem("rcms_intake_session_id");
+        if (sid) {
+          const consents = { serviceAgreement: { accepted: serviceAgreementAccepted, signature: serviceAgreementSignature }, legalDisclosure: { authorized: legalDisclosureAuthorized, attorneyName, signature: legalDisclosureSignature }, obtainRecords: { authorized: obtainRecordsAuthorized, injuryDate, signature: obtainRecordsSignature }, healthcareCoord: { authorized: healthcareCoordAuthorized, pcp, specialist, therapy, signature: healthcareCoordSignature }, hipaa: { acknowledged: hipaaAcknowledged, signature: hipaaSignature } };
+          await updateIntakeSession(sid, { formData: { consentStep: 4, consents } });
+        }
+        setStep(4);
+      } catch (err: any) {
+        setError(err.message || "Failed to save. Please try again.");
+      } finally {
+        setIsSaving(false);
+      }
     } else if (step === 4) {
+      // Healthcare Coordination (UI step 4 = DB step 5)
       if (!healthcareCoordAuthorized) {
         setError("Please authorize RCMS to share information with your healthcare providers.");
         return;
@@ -522,7 +478,27 @@ export default function ClientConsent() {
         setError("Please enter your full legal name (first and last name) as your signature.");
         return;
       }
+      setIsSaving(true);
+      try {
+        await saveConsentStep(sessionId, 4, {
+          signature: healthcareCoordSignature,
+          pcp: pcp.trim() || null,
+          specialist: specialist.trim() || null,
+          therapy: therapy.trim() || null,
+        });
+        const sid = sessionStorage.getItem("rcms_intake_session_id");
+        if (sid) {
+          const consents = { serviceAgreement: { accepted: serviceAgreementAccepted, signature: serviceAgreementSignature }, legalDisclosure: { authorized: legalDisclosureAuthorized, attorneyName, signature: legalDisclosureSignature }, obtainRecords: { authorized: obtainRecordsAuthorized, injuryDate, signature: obtainRecordsSignature }, healthcareCoord: { authorized: healthcareCoordAuthorized, pcp, specialist, therapy, signature: healthcareCoordSignature }, hipaa: { acknowledged: hipaaAcknowledged, signature: hipaaSignature } };
+          await updateIntakeSession(sid, { formData: { consentStep: 5, consents } });
+        }
+        setStep(5);
+      } catch (err: any) {
+        setError(err.message || "Failed to save. Please try again.");
+      } finally {
+        setIsSaving(false);
+      }
     } else if (step === 5) {
+      // HIPAA Privacy Notice (UI step 5 = DB step 6)
       if (!hipaaAcknowledged) {
         setError("Please acknowledge that you have received and reviewed the Notice of Privacy Practices.");
         return;
@@ -531,159 +507,68 @@ export default function ClientConsent() {
         setError("Please enter your full legal name (first and last name) as your signature.");
         return;
       }
-    }
-
-    setIsSaving(true);
-    try {
-      const nextGiven = [...givenConsents, step];
-      setGivenConsents(nextGiven);
-      sessionStorage.setItem("rcms_given_consents", JSON.stringify(nextGiven));
-
-      if (step === 1) {
-        await saveConsentStep(sessionId, 1, { signature: serviceAgreementSignature, declined: false });
-        const sid = sessionStorage.getItem("rcms_intake_session_id");
-        if (sid) await updateIntakeSession(sid, { formData: { consentStep: 2, consents: buildConsentsPayload() } });
-        setStep(2);
-      } else if (step === 2) {
-        await saveConsentStep(sessionId, 2, { signature: legalDisclosureSignature, attorneyName: attorneyName.trim() });
-        const sid = sessionStorage.getItem("rcms_intake_session_id");
-        if (sid) await updateIntakeSession(sid, { formData: { consentStep: 3, consents: buildConsentsPayload() } });
-        setStep(3);
-      } else if (step === 3) {
-        await saveConsentStep(sessionId, 3, { signature: obtainRecordsSignature, injuryDate });
-        const sid = sessionStorage.getItem("rcms_intake_session_id");
-        if (sid) await updateIntakeSession(sid, { formData: { consentStep: 4, consents: buildConsentsPayload() } });
-        setStep(4);
-      } else if (step === 4) {
-        await saveConsentStep(sessionId, 4, {
-          signature: healthcareCoordSignature,
-          pcp: pcp.trim() || null,
-          specialist: specialist.trim() || null,
-          therapy: therapy.trim() || null,
+      setIsSaving(true);
+      try {
+        await saveConsentStep(sessionId, 5, {
+          signature: hipaaSignature,
         });
         const sid = sessionStorage.getItem("rcms_intake_session_id");
-        if (sid) await updateIntakeSession(sid, { formData: { consentStep: 5, consents: buildConsentsPayload() } });
-        setStep(5);
-      } else if (step === 5) {
-        await saveConsentStep(sessionId, 5, { signature: hipaaSignature });
-        const sid = sessionStorage.getItem("rcms_intake_session_id");
         if (sid) {
-          console.log("=== SAVING CONSENT COMPLETION ===");
-          console.log("Saving consentsComplete:", true);
-          const existingFormData = JSON.parse(sessionStorage.getItem("rcms_intake_form_data") || "{}");
-          await updateIntakeSession(sid, {
-            formData: { ...existingFormData, consentStep: 5, consents: buildConsentsPayload(), consentsComplete: true },
-          });
+          const consents = { serviceAgreement: { accepted: serviceAgreementAccepted, signature: serviceAgreementSignature }, legalDisclosure: { authorized: legalDisclosureAuthorized, attorneyName, signature: legalDisclosureSignature }, obtainRecords: { authorized: obtainRecordsAuthorized, injuryDate, signature: obtainRecordsSignature }, healthcareCoord: { authorized: healthcareCoordAuthorized, pcp, specialist, therapy, signature: healthcareCoordSignature }, hipaa: { acknowledged: hipaaAcknowledged, signature: hipaaSignature } };
+          await updateIntakeSession(sid, { formData: { consentStep: 5, consents, consentsComplete: true } });
         }
+        
+        // Audit: All consents signed (fire and forget - don't block navigation)
         audit({
-          action: "POLICY_ACK",
-          actorRole: "client",
-          actorId: "pre-auth",
+          action: 'POLICY_ACK',
+          actorRole: 'client',
+          actorId: 'pre-auth',
           caseId: undefined,
-          meta: { session_id: sessionId, intake_session_id: intakeSessionId },
-        }).catch((e) => console.error("Failed to audit consent signing:", e));
+          meta: { session_id: sessionId, intake_session_id: intakeSessionId }
+        }).catch(e => console.error('Failed to audit consent signing:', e));
+        
+        // All steps complete - redirect to intake with attorney info in URL params
+        const attorneyParam = selectedAttorneyId || sessionStorage.getItem("rcms_current_attorney_id") || '';
+        const codeParam = attorneyCode || sessionStorage.getItem("rcms_attorney_code") || '';
+        
+        // Clear any previous intake submission flag to prevent reload loop
         sessionStorage.removeItem("rcms_intake_submitted");
+        // Mark consents as completed
         sessionStorage.setItem("rcms_consents_completed", "true");
-        const attorneyParam = selectedAttorneyId || sessionStorage.getItem("rcms_current_attorney_id") || "";
-        const codeParam = attorneyCode || sessionStorage.getItem("rcms_attorney_code") || "";
+        
         navigate(`/client-intake?attorney_id=${encodeURIComponent(attorneyParam)}&attorney_code=${encodeURIComponent(codeParam)}`);
+      } catch (err: any) {
+        setError(err.message || "Failed to save. Please try again.");
+        setIsSaving(false);
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to save. Please try again.");
-    } finally {
-      setIsSaving(false);
     }
   };
 
-  const handleSaveAndExit = async () => {
-    const sid = sessionStorage.getItem("rcms_intake_session_id");
-    if (!sid) {
-      toast.error("No intake session. Please start from the beginning.");
-      return;
-    }
-    const consents = buildConsentsPayload();
-    const existing = JSON.parse(sessionStorage.getItem("rcms_intake_form_data") || "{}");
-    const merged = {
-      ...existing,
-      consentStep: step,
-      consents,
-      givenConsents,
-      declinedConsents,
-    };
-    setSavingExit(true);
-    setError(null);
-    try {
-      await updateIntakeSession(sid, {
-        formData: { consentStep: step, consents, givenConsents, declinedConsents },
-      });
-      sessionStorage.setItem("rcms_intake_form_data", JSON.stringify(merged));
-      sessionStorage.setItem("rcms_consent_step", String(step));
-      sessionStorage.setItem("rcms_intake_step", "0");
-      sessionStorage.setItem("rcms_given_consents", JSON.stringify(givenConsents));
-      sessionStorage.setItem("rcms_declined_consents", JSON.stringify(declinedConsents));
-      toast.success(SAVE_AND_EXIT_TOAST);
-      navigate("/");
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to save. Please try again.");
-    } finally {
-      setSavingExit(false);
-    }
-  };
+  const progress = step === 0 ? 0 : ((step) / 6) * 100; // 0% for attorney, 16.67% per consent step
 
-  const handleContinue = async () => {
-    setError(null);
-    if (step !== 0) return;
-    // Attorney Selection - require dropdown selection OR validated attorney code
-    const effectiveAttorneyId = selectedAttorneyId || validatedAttorneyId;
-    if (!effectiveAttorneyId) {
-      if (attorneyCode.trim()) {
-        setError("The attorney code you entered was not found. Please check the code or select your attorney from the dropdown.");
-      } else {
-        setError("Please select your attorney or enter a valid attorney code to continue.");
-      }
-      return;
-    }
-    const codeToStore = selectedAttorneyId ? attorneyCode : attorneyCode.trim();
-    sessionStorage.setItem("rcms_current_attorney_id", effectiveAttorneyId);
-    sessionStorage.setItem("rcms_attorney_code", codeToStore);
-    const selectedAtty = availableAttorneys.find((a) => a.attorney_id === effectiveAttorneyId);
-    if (selectedAtty) sessionStorage.setItem("rcms_attorney_name", selectedAtty.attorney_name || "");
-    navigate(`/intake-identity?attorney_id=${encodeURIComponent(effectiveAttorneyId)}&attorney_code=${encodeURIComponent(codeToStore)}`);
-  };
-
-  const progress = (step / 5) * 100; // Steps 1–5 (consents only); 20% per step
-
-  // Show decline message if user declined consent step 1 or 2 (intake cannot continue)
-  if (showDeclineMessage && declinedConsent !== null) {
+  // Show decline message if user declined Service Agreement
+  if (showDeclineMessage) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#3b6a9b] via-[#4a7fb0] to-[#6aa0cf] py-8 px-4 flex items-center justify-center text-white">
-        <Card className="bg-white rounded-lg shadow-lg p-8 max-w-2xl text-gray-900">
-          <div className="text-center space-y-6 py-8">
-            <div className="text-red-600 text-6xl">⚠️</div>
-            <h2 className="text-2xl font-bold text-black">Intake Cannot Continue</h2>
-            <p className="text-black">
-              You have declined{" "}
-              {declinedConsent === 1
-                ? "RCMS care management services"
-                : "to authorize your attorney to access your health information"}
-              .
-            </p>
-            <p className="text-black">
-              Please contact your attorney or legal representative to discuss your options.
-            </p>
-            <div className="pt-4">
-              <Button onClick={() => (window.location.href = "/")} variant="outline">
-                Return to Home
-              </Button>
-            </div>
-          </div>
+      <div className="min-h-screen bg-gradient-to-br from-secondary via-secondary-light to-primary py-8 px-4 flex items-center justify-center">
+        <Card className="p-8 max-w-2xl">
+          <Alert className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              We're sorry, without agreeing to the Service Agreement, we cannot provide care
+              management services. You remain a client of your attorney, but we cannot assist
+              with your case. Please contact your attorney if you have questions.
+            </AlertDescription>
+          </Alert>
+          <p className="text-sm text-muted-foreground">
+            Redirecting to home page...
+          </p>
         </Card>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#3b6a9b] via-[#4a7fb0] to-[#6aa0cf] py-8 px-4 text-white">
+    <div className="min-h-screen bg-gradient-to-br from-secondary via-secondary-light to-primary py-8 px-4">
       <IntakeCountdownBanner onExpired={setCountdownExpired} />
       <div className="max-w-4xl mx-auto">
         {searchParams.get("resume") === "true" && (
@@ -703,33 +588,33 @@ export default function ClientConsent() {
         {/* Progress Indicator */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-lg font-semibold text-white">
-              Step {step} of 5 (Consents)
+            <h2 className="text-lg font-semibold text-foreground">
+              {step === 0 ? "Step 1 of 3 (Attorney Selection)" : `Step ${step + 1} of 6 (Consents)`}
             </h2>
-            <span className="text-sm text-white">{Math.round(progress)}% Complete</span>
+            <span className="text-sm text-muted-foreground">{Math.round(progress)}% Complete</span>
           </div>
           <Progress value={progress} className="h-2" />
         </div>
 
-        <Card className="bg-white rounded-lg shadow-lg p-6 md:p-8 text-gray-900">
+        <Card className="p-6 md:p-8">
           {/* Step 0: Attorney Selection */}
           {step === 0 && (
             <div className="space-y-6">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                <h1 className="text-2xl font-bold text-foreground mb-2">
                   Select Your Attorney
                 </h1>
-                <p className="text-sm text-gray-900">
+                <p className="text-sm text-muted-foreground">
                   Please select your attorney before proceeding.
                 </p>
               </div>
 
               <div className="space-y-4">
                 <div className="p-4 bg-muted/30 rounded-lg border border-border">
-                  <h4 className="text-sm font-semibold mb-3 text-gray-900">Attorney Information</h4>
+                  <h4 className="text-sm font-semibold mb-3">Attorney Information</h4>
                   <div className="space-y-3">
                     <div>
-                      <Label className="text-sm font-medium text-gray-900">Select Your Attorney</Label>
+                      <Label className="text-sm font-medium">Select Your Attorney</Label>
                       <Select value={selectedAttorneyId} onValueChange={(val) => {
                         setSelectedAttorneyId(val);
                         // Clear attorney code when selecting from dropdown
@@ -743,9 +628,9 @@ export default function ClientConsent() {
                         <SelectTrigger>
                           <SelectValue placeholder="Choose your attorney..." />
                         </SelectTrigger>
-                        <SelectContent className="bg-white">
+                        <SelectContent className="bg-white text-gray-900">
                           {availableAttorneys.map(attorney => (
-                            <SelectItem key={attorney.attorney_id} value={attorney.attorney_id} className="text-gray-900">
+                            <SelectItem key={attorney.attorney_id} value={attorney.attorney_id} className="text-gray-900 focus:bg-gray-100 focus:text-gray-900">
                               {attorney.attorney_name}{attorney.attorney_code ? ` (${attorney.attorney_code})` : ''}
                             </SelectItem>
                           ))}
@@ -755,9 +640,9 @@ export default function ClientConsent() {
                         <p className="text-sm text-destructive mt-2">{attorneyLoadError}</p>
                       )}
                     </div>
-                    <div className="text-center text-sm text-gray-900">— OR —</div>
+                    <div className="text-center text-sm text-muted-foreground">— OR —</div>
                     <div>
-                      <Label htmlFor="attorney-code" className="text-gray-900">Enter Attorney Code</Label>
+                      <Label htmlFor="attorney-code">Enter Attorney Code</Label>
                       <Input
                         id="attorney-code"
                         value={attorneyCode}
@@ -774,66 +659,82 @@ export default function ClientConsent() {
               </div>
               {/* Returning: nested inside same card, smaller secondary */}
               <div className="mt-6 pt-4 border-t border-border">
-                <p className="font-medium mb-1 text-sm text-gray-900">Returning?</p>
-                <p className="text-xs text-gray-900 mb-2">Resume an unfinished intake or check your status using your Intake ID (INT#) and temporary PIN.</p>
+                <p className="font-medium mb-1 text-sm">Returning?</p>
+                <p className="text-xs text-muted-foreground mb-2">Resume an unfinished intake or check your status using your Intake ID (INT#) and temporary PIN.</p>
                 <a href="/resume-intake" className="text-sm font-medium text-primary hover:underline">Resume / Check Status</a>
               </div>
             </div>
           )}
 
-          {/* Step 1: Service Agreement - content truncated for length; full content in C.A.R.E. */}
+          {/* Step 1: Service Agreement */}
           {step === 1 && (
             <div className="space-y-6">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                <h1 className="text-2xl font-bold text-foreground mb-2">
                   Service Agreement & Informed Consent
                 </h1>
-                <p className="text-sm text-gray-900">
+                <p className="text-sm text-muted-foreground">
                   Please read the following service agreement carefully.
                 </p>
               </div>
 
               <div className="border rounded-lg p-4 bg-muted/50 max-h-[500px] overflow-y-auto">
-                <div className="prose prose-sm max-w-none text-gray-900">
-                  <h3 className="text-base font-bold mb-3 text-gray-900">RECONCILE CARE MANAGEMENT SERVICES (RCMS)</h3>
-                  <h4 className="text-sm font-semibold mb-4 text-gray-900">SERVICE AGREEMENT & INFORMED CONSENT FOR CARE MANAGEMENT SERVICES</h4>
+                <div className="prose prose-sm max-w-none text-foreground">
+                  <h3 className="text-base font-bold mb-3">RECONCILE CARE MANAGEMENT SERVICES (RCMS)</h3>
+                  <h4 className="text-sm font-semibold mb-4">SERVICE AGREEMENT & INFORMED CONSENT FOR CARE MANAGEMENT SERVICES</h4>
+                  
                   <div className="space-y-4">
                     <div>
                       <p className="font-semibold mb-2">1. Voluntary Agreement for Services:</p>
-                      <p className="text-gray-900">I voluntarily request and agree to receive care management services from Reconcile Care Management Services (RCMS). I understand that these services are designed to provide support and navigation for my clinically complex situation. I am not obligated to accept these services and may decline to participate at any time.</p>
+                      <p>
+                        I voluntarily request and agree to receive care management services from Reconcile Care Management Services (RCMS). I understand that these services are designed to provide support and navigation for my clinically complex situation. I am not obligated to accept these services and may decline to participate at any time.
+                      </p>
                     </div>
+
                     <div>
                       <p className="font-semibold mb-2">2. Nature of Services – The RCMS C.A.R.E. Model:</p>
-                      <p className="mb-2 text-gray-900">RCMS provides clinical advocacy, resource coordination, and evidence-based support. Services may include:</p>
-                      <ul className="list-disc list-inside space-y-1 ml-4 text-gray-900">
+                      <p className="mb-2">RCMS provides clinical advocacy, resource coordination, and evidence-based support. Services may include:</p>
+                      <ul className="list-disc list-inside space-y-1 ml-4">
                         <li>Comprehensive clinical assessment and review of medical records.</li>
                         <li>Care coordination and communication with my treating healthcare providers.</li>
                         <li>Identification of barriers to recovery and connection to community resources.</li>
                         <li>Clinical consultation and analysis for my legal team to support my case.</li>
                       </ul>
-                      <p className="mt-2 text-gray-900">I understand that RCMS and its staff are Registered Nurses and Care Managers. <strong>THEY DO NOT PROVIDE LEGAL ADVICE.</strong> All legal decisions remain the responsibility of my attorney.</p>
+                      <p className="mt-2">
+                        I understand that RCMS and its staff are Registered Nurses and Care Managers. <strong>THEY DO NOT PROVIDE LEGAL ADVICE.</strong> All legal decisions remain the responsibility of my attorney.
+                      </p>
                     </div>
+
                     <div>
                       <p className="font-semibold mb-2">3. My Responsibilities as a Client:</p>
-                      <p className="mb-2 text-gray-900">I agree to:</p>
-                      <ul className="list-disc list-inside space-y-1 ml-4 text-gray-900">
+                      <p className="mb-2">I agree to:</p>
+                      <ul className="list-disc list-inside space-y-1 ml-4">
                         <li>Provide accurate and complete information about my health and circumstances.</li>
                         <li>Participate actively in the care management process.</li>
                         <li>Inform my RCMS Care Manager of significant changes in my health or treatment.</li>
                         <li>Notify RCMS if I wish to discontinue services.</li>
                       </ul>
                     </div>
+
                     <div>
                       <p className="font-semibold mb-2">4. Financial Agreement:</p>
-                      <p className="text-gray-900">I understand that RCMS services are engaged and compensated by my legal representative/law firm under a separate business agreement. I will not receive a bill or be directly charged by RCMS for these services. This financial arrangement does not influence the clinical judgment or advocacy provided by my RCMS Care Manager.</p>
+                      <p>
+                        I understand that RCMS services are engaged and compensated by my legal representative/law firm under a separate business agreement. I will not receive a bill or be directly charged by RCMS for these services. This financial arrangement does not influence the clinical judgment or advocacy provided by my RCMS Care Manager.
+                      </p>
                     </div>
+
                     <div>
                       <p className="font-semibold mb-2">5. Confidentiality:</p>
-                      <p className="text-gray-900">I understand that my privacy is protected by law and by RCMS policies. I will receive a separate Notice of Privacy Practices that details these protections. I authorize the necessary use and disclosure of my health information through accompanying consent forms.</p>
+                      <p>
+                        I understand that my privacy is protected by law and by RCMS policies. I will receive a separate Notice of Privacy Practices that details these protections. I authorize the necessary use and disclosure of my health information through accompanying consent forms.
+                      </p>
                     </div>
+
                     <div>
                       <p className="font-semibold mb-2">6. Right to Discontinue:</p>
-                      <p className="text-gray-900">I may discontinue RCMS services at any time by providing verbal or written notice to my Care Manager and my attorney.</p>
+                      <p>
+                        I may discontinue RCMS services at any time by providing verbal or written notice to my Care Manager and my attorney.
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -846,103 +747,199 @@ export default function ClientConsent() {
                     checked={serviceAgreementAccepted}
                     onCheckedChange={(checked) => setServiceAgreementAccepted(checked === true)}
                   />
-                  <Label htmlFor="service-agreement" className="text-sm leading-relaxed cursor-pointer text-gray-900">
+                  <Label
+                    htmlFor="service-agreement"
+                    className="text-sm leading-relaxed cursor-pointer"
+                  >
                     I have read this Service Agreement, understand and agree to the terms
                   </Label>
                 </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="service-signature" className="text-gray-900">Full Legal Name (Signature)</Label>
-                  <Input id="service-signature" value={serviceAgreementSignature} onChange={(e) => setServiceAgreementSignature(e.target.value)} placeholder="Enter your full legal name" className="text-gray-900" />
+                  <Label htmlFor="service-signature">Full Legal Name (Signature)</Label>
+                  <Input
+                    id="service-signature"
+                    value={serviceAgreementSignature}
+                    onChange={(e) => setServiceAgreementSignature(e.target.value)}
+                    placeholder="Enter your full legal name"
+                  />
                 </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="service-date" className="text-gray-900">Date</Label>
-                  <Input id="service-date" type="text" value={currentDate} readOnly className="bg-muted text-gray-900" />
+                  <Label htmlFor="service-date">Date</Label>
+                  <Input
+                    id="service-date"
+                    type="text"
+                    value={currentDate}
+                    readOnly
+                    className="bg-muted"
+                  />
                 </div>
               </div>
             </div>
           )}
 
-          {/* Steps 2-5: same structure as C.A.R.E. - keeping key UI; full legal text abbreviated */}
+          {/* Step 2: Authorization for Legal Disclosure */}
           {step === 2 && (
             <div className="space-y-6">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">Authorization to Disclose PHI to Legal Counsel</h1>
-                <p className="text-sm text-gray-900">Please read the following authorization carefully.</p>
+                <h1 className="text-2xl font-bold text-foreground mb-2">
+                  Authorization to Disclose PHI to Legal Counsel
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  Please read the following authorization carefully.
+                </p>
               </div>
+
               <div className="border rounded-lg p-4 bg-muted/50 max-h-[500px] overflow-y-auto">
-                <div className="prose prose-sm max-w-none text-gray-900">
-                  <h3 className="text-base font-bold mb-3 text-gray-900">AUTHORIZATION FOR CLINICAL CONSULTATION & DISCLOSURE OF PROTECTED HEALTH INFORMATION TO LEGAL COUNSEL/REPRESENTATIVE</h3>
+                <div className="prose prose-sm max-w-none text-foreground">
+                  <h3 className="text-base font-bold mb-3">AUTHORIZATION FOR CLINICAL CONSULTATION & DISCLOSURE OF PROTECTED HEALTH INFORMATION TO LEGAL COUNSEL/REPRESENTATIVE</h3>
+                  
                   <div className="space-y-4">
                     <div>
                       <p className="font-semibold mb-2">Coordination of Authorizations:</p>
-                      <p className="text-gray-900">This is one of three distinct authorizations for Reconcile Care Management Services (RCMS). Each form serves a separate purpose: collaboration with your legal team, obtaining your records, and coordinating with your healthcare providers. These authorizations are designed to work together. Signing one does not invalidate the others. You may revoke any one authorization without affecting the others.</p>
+                      <p>
+                        This is one of three distinct authorizations for Reconcile Care Management Services (RCMS). Each form serves a separate purpose: collaboration with your legal team, obtaining your records, and coordinating with your healthcare providers. These authorizations are designed to work together. Signing one does not invalidate the others. You may revoke any one authorization without affecting the others.
+                      </p>
                     </div>
+
                     <div>
-                      <p className="font-semibold mb-2">RCMS&apos;s Role as a Clinical Business Associate:</p>
-                      <p className="text-gray-900">Reconcile Care Management Services (RCMS) operates as a Business Associate under HIPAA to your legal team. This means we are engaged by your attorneys to provide specialized, clinical support for your case. We do not provide legal advice. Our role is to organize, interpret, and translate complex medical information into clear, actionable insights for your legal team.</p>
+                      <p className="font-semibold mb-2">RCMS's Role as a Clinical Business Associate:</p>
+                      <p>
+                        Reconcile Care Management Services (RCMS) operates as a Business Associate under HIPAA to your legal team. This means we are engaged by your attorneys to provide specialized, clinical support for your case. We do not provide legal advice. Our role is to organize, interpret, and translate complex medical information into clear, actionable insights for your legal team.
+                      </p>
                     </div>
+
                     <div>
                       <p className="font-semibold mb-2">Specific Authorization for Legal Collaboration:</p>
-                      <p className="mb-2 text-gray-900">I specifically authorize and direct my Reconcile Care Management Services (RCMS) Care Manager to discuss, consult on, and disclose my Protected Health Information (PHI) and all pertinent clinical information with my designated legal representative for the purpose of legal case coordination and strategy.</p>
-                      <p className="mb-2 text-gray-900">This includes, but is not limited to:</p>
-                      <ul className="list-disc list-inside space-y-1 ml-4 text-gray-900">
+                      <p className="mb-2">
+                        I specifically authorize and direct my Reconcile Care Management Services (RCMS) Care Manager to discuss, consult on, and disclose my Protected Health Information (PHI) and all pertinent clinical information with my designated legal representative for the purpose of legal case coordination and strategy.
+                      </p>
+                      <p className="mb-2">This includes, but is not limited to:</p>
+                      <ul className="list-disc list-inside space-y-1 ml-4">
                         <li>Verbal consultations, strategy discussions, and updates.</li>
                         <li>Written summaries, assessments, and reports.</li>
                         <li>Reviews and interpretations of medical records.</li>
                         <li>Analysis of treatment plans and future care needs.</li>
                       </ul>
                     </div>
+
                     <div>
-                      <p className="font-semibold mb-2">Nurse&apos;s Fiduciary Duty & Your Rights:</p>
-                      <p className="mb-2 text-gray-900">As Registered Nurses and Care Managers, we have a professional and ethical fiduciary duty to you, our client. This means our primary obligation is to act in your best interest, with loyalty, and to protect your confidential information.</p>
-                      <p className="text-gray-900">You have the absolute right to revoke this authorization, in whole or in part, at any time, for any reason.</p>
+                      <p className="font-semibold mb-2">Nurse's Fiduciary Duty & Your Rights:</p>
+                      <p className="mb-2">
+                        As Registered Nurses and Care Managers, we have a professional and ethical fiduciary duty to you, our client. This means our primary obligation is to act in your best interest, with loyalty, and to protect your confidential information.
+                      </p>
+                      <p>
+                        You have the absolute right to revoke this authorization, in whole or in part, at any time, for any reason.
+                      </p>
                     </div>
+
                     <div>
                       <p className="font-semibold mb-2">Expiration:</p>
-                      <p className="text-gray-900">This authorization will expire upon the formal closure of my case with RCMS, or one (1) year from the date signed, whichever occurs first.</p>
+                      <p>
+                        This authorization will expire upon the formal closure of my case with RCMS, or one (1) year from the date signed, whichever occurs first.
+                      </p>
                     </div>
+
                     <div>
                       <p className="font-semibold mb-2">Re-Disclosure Notice:</p>
-                      <p className="text-gray-900">I understand that information disclosed to my legal representative may be re-disclosed by them in the course of my legal proceedings and may no longer be protected by federal HIPAA regulations.</p>
+                      <p>
+                        I understand that information disclosed to my legal representative may be re-disclosed by them in the course of my legal proceedings and may no longer be protected by federal HIPAA regulations.
+                      </p>
                     </div>
                   </div>
                 </div>
               </div>
+
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="attorney-name" className="text-gray-900">Attorney/Firm Name *</Label>
-                  <Input id="attorney-name" value={attorneyName} onChange={(e) => setAttorneyName(e.target.value)} placeholder="Enter your attorney or firm name" required className="text-gray-900" />
+                  <Label htmlFor="attorney-name">
+                    Attorney/Firm Name <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="attorney-name"
+                    value={attorneyName}
+                    onChange={(e) => setAttorneyName(e.target.value)}
+                    placeholder="Enter your attorney or firm name"
+                    required
+                  />
                 </div>
+
                 <div className="flex items-start space-x-2">
-                  <Checkbox id="legal-disclosure" checked={legalDisclosureAuthorized} onCheckedChange={(c) => setLegalDisclosureAuthorized(c === true)} />
-                  <Label htmlFor="legal-disclosure" className="text-sm cursor-pointer text-gray-900">I authorize RCMS to disclose my PHI to my legal representative as described above</Label>
+                  <Checkbox
+                    id="legal-disclosure"
+                    checked={legalDisclosureAuthorized}
+                    onCheckedChange={(checked) => setLegalDisclosureAuthorized(checked === true)}
+                  />
+                  <Label
+                    htmlFor="legal-disclosure"
+                    className="text-sm leading-relaxed cursor-pointer"
+                  >
+                    I authorize RCMS to disclose my PHI to my legal representative as
+                    described above
+                  </Label>
                 </div>
-                <div className="space-y-2"><Label className="text-gray-900">Full Legal Name (Signature)</Label><Input value={legalDisclosureSignature} onChange={(e) => setLegalDisclosureSignature(e.target.value)} placeholder="Enter your full legal name" className="text-gray-900" /></div>
-                <div className="space-y-2"><Label className="text-gray-900">Date</Label><Input type="text" value={currentDate} readOnly className="bg-muted text-gray-900" /></div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="legal-signature">Full Legal Name (Signature)</Label>
+                  <Input
+                    id="legal-signature"
+                    value={legalDisclosureSignature}
+                    onChange={(e) => setLegalDisclosureSignature(e.target.value)}
+                    placeholder="Enter your full legal name"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="legal-date">Date</Label>
+                  <Input
+                    id="legal-date"
+                    type="text"
+                    value={currentDate}
+                    readOnly
+                    className="bg-muted"
+                  />
+                </div>
               </div>
             </div>
           )}
+
+          {/* Step 3: Authorization to Obtain Records */}
           {step === 3 && (
             <div className="space-y-6">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">Authorization to Obtain Protected Health Information</h1>
-                <p className="text-sm text-gray-900">Please read the following authorization carefully.</p>
+                <h1 className="text-2xl font-bold text-foreground mb-2">
+                  Authorization to Obtain Protected Health Information
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  Please read the following authorization carefully.
+                </p>
               </div>
+
               <div className="border rounded-lg p-4 bg-muted/50 max-h-[500px] overflow-y-auto">
-                <div className="prose prose-sm max-w-none text-gray-900">
-                  <h3 className="text-base font-bold mb-3 text-gray-900">AUTHORIZATION TO OBTAIN PROTECTED HEALTH INFORMATION</h3>
+                <div className="prose prose-sm max-w-none text-foreground">
+                  <h3 className="text-base font-bold mb-3">AUTHORIZATION TO OBTAIN PROTECTED HEALTH INFORMATION</h3>
+                  
                   <div className="space-y-4">
                     <div>
                       <p className="font-semibold mb-2">Coordination of Authorizations:</p>
-                      <p className="text-gray-900">This is one of three distinct authorizations for Reconcile Care Management Services (RCMS). Each form serves a separate purpose. You may revoke any one authorization without affecting the others.</p>
+                      <p>
+                        This is one of three distinct authorizations for Reconcile Care Management Services (RCMS). Each form serves a separate purpose. You may revoke any one authorization without affecting the others.
+                      </p>
                     </div>
+
                     <div>
-                      <p className="mb-2 text-gray-900">I hereby authorize any and all physicians, healthcare providers, hospitals, clinics, rehabilitation facilities, insurance companies, employers, and other entities to release and disclose my complete records and Protected Health Information (PHI) to Reconcile Care Management Services (RCMS) and its assigned Care Managers.</p>
+                      <p className="mb-2">
+                        I hereby authorize any and all physicians, healthcare providers, hospitals, clinics, rehabilitation facilities, insurance companies, employers, and other entities to release and disclose my complete records and Protected Health Information (PHI) to Reconcile Care Management Services (RCMS) and its assigned Care Managers.
+                      </p>
                     </div>
+
                     <div>
                       <p className="font-semibold mb-2">Information to Be Disclosed:</p>
-                      <p className="mb-2 text-gray-900">This authorization covers all records pertaining to my condition, treatment, and related claims, including but not limited to:</p>
-                      <ul className="list-disc list-inside space-y-1 ml-4 text-gray-900">
+                      <p className="mb-2">
+                        This authorization covers all records pertaining to my condition, treatment, and related claims, including but not limited to:
+                      </p>
+                      <ul className="list-disc list-inside space-y-1 ml-4">
                         <li>All medical records, office notes, charts, and diagnoses.</li>
                         <li>Diagnostic reports (e.g., MRI, X-Ray, CT Scan, EMG).</li>
                         <li>Billing statements, itemized charges, and payment records.</li>
@@ -951,51 +948,121 @@ export default function ClientConsent() {
                         <li>Pharmacy records.</li>
                         <li>Any other documents relevant to the injury/incident.</li>
                       </ul>
-                      <p className="mt-2 text-gray-900">This authorization specifically excludes &apos;psychotherapy notes&apos; as defined by HIPAA. A separate authorization is required for those notes.</p>
+                      <p className="mt-2">
+                        This authorization specifically excludes 'psychotherapy notes' as defined by HIPAA. A separate authorization is required for those notes.
+                      </p>
                     </div>
+
                     <div>
                       <p className="font-semibold mb-2">Purpose:</p>
-                      <p className="text-gray-900">The information is necessary for Reconcile Care Management Services to provide comprehensive care management, assessment, and coordination of services related to my case.</p>
+                      <p>
+                        The information is necessary for Reconcile Care Management Services to provide comprehensive care management, assessment, and coordination of services related to my case.
+                      </p>
                     </div>
+
                     <div>
                       <p className="font-semibold mb-2">Important Distinction:</p>
-                      <p className="text-gray-900">You may have already signed a general release with your attorney. This RCMS-specific authorization is required under HIPAA to permit healthcare entities to release your PHI directly to RCMS.</p>
+                      <p>
+                        You may have already signed a general release with your attorney. This RCMS-specific authorization is required under HIPAA to permit healthcare entities to release your PHI directly to RCMS.
+                      </p>
                     </div>
+
                     <div>
                       <p className="font-semibold mb-2">Expiration:</p>
-                      <p className="text-gray-900">This authorization will expire one (1) year from the date signed, or upon the formal closure of my case with RCMS, whichever occurs first.</p>
+                      <p>
+                        This authorization will expire one (1) year from the date signed, or upon the formal closure of my case with RCMS, whichever occurs first.
+                      </p>
                     </div>
                   </div>
                 </div>
               </div>
+
               <div className="space-y-4">
-                <div className="space-y-2"><Label className="text-gray-900">Date of Injury/Incident *</Label><Input type="date" value={injuryDate} onChange={(e) => setInjuryDate(e.target.value)} required max={currentDate} className="text-gray-900" /></div>
-                <div className="flex items-start space-x-2"><Checkbox id="obtain-records" checked={obtainRecordsAuthorized} onCheckedChange={(c) => setObtainRecordsAuthorized(c === true)} /><Label htmlFor="obtain-records" className="text-sm cursor-pointer text-gray-900">I authorize the release of my records to RCMS as described above</Label></div>
-                <div className="space-y-2"><Label className="text-gray-900">Full Legal Name (Signature)</Label><Input value={obtainRecordsSignature} onChange={(e) => setObtainRecordsSignature(e.target.value)} placeholder="Enter your full legal name" className="text-gray-900" /></div>
-                <div className="space-y-2"><Label className="text-gray-900">Date</Label><Input type="text" value={currentDate} readOnly className="bg-muted text-gray-900" /></div>
+                <div className="space-y-2">
+                  <Label htmlFor="injury-date">
+                    Date of Injury/Incident <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="injury-date"
+                    type="date"
+                    value={injuryDate}
+                    onChange={(e) => setInjuryDate(e.target.value)}
+                    required
+                    max={currentDate}
+                  />
+                </div>
+
+                <div className="flex items-start space-x-2">
+                  <Checkbox
+                    id="obtain-records"
+                    checked={obtainRecordsAuthorized}
+                    onCheckedChange={(checked) => setObtainRecordsAuthorized(checked === true)}
+                  />
+                  <Label
+                    htmlFor="obtain-records"
+                    className="text-sm leading-relaxed cursor-pointer"
+                  >
+                    I authorize the release of my records to RCMS as described above
+                  </Label>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="obtain-signature">Full Legal Name (Signature)</Label>
+                  <Input
+                    id="obtain-signature"
+                    value={obtainRecordsSignature}
+                    onChange={(e) => setObtainRecordsSignature(e.target.value)}
+                    placeholder="Enter your full legal name"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="obtain-date">Date</Label>
+                  <Input
+                    id="obtain-date"
+                    type="text"
+                    value={currentDate}
+                    readOnly
+                    className="bg-muted"
+                  />
+                </div>
               </div>
             </div>
           )}
+
+          {/* Step 4: Authorization for Healthcare Coordination */}
           {step === 4 && (
             <div className="space-y-6">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">Authorization to Disclose for Healthcare Coordination</h1>
-                <p className="text-sm text-gray-900">Please read the following authorization carefully.</p>
+                <h1 className="text-2xl font-bold text-foreground mb-2">
+                  Authorization to Disclose for Healthcare Coordination
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  Please read the following authorization carefully.
+                </p>
               </div>
+
               <div className="border rounded-lg p-4 bg-muted/50 max-h-[500px] overflow-y-auto">
-                <div className="prose prose-sm max-w-none text-gray-900">
-                  <h3 className="text-base font-bold mb-3 text-gray-900">AUTHORIZATION TO DISCLOSE INFORMATION FOR HEALTHCARE COORDINATION</h3>
+                <div className="prose prose-sm max-w-none text-foreground">
+                  <h3 className="text-base font-bold mb-3">AUTHORIZATION TO DISCLOSE INFORMATION FOR HEALTHCARE COORDINATION</h3>
+                  
                   <div className="space-y-4">
                     <div>
                       <p className="font-semibold mb-2">Coordination of Authorizations:</p>
-                      <p className="text-gray-900">This is one of three distinct authorizations for Reconcile Care Management Services (RCMS). You may revoke any one authorization without affecting the others.</p>
+                      <p>
+                        This is one of three distinct authorizations for Reconcile Care Management Services (RCMS). You may revoke any one authorization without affecting the others.
+                      </p>
                     </div>
+
                     <div>
-                      <p className="mb-2 text-gray-900">I hereby authorize Reconcile Care Management Services (RCMS) and its assigned Care Managers to disclose, release, and discuss the Protected Health Information (PHI) and professional Care Management work product they create, compile, or review in the course of managing my case.</p>
+                      <p className="mb-2">
+                        I hereby authorize Reconcile Care Management Services (RCMS) and its assigned Care Managers to disclose, release, and discuss the Protected Health Information (PHI) and professional Care Management work product they create, compile, or review in the course of managing my case.
+                      </p>
                     </div>
+
                     <div>
                       <p className="font-semibold mb-2">Information to Be Disclosed:</p>
-                      <ul className="list-disc list-inside space-y-1 ml-4 text-gray-900">
+                      <ul className="list-disc list-inside space-y-1 ml-4">
                         <li>Care Management Assessments, Initial Evaluations, and Clinical Reviews.</li>
                         <li>Progress Reports, Summaries, and Correspondence.</li>
                         <li>Reviews and summaries of medical records and other PHI.</li>
@@ -1004,84 +1071,178 @@ export default function ClientConsent() {
                         <li>Identification of barriers to recovery and care plan coordination.</li>
                       </ul>
                     </div>
+
                     <div>
                       <p className="font-semibold mb-2">Specific Authorized Recipients:</p>
-                      <p className="text-gray-900">This information may be disclosed ONLY to my treating healthcare providers for the purpose of coordinating my care. This includes my current and future treating physicians, therapists, and other healthcare providers.</p>
+                      <p>
+                        This information may be disclosed ONLY to my treating healthcare providers for the purpose of coordinating my care. This includes my current and future treating physicians, therapists, and other healthcare providers.
+                      </p>
                     </div>
+
                     <div>
                       <p className="font-semibold mb-2">Purpose:</p>
-                      <p className="text-gray-900">This authorization allows RCMS to coordinate my healthcare by sharing relevant assessments and recommendations with my treating medical team to support a unified approach to my treatment and recovery.</p>
+                      <p>
+                        This authorization allows RCMS to coordinate my healthcare by sharing relevant assessments and recommendations with my treating medical team to support a unified approach to my treatment and recovery.
+                      </p>
                     </div>
+
                     <div>
                       <p className="font-semibold mb-2">Expiration:</p>
-                      <p className="text-gray-900">This authorization will expire upon the formal closure of my case with RCMS, or one (1) year from the date signed, whichever occurs first.</p>
+                      <p>
+                        This authorization will expire upon the formal closure of my case with RCMS, or one (1) year from the date signed, whichever occurs first.
+                      </p>
                     </div>
                   </div>
                 </div>
               </div>
+
               <div className="space-y-4">
-                <div className="space-y-2"><Label className="text-gray-900">Primary Care Physician (Optional)</Label><Input value={pcp} onChange={(e) => setPcp(e.target.value)} placeholder="Enter primary care physician name" className="text-gray-900" /></div>
-                <div className="space-y-2"><Label className="text-gray-900">Specialist(s) (Optional)</Label><Input value={specialist} onChange={(e) => setSpecialist(e.target.value)} placeholder="Enter specialist name(s)" className="text-gray-900" /></div>
-                <div className="space-y-2"><Label className="text-gray-900">Therapy Provider(s) (Optional)</Label><Input value={therapy} onChange={(e) => setTherapy(e.target.value)} placeholder="Enter therapy provider name(s)" className="text-gray-900" /></div>
-                <div className="flex items-start space-x-2"><Checkbox id="healthcare-coord" checked={healthcareCoordAuthorized} onCheckedChange={(c) => setHealthcareCoordAuthorized(c === true)} /><Label htmlFor="healthcare-coord" className="text-sm cursor-pointer text-gray-900">I authorize RCMS to share information with my healthcare providers as described above</Label></div>
-                <div className="space-y-2"><Label className="text-gray-900">Full Legal Name (Signature)</Label><Input value={healthcareCoordSignature} onChange={(e) => setHealthcareCoordSignature(e.target.value)} placeholder="Enter your full legal name" className="text-gray-900" /></div>
-                <div className="space-y-2"><Label className="text-gray-900">Date</Label><Input type="text" value={currentDate} readOnly className="bg-muted text-gray-900" /></div>
+                <div className="space-y-2">
+                  <Label htmlFor="pcp">Primary Care Physician (Optional)</Label>
+                  <Input
+                    id="pcp"
+                    value={pcp}
+                    onChange={(e) => setPcp(e.target.value)}
+                    placeholder="Enter primary care physician name"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="specialist">Specialist(s) (Optional)</Label>
+                  <Input
+                    id="specialist"
+                    value={specialist}
+                    onChange={(e) => setSpecialist(e.target.value)}
+                    placeholder="Enter specialist name(s)"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="therapy">Therapy Provider(s) (Optional)</Label>
+                  <Input
+                    id="therapy"
+                    value={therapy}
+                    onChange={(e) => setTherapy(e.target.value)}
+                    placeholder="Enter therapy provider name(s)"
+                  />
+                </div>
+
+                <div className="flex items-start space-x-2">
+                  <Checkbox
+                    id="healthcare-coord"
+                    checked={healthcareCoordAuthorized}
+                    onCheckedChange={(checked) => setHealthcareCoordAuthorized(checked === true)}
+                  />
+                  <Label
+                    htmlFor="healthcare-coord"
+                    className="text-sm leading-relaxed cursor-pointer"
+                  >
+                    I authorize RCMS to share information with my healthcare providers as
+                    described above
+                  </Label>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="healthcare-signature">Full Legal Name (Signature)</Label>
+                  <Input
+                    id="healthcare-signature"
+                    value={healthcareCoordSignature}
+                    onChange={(e) => setHealthcareCoordSignature(e.target.value)}
+                    placeholder="Enter your full legal name"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="healthcare-date">Date</Label>
+                  <Input
+                    id="healthcare-date"
+                    type="text"
+                    value={currentDate}
+                    readOnly
+                    className="bg-muted"
+                  />
+                </div>
               </div>
             </div>
           )}
+
+          {/* Step 5: HIPAA Privacy Notice */}
           {step === 5 && (
             <div className="space-y-6">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">Notice of Privacy Practices</h1>
-                <p className="text-sm text-gray-900">Please read the following privacy notice carefully.</p>
+                <h1 className="text-2xl font-bold text-foreground mb-2">
+                  Notice of Privacy Practices
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  Please read the following privacy notice carefully.
+                </p>
               </div>
+
               <div className="border rounded-lg p-4 bg-muted/50 max-h-[500px] overflow-y-auto">
-                <div className="prose prose-sm max-w-none text-gray-900">
-                  <h3 className="text-base font-bold mb-2 text-gray-900">NOTICE OF PRIVACY PRACTICES</h3>
-                  <p className="text-sm mb-1 text-gray-900">Reconcile Care Management Services (RCMS)</p>
-                  <p className="text-sm mb-4 text-gray-900">Effective Date: 01/01/2026</p>
+                <div className="prose prose-sm max-w-none text-foreground">
+                  <h3 className="text-base font-bold mb-2">NOTICE OF PRIVACY PRACTICES</h3>
+                  <p className="text-sm mb-1">Reconcile Care Management Services (RCMS)</p>
+                  <p className="text-sm mb-4">Effective Date: 01/01/2026</p>
+                  
                   <div className="space-y-4">
                     <div>
-                      <p className="font-semibold mb-2 text-gray-900">THIS NOTICE DESCRIBES HOW PROTECTED HEALTH INFORMATION (PHI) ABOUT YOU MAY BE USED AND DISCLOSED AND HOW YOU CAN GET ACCESS TO THIS INFORMATION. PLEASE REVIEW THE FOLLOWING CAREFULLY.</p>
+                      <p className="font-semibold mb-2">
+                        THIS NOTICE DESCRIBES HOW PROTECTED HEALTH INFORMATION (PHI) ABOUT YOU MAY BE USED AND DISCLOSED AND HOW YOU CAN GET ACCESS TO THIS INFORMATION. PLEASE REVIEW THE FOLLOWING CAREFULLY.
+                      </p>
                     </div>
+
                     <div>
                       <p className="font-semibold mb-2">Our Commitment to Your Privacy:</p>
-                      <p className="text-gray-900">This Notice describes the privacy practices of Reconcile Care Management Services (RCMS). Our primary goal is to provide you with exceptional care management and advocacy. A critical part of that service is protecting the confidentiality and security of your health information.</p>
+                      <p>
+                        This Notice describes the privacy practices of Reconcile Care Management Services (RCMS). Our primary goal is to provide you with exceptional care management and advocacy. A critical part of that service is protecting the confidentiality and security of your health information.
+                      </p>
                     </div>
+
                     <div>
                       <p className="font-semibold mb-2">OUR PLEDGE REGARDING YOUR PROTECTED HEALTH INFORMATION (PHI):</p>
-                      <p className="mb-2 text-gray-900">At RCMS, we are committed to protecting the privacy of your health information. We are required by law to:</p>
-                      <ul className="list-disc list-inside space-y-1 ml-4 text-gray-900">
+                      <p className="mb-2">
+                        At RCMS, we are committed to protecting the privacy of your health information. We are required by law to:
+                      </p>
+                      <ul className="list-disc list-inside space-y-1 ml-4">
                         <li>Maintain the privacy of your Protected Health Information (PHI);</li>
                         <li>Provide you with this Notice of our legal duties and privacy practices;</li>
                         <li>Abide by the terms of this Notice currently in effect;</li>
                         <li>Notify you following a breach of your unsecured PHI.</li>
                       </ul>
                     </div>
+
                     <div>
                       <p className="font-semibold mb-2">HOW WE MAY USE AND DISCLOSE YOUR PHI:</p>
+                      
                       <div className="ml-4 space-y-3">
                         <div>
-                          <p className="font-semibold mb-1 text-gray-900">1. For Treatment, Payment, or Healthcare Operations</p>
-                          <ul className="list-disc list-inside space-y-1 ml-4 text-gray-900">
+                          <p className="font-semibold mb-1">1. For Treatment, Payment, or Healthcare Operations</p>
+                          <ul className="list-disc list-inside space-y-1 ml-4">
                             <li><strong>Treatment:</strong> We may use and disclose your PHI to provide, coordinate, or manage your healthcare.</li>
                             <li><strong>Payment:</strong> We may use and disclose your PHI to obtain payment for services.</li>
                             <li><strong>Healthcare Operations:</strong> We may use your PHI for quality assessment and business planning.</li>
                           </ul>
                         </div>
+
                         <div>
-                          <p className="font-semibold mb-1 text-gray-900">2. With Your Written Authorization</p>
-                          <p className="text-gray-900">We will not use or disclose your PHI for purposes not described in this Notice without your written authorization. You may revoke an authorization at any time in writing.</p>
+                          <p className="font-semibold mb-1">2. With Your Written Authorization</p>
+                          <p>
+                            We will not use or disclose your PHI for purposes not described in this Notice without your written authorization. You may revoke an authorization at any time in writing.
+                          </p>
                         </div>
+
                         <div>
-                          <p className="font-semibold mb-1 text-gray-900">3. Without Your Authorization – As Permitted by Law</p>
-                          <p className="text-gray-900">We may use or disclose your PHI when required by law, for public health activities, health oversight, judicial proceedings, law enforcement, to avert serious threats to health or safety, and other purposes permitted by law.</p>
+                          <p className="font-semibold mb-1">3. Without Your Authorization – As Permitted by Law</p>
+                          <p>
+                            We may use or disclose your PHI when required by law, for public health activities, health oversight, judicial proceedings, law enforcement, to avert serious threats to health or safety, and other purposes permitted by law.
+                          </p>
                         </div>
                       </div>
                     </div>
+
                     <div>
                       <p className="font-semibold mb-2">YOUR RIGHTS REGARDING YOUR PHI:</p>
-                      <ul className="list-disc list-inside space-y-1 ml-4 text-gray-900">
+                      <ul className="list-disc list-inside space-y-1 ml-4">
                         <li>Right to Inspect and Copy your PHI</li>
                         <li>Right to Amend your PHI if incorrect</li>
                         <li>Right to an Accounting of Disclosures</li>
@@ -1090,82 +1251,115 @@ export default function ClientConsent() {
                         <li>Right to a Paper Copy of This Notice</li>
                       </ul>
                     </div>
+
                     <div>
                       <p className="font-semibold mb-2">COMPLAINTS:</p>
-                      <p className="text-gray-900">If you believe your privacy rights have been violated, you may file a complaint with us or with the Secretary of the U.S. Department of Health and Human Services. You will not be penalized for filing a complaint.</p>
+                      <p>
+                        If you believe your privacy rights have been violated, you may file a complaint with us or with the Secretary of the U.S. Department of Health and Human Services. You will not be penalized for filing a complaint.
+                      </p>
                     </div>
+
                     <div>
                       <p className="font-semibold mb-2">Questions or Concerns:</p>
-                      <p className="mb-1 text-gray-900">Contact our Privacy Officer:</p>
-                      <p className="mb-1 text-gray-900">Traci Johnson, BSN RN CCM</p>
-                      <p className="mb-1 text-gray-900">251 Clearlake Dr., Grand Prairie, TX 75054</p>
-                      <p className="mb-1 text-gray-900">Phone: 682-556-8472</p>
-                      <p className="text-gray-900">Email: traci.johnson@rcmspllc.com</p>
+                      <p className="mb-1">Contact our Privacy Officer:</p>
+                      <p className="mb-1">Traci Johnson, BSN RN CCM</p>
+                      <p className="mb-1">251 Clearlake Dr., Grand Prairie, TX 75054</p>
+                      <p className="mb-1">Phone: 682-556-8472</p>
+                      <p>Email: traci.johnson@rcmspllc.com</p>
                     </div>
                   </div>
                 </div>
               </div>
+
               <div className="space-y-4">
-                <div className="flex items-start space-x-2"><Checkbox id="hipaa-ack" checked={hipaaAcknowledged} onCheckedChange={(c) => setHipaaAcknowledged(c === true)} /><Label htmlFor="hipaa-ack" className="text-sm cursor-pointer text-gray-900">I acknowledge that I have received and reviewed this Notice of Privacy Practices</Label></div>
-                <div className="space-y-2"><Label className="text-gray-900">Full Legal Name (Signature)</Label><Input value={hipaaSignature} onChange={(e) => setHipaaSignature(e.target.value)} placeholder="Enter your full legal name" className="text-gray-900" /></div>
-                <div className="space-y-2"><Label className="text-gray-900">Date</Label><Input type="text" value={currentDate} readOnly className="bg-muted text-gray-900" /></div>
+                <div className="flex items-start space-x-2">
+                  <Checkbox
+                    id="hipaa-ack"
+                    checked={hipaaAcknowledged}
+                    onCheckedChange={(checked) => setHipaaAcknowledged(checked === true)}
+                  />
+                  <Label
+                    htmlFor="hipaa-ack"
+                    className="text-sm leading-relaxed cursor-pointer"
+                  >
+                    I acknowledge that I have received and reviewed this Notice of Privacy
+                    Practices
+                  </Label>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="hipaa-signature">Full Legal Name (Signature)</Label>
+                  <Input
+                    id="hipaa-signature"
+                    value={hipaaSignature}
+                    onChange={(e) => setHipaaSignature(e.target.value)}
+                    placeholder="Enter your full legal name"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="hipaa-date">Date</Label>
+                  <Input
+                    id="hipaa-date"
+                    type="text"
+                    value={currentDate}
+                    readOnly
+                    className="bg-muted"
+                  />
+                </div>
               </div>
             </div>
           )}
 
+          {/* Error Message */}
           {error && (
             <div className="mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded-md">
               <p className="text-sm text-destructive">{error}</p>
             </div>
           )}
 
-          <div className="mt-6 flex flex-col gap-3">
+          {/* Action Buttons */}
+          <div className="mt-6 flex justify-end gap-3">
             {step >= 1 && step <= 5 && (
-              <>
-                <div className="flex justify-between items-center">
-                  <Button
-                    variant="outline"
-                    onClick={() => step === 1 ? navigate("/intake-identity") : setStep((step - 1) as ConsentStep)}
-                    disabled={isSaving || savingExit}
-                  >
-                    {step === 1 ? "← Back to Identity" : "← Back"}
-                  </Button>
-                  <Button onClick={handleSaveAndExit} disabled={isSaving || savingExit || countdownExpired} variant="outline" className="min-w-[140px]">
-                    {savingExit ? "Saving…" : "Save & Exit"}
-                  </Button>
-                </div>
-              </>
+              <Button
+                onClick={handleSaveAndExit}
+                disabled={isSaving || savingExit || countdownExpired}
+                variant="outline"
+                className="min-w-[140px]"
+              >
+                {savingExit ? "Saving…" : "Save & Exit"}
+              </Button>
             )}
-            {step === 0 && (
-              <div className="flex justify-end">
-                <Button
-                  onClick={handleContinue}
-                  disabled={savingExit || countdownExpired || (!selectedAttorneyId && !validatedAttorneyId)}
-                  className="min-w-[140px]"
-                >
-                  Continue
-                </Button>
-              </div>
+            {step === 1 && (
+              <Button
+                onClick={handleDecline}
+                disabled={isSaving || countdownExpired}
+                variant="outline"
+                className="min-w-[140px]"
+              >
+                I Do Not Agree
+              </Button>
             )}
-            {step >= 1 && step <= 5 && (
-              <div className="flex gap-4 mt-2">
-                <Button
-                  onClick={() => handleConsent(true)}
-                  disabled={isSaving || savingExit || countdownExpired}
-                  className="flex-1 bg-green-700 hover:bg-green-800 text-white"
-                >
-                  I Consent
-                </Button>
-                <Button
-                  onClick={() => handleConsent(false)}
-                  disabled={isSaving || savingExit || countdownExpired}
-                  variant="outline"
-                  className="flex-1 border-red-600 text-red-600 hover:bg-red-50"
-                >
-                  I Do Not Consent
-                </Button>
-              </div>
-            )}
+            <Button
+              onClick={handleContinue}
+              disabled={
+                isSaving ||
+                savingExit ||
+                countdownExpired ||
+                (step === 0 && !selectedAttorneyId && !validatedAttorneyId)
+              }
+              className="min-w-[140px]"
+            >
+              {isSaving
+                ? "Saving..."
+                : step === 0
+                ? "Continue"
+                : step === 1
+                ? "I Agree - Continue"
+                : step === 5
+                ? "Complete & Continue to Intake"
+                : "Continue"}
+            </Button>
           </div>
         </Card>
       </div>

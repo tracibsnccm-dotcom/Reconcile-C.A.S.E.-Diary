@@ -71,8 +71,8 @@ export function IntakePhysicalPreDiagnosisSelector({
         <div className="flex items-start gap-3 mb-6 p-4 bg-primary/5 rounded-lg border border-primary/20">
           <Info className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
           <div>
-            <h4 className="font-semibold text-sm mb-1">Chronic / Pre-Injury Conditions</h4>
-            <p className="text-sm text-black">
+            <h4 className="font-semibold text-sm mb-1">Chronic / Pre-Accident Conditions</h4>
+            <p className="text-sm text-muted-foreground">
               Select all chronic or pre-existing physical conditions that you had before the incident.
             </p>
           </div>
@@ -134,7 +134,7 @@ export function IntakePhysicalPreDiagnosisSelector({
             <Label htmlFor="pre-physical-additional-conditions" className="font-semibold">
               Additional Pre-Injury Physical Conditions or Notes
             </Label>
-            <span className="text-xs text-black">
+            <span className="text-xs text-muted-foreground">
               {additionalNotes.length} / 1000
             </span>
           </div>

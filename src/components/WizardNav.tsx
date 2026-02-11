@@ -31,7 +31,7 @@ export function WizardNav({ step, setStep, last, canAdvance = true, blockReason 
           <ArrowLeft className="w-4 h-4 mr-2" aria-hidden="true" />
           Previous
         </Button>
-        <span className="text-sm text-black" role="status" aria-live="polite">
+        <span className="text-sm text-muted-foreground" role="status" aria-live="polite">
           Step {step + 1} of {last + 1}
         </span>
         <Button

@@ -1,7 +1,7 @@
 /**
  * Canonical client intake state resolver and message map.
- * Use across ResumeIntake, ClientPortal, and any intake-related banners.
- * (Ported from C.A.R.E.)
+ * Use across ResumeIntake, ClientPortal, and any intake-related banners
+ * to ensure consistent plain-English messaging and exactly one state at a time.
  */
 
 export type ClientIntakeState =
@@ -18,6 +18,10 @@ export interface ResolveClientIntakeStateInput {
   tokenInvalidOrExpired?: boolean;
 }
 
+/**
+ * Maps "what we know" into a single canonical intake state.
+ * Priority order: expired/invalid > locked > submitted > in_progress > not_started.
+ */
 export function resolveClientIntakeState(
   input: ResolveClientIntakeStateInput
 ): ClientIntakeState {
@@ -42,6 +46,7 @@ export interface ClientIntakeStateMessage {
   ctaAction?: () => void;
 }
 
+/** Canonical message map — use exactly; no scary language. */
 export const CLIENT_INTAKE_STATE_MESSAGES: Record<
   ClientIntakeState,
   ClientIntakeStateMessage
